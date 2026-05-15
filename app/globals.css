@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #F5EFE6;
+  --cream-off: #FAF6F0;
+  --plum: #3D2E25;
+  --brown-warm: #6B5648;
+  --brown-dark: #3A302A;
+  --gold-mustard: #D4A82A;
+  --rose-dusty: #C4847C;
+  --rose-coral: #D89789;
+  --sage: #8FA38C;
+  --lavender: #D4C8F0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--cream);
+  color: var(--plum);
+  font-family: var(--font-eb-garamond), Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--gold-mustard);
+  color: var(--cream);
+}
+
+/* Fraunces for all headings by default */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
