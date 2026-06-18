@@ -31,7 +31,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      setError("something went quiet. try again in a moment.");
+      setError(error.message);
     } else {
       setSubmitted(true);
     }

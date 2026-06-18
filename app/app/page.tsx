@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import DashboardClient from "./dashboard-client";
 import OneSignalInit from "@/components/sisi/OneSignalInit";
 
+export const dynamic = "force-dynamic";
+
 export default async function AppHome() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
