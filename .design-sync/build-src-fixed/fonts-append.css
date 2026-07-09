@@ -1,0 +1,9 @@
+/* design-sync: the real app self-hosts these via next/font/google (app/layout.tsx),
+   which only generates optimized files at `next build` time. For the DS preview we
+   load the same families from the Google Fonts CDN instead (fonts-import.css,
+   prepended) — visually equivalent. */
+:root {
+  --font-fraunces: 'Fraunces', serif;
+  --font-eb-garamond: 'EB Garamond', serif;
+  --font-caveat: 'Caveat', cursive;
+}

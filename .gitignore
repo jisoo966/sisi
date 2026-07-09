@@ -40,3 +40,12 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# design-sync (claude.ai/design)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+.design-sync/build-src/
+.design-sync/tailwind-build/

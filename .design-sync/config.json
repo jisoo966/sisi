@@ -1,0 +1,21 @@
+{
+  "projectId": "42422b79-502b-4e6a-9552-d394da53331e",
+  "pkg": "sisi-app",
+  "shape": "package",
+  "srcDir": ".design-sync/build-src/sisi",
+  "tsconfig": "./tsconfig.json",
+  "cssEntry": ".design-sync/tailwind-build/compiled.css",
+  "buildCmd": "rsync -a --exclude 'BackButton.tsx' --exclude 'BottomNav.tsx' --exclude 'FoxLottie.tsx' --exclude 'FoxAvatar.tsx' components/sisi/ .design-sync/build-src/sisi/ && cp .design-sync/build-src-fixed/FoxAvatar.tsx .design-sync/build-src/sisi/FoxAvatar.tsx && node .design-sync/build-src-fixed/fix-default-exports.mjs .design-sync/build-src/sisi && npx tailwindcss -i app/globals.css -o .design-sync/tailwind-build/compiled.raw.css --config tailwind.config.ts && cat .design-sync/build-src-fixed/fonts-import.css .design-sync/tailwind-build/compiled.raw.css .design-sync/build-src-fixed/fonts-append.css > .design-sync/tailwind-build/compiled.css",
+  "guidelinesGlob": ["docs/Sisi_Brand_Book_v2.md"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "runtimeFontPrefixes": ["Sentient"],
+  "overrides": {
+    "BookGallery": { "cardMode": "column" },
+    "ChatBubble": { "cardMode": "column" },
+    "MinimalAudioPlayer": { "cardMode": "column" }
+  },
+  "componentSrcMap": {
+    "OneSignalInit": null,
+    "ServiceWorkerRegister": null
+  }
+}
