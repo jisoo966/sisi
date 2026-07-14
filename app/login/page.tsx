@@ -28,10 +28,20 @@ export default function LoginPage() {
     setError("");
 
     const supabase = createClient();
+    // Supabase's Redirect URLs allowlist is configured for the apex domain
+    // (hellosisi.co) — www.hellosisi.co isn't in it, and Vercel serves the
+    // app at www (apex redirects to www). Without this normalization,
+    // emailRedirectTo silently fails Supabase's allowlist check and the
+    // magic link never reaches /auth/confirm with a code — the session
+    // exchange never happens and the user just gets bounced back to login.
+    const redirectOrigin = window.location.origin.replace(
+      /^https:\/\/www\./,
+      "https://"
+    );
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+        emailRedirectTo: `${redirectOrigin}/auth/confirm`,
       },
     });
 

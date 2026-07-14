@@ -66,10 +66,12 @@ export default function OnboardingPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
+        // upsert, not update — no DB trigger creates the profiles row on
+        // signup anymore (handle_new_user was removed), so an update()
+        // against a nonexistent row would silently affect 0 rows.
         await supabase
           .from("profiles")
-          .update({ display_name: trimmed })
-          .eq("id", user.id);
+          .upsert({ id: user.id, email: user.email, display_name: trimmed });
       }
     } catch (err) {
       console.error("save name failed:", err);
@@ -93,10 +95,10 @@ export default function OnboardingPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
+        // upsert — see handleNameSubmit for why (no auto-create trigger).
         await supabase
           .from("profiles")
-          .update({ onboarded: true })
-          .eq("id", user.id);
+          .upsert({ id: user.id, email: user.email, onboarded: true });
       }
 
       router.push("/journey");
