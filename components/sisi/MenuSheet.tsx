@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * MenuSheet — 아래에서 슬라이드업 되는 프로필 & 설정 sheet.
- *   - Profile (이름 + 이메일)
- *   - Ambient music toggle
- *   - Angel messages, Sísí voice (placeholder v1.1)
- *   - Privacy · Terms
- *   - Sign out
+ * MenuSheet — CHANI 스타일 full-page overlay 메뉴.
+ *   - 전체 화면 크림 배경
+ *   - X 오른쪽 상단
+ *   - 항목들 오른쪽 정렬, 큰 여백
+ *   - Sentient Light 폰트
  *
  * 사용법:
  *   const [open, setOpen] = useState(false);
@@ -28,8 +27,7 @@ export function MenuSheet({
   const router = useRouter();
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
-  const [musicOn, setMusicOn] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [musicOn, setMusicOn] = useState(true);
 
   // Profile load
   useEffect(() => {
@@ -54,21 +52,17 @@ export function MenuSheet({
     })();
   }, [open]);
 
-  // Music state load
+  // Music state load — default ON (off only if explicitly turned off)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("sisi-music-on");
-    setMusicOn(saved === "on");
+    setMusicOn(saved !== "off");
   }, [open]);
 
   function toggleMusic() {
     const next = !musicOn;
     setMusicOn(next);
     localStorage.setItem("sisi-music-on", next ? "on" : "off");
-
-    // Audio 조작 — audio 요소는 body에 있음 (BackgroundMusic이 관리)
-    // 여기선 localStorage만 바꾸고 BackgroundMusic이 반응하게 함
-    // 간단히 이 시점 재생 시도:
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("sisi:music-toggle", { detail: { on: next } }),
@@ -87,106 +81,84 @@ export function MenuSheet({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-end justify-center"
+          className="fixed inset-0 z-[100] overflow-hidden bg-[#f7f2e3]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Backdrop */}
-          <motion.div
+          {/* X close — top right */}
+          <button
             onClick={onClose}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-          />
-
-          {/* Sheet */}
-          <motion.div
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.3}
-            onDragEnd={(_, info) => {
-              if (info.offset.y > 100 || info.velocity.y > 500) onClose();
-            }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 32, stiffness: 300 }}
-            className="relative z-10 w-full max-w-[520px] rounded-t-[24px] bg-[#f7f2e3] shadow-2xl pt-[10px] pb-[36px] max-h-[85vh] overflow-y-auto"
+            aria-label="Close menu"
+            className="absolute top-[52px] right-[24px] z-10 h-10 w-10 flex items-center justify-center text-journey-navy/80 hover:text-journey-navy transition"
           >
-            {/* Drag handle */}
-            <div className="mx-auto mb-[16px] h-[4px] w-[40px] rounded-full bg-journey-navy/20" />
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
 
-            {/* Profile */}
-            <div className="px-[24px] pb-[20px]">
-              <p className="font-sentient text-[24px] text-journey-navy">
-                {name || "friend"}
-              </p>
-              {email && (
-                <p className="font-sentient italic text-[13px] text-journey-navy/50 mt-[2px]">
-                  {email}
+          {/* Content — right-aligned list, generous vertical rhythm */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="relative flex min-h-screen flex-col justify-center px-[32px] pt-[100px] pb-[80px]"
+          >
+            {/* Profile — small top card feel */}
+            {(name || email) && (
+              <div className="text-right mb-[48px]">
+                <p className="font-sentient text-[24px] text-journey-navy">
+                  {name || "friend"}
                 </p>
-              )}
-            </div>
+                {email && (
+                  <p className="font-sentient italic text-[13px] text-journey-navy/50 mt-1">
+                    {email}
+                  </p>
+                )}
+              </div>
+            )}
 
-            <Divider />
+            {/* Menu items — right-aligned, big tap targets, big spacing */}
+            <nav className="flex flex-col items-end gap-[28px]">
+              <MenuItem onClick={toggleMusic}>
+                <span className="flex items-center gap-3">
+                  AMBIENT MUSIC
+                  <span
+                    className={`text-[13px] tracking-wider ${
+                      musicOn ? "text-journey-navy/70" : "text-journey-navy/30"
+                    }`}
+                  >
+                    {musicOn ? "ON" : "OFF"}
+                  </span>
+                </span>
+              </MenuItem>
 
-            {/* Settings — music */}
-            <SettingRow
-              icon={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 18V5l12-2v13" />
-                  <circle cx="6" cy="18" r="3" />
-                  <circle cx="18" cy="16" r="3" />
-                </svg>
-              }
-              label="ambient music"
-            >
-              <Toggle on={musicOn} onChange={toggleMusic} />
-            </SettingRow>
+              <MenuLink href="/privacy" onClose={onClose}>
+                PRIVACY POLICY
+              </MenuLink>
 
-            <SettingRow
-              icon={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                </svg>
-              }
-              label="angel messages"
-              hint="coming soon"
-              disabled
-            />
+              <MenuLink href="/terms" onClose={onClose}>
+                TERMS OF SERVICE
+              </MenuLink>
 
-            <Divider />
-
-            {/* Legal links */}
-            <LinkRow href="/privacy" onClose={onClose}>
-              privacy policy
-            </LinkRow>
-            <LinkRow href="/terms" onClose={onClose}>
-              terms of service
-            </LinkRow>
-
-            <Divider />
-
-            {/* Sign out */}
-            <button
-              onClick={signOut}
-              className="w-full px-[24px] py-[14px] text-left font-sentient text-[15px] text-journey-oxblood hover:bg-journey-navy/5 transition-colors flex items-center gap-3"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              sign out
-            </button>
+              <MenuItem onClick={signOut}>
+                <span className="text-journey-oxblood">SIGN OUT</span>
+              </MenuItem>
+            </nav>
 
             {/* Footer */}
-            <p className="mt-[16px] px-[24px] font-sentient italic text-[11px] text-journey-navy/40">
+            <p className="text-right font-sentient italic text-[11px] text-journey-navy/40 mt-[48px]">
               sísí v1.0
             </p>
           </motion.div>
@@ -196,46 +168,25 @@ export function MenuSheet({
   );
 }
 
-function Divider() {
-  return <div className="mx-[24px] h-px bg-journey-navy/10" />;
-}
-
-function SettingRow({
-  icon,
-  label,
-  hint,
-  disabled,
+/** Menu item — right-aligned typography with tracking */
+function MenuItem({
+  onClick,
   children,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  hint?: string;
-  disabled?: boolean;
-  children?: React.ReactNode;
+  onClick: () => void;
+  children: React.ReactNode;
 }) {
   return (
-    <div
-      className={`flex items-center justify-between px-[24px] py-[14px] ${
-        disabled ? "opacity-50" : ""
-      }`}
+    <button
+      onClick={onClick}
+      className="font-sentient text-[20px] tracking-[0.1em] text-journey-navy hover:opacity-70 transition-opacity"
     >
-      <div className="flex items-center gap-3 text-journey-navy">
-        {icon}
-        <span className="font-sentient text-[15px]">{label}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        {hint && (
-          <span className="font-sentient italic text-[12px] text-journey-navy/40">
-            {hint}
-          </span>
-        )}
-        {children}
-      </div>
-    </div>
+      {children}
+    </button>
   );
 }
 
-function LinkRow({
+function MenuLink({
   href,
   onClose,
   children,
@@ -248,37 +199,9 @@ function LinkRow({
     <Link
       href={href}
       onClick={onClose}
-      className="flex items-center justify-between px-[24px] py-[14px] hover:bg-journey-navy/5 transition-colors"
+      className="font-sentient text-[20px] tracking-[0.1em] text-journey-navy hover:opacity-70 transition-opacity"
     >
-      <span className="font-sentient text-[15px] text-journey-navy">
-        {children}
-      </span>
-      <span className="text-journey-navy/40">›</span>
+      {children}
     </Link>
-  );
-}
-
-function Toggle({
-  on,
-  onChange,
-}: {
-  on: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      onClick={onChange}
-      role="switch"
-      aria-checked={on}
-      className={`relative h-[26px] w-[46px] rounded-full transition-colors ${
-        on ? "bg-journey-purple" : "bg-journey-navy/20"
-      }`}
-    >
-      <motion.div
-        animate={{ x: on ? 22 : 2 }}
-        transition={{ type: "spring", damping: 25, stiffness: 350 }}
-        className="absolute top-[2px] h-[22px] w-[22px] rounded-full bg-white shadow-sm"
-      />
-    </button>
   );
 }

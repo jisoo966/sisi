@@ -19,11 +19,12 @@ export function BackgroundMusic({
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Initial load — 만약 저장된 상태가 on이면 시도
+  // Initial load — 기본 ON (사용자가 explicit off 안 했으면)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("sisi-music-on");
-    if (saved === "on" && audioRef.current) {
+    const shouldPlay = saved !== "off"; // null or "on" → play
+    if (shouldPlay && audioRef.current) {
       audioRef.current.volume = 0;
       audioRef.current
         .play()
