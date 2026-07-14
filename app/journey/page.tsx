@@ -1,12 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { WalkingFoxRear } from "@/components/sisi/WalkingFoxRear";
 import { JourneyScene } from "@/components/sisi/JourneyScene";
 import { JourneyMusic } from "@/components/sisi/JourneyMusic";
 import { BottomNav } from "@/components/sisi/BottomNav";
 import { useVideoLuminance } from "@/lib/useVideoLuminance";
+import { createClient } from "@/lib/supabase/client";
+
+/** 시간대별 인사 */
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Good night";
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+/** "Jul 14, 2026" 포맷 */
+function formatDate(): string {
+  const d = new Date();
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 /**
  * Journey Home — *Sky Children of Light* 느낌의 endless walking world.
@@ -23,6 +44,35 @@ export default function JourneyPage() {
   // 배경 video 밝기 감지 — dark scene(밤/starry)이면 텍스트 흰색으로
   const bgMode = useVideoLuminance();
   const isDark = bgMode === "dark";
+
+  // Profile에서 사용자 이름 가져옴 (없으면 fallback "you")
+  const [name, setName] = useState<string>("");
+  const greeting = getGreeting();
+  const dateStr = formatDate();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile?.display_name) {
+          setName(profile.display_name);
+        }
+      } catch {
+        // fail silent — 이름 없어도 앱 동작
+      }
+    })();
+  }, []);
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#F5F4EC]">
@@ -63,16 +113,16 @@ export default function JourneyPage() {
                 isDark ? "text-white/80" : "text-journey-navy/70"
               }`}
             >
-              May 22, 2026
+              {dateStr}
             </p>
             <h1
               className={`font-sentient text-[34px] leading-[1.15] transition-colors duration-500 ${
                 isDark ? "text-white" : "text-journey-navy/95"
               }`}
             >
-              Good evening,
+              {greeting},
               <br />
-              Jisoo
+              {name || "you"}
             </h1>
           </div>
 
