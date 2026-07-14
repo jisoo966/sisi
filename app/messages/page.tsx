@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatBubble, ChoiceButton } from "@/components/sisi/ChatBubble";
-import { BackButton } from "@/components/sisi/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -308,10 +307,27 @@ export default function MessagesPage() {
       </div>
 
       <div className="relative z-10 flex h-screen flex-col">
-        {/* TOP — messages는 nav가 없는 유일한 탭 (input이 차지).
-             그래서 back 버튼으로 escape 가능하게 함 */}
+        {/* TOP — messages는 nav가 없어서 X로 대화 닫기 → 홈으로.
+             (뒤로가기 아이콘은 이전 탭으로 가면 이상함 — 여긴 대화 세션) */}
         <header className="shrink-0 pt-[52px] px-[24px]">
-          <BackButton />
+          <Link
+            href="/journey"
+            aria-label="Close conversation"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </Link>
         </header>
 
         {/* MIDDLE — content */}

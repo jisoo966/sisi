@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, EB_Garamond, Caveat, Inter } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/sisi/ServiceWorkerRegister";
+import { BackgroundMusic } from "@/components/sisi/BackgroundMusic";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -74,6 +75,7 @@ export default function RootLayout({
       </head>
       <body>
         <ServiceWorkerRegister />
+        <BackgroundMusic />
         {children}
       </body>
     </html>

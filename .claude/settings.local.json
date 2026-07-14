@@ -48,7 +48,25 @@
       "Bash(kill 38731 37826 38576 87113)",
       "Bash(pkill -f \"node /Users/jisoo/projects/sisi-app/node_modules/.bin/next dev\")",
       "Bash(kill 87396 87415 87420)",
-      "Bash(kill 87513 87499)"
+      "Bash(kill 87513 87499)",
+      "Bash(supabase projects *)",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel env *)",
+      "Bash(vercel project *)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(pbcopy)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__get_logs",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "mcp__plugin_supabase_supabase__list_tables",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "Bash(vercel link *)",
+      "Bash(npx next *)",
+      "Bash(pkill -f \"next lint\")",
+      "Bash(vercel ls *)",
+      "Bash(vercel --prod --yes)"
     ]
   }
 }
