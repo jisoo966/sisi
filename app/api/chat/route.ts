@@ -110,33 +110,71 @@ what feels heaviest about it right now?"
 □ 한 언어로만 썼는가?
 □ ㅋㅋ ㅎㅎ 없는가?
 □ Emoji 1개 이하 (light) 또는 0개 (deep)?
-□ 사용자 에너지에 맞는가?`;
+□ 사용자 에너지에 맞는가?
+
+─── SAVE MARKER (사용자에게 안 보임) ───
+
+너의 응답 *마지막에* 이 marker를 붙일 수 있어:
+
+[SAVE:reason] — reason 종류:
+  - special (오늘 특별한 경험, 감동, 감사, 첫 시도, 성취)
+  - shift (뭔가 바꾸고 싶다는 결심, 변화의 순간)
+  - insight (자기에 대한 깨달음)
+  - intention (원하는 방향 명확하게 말함, wish 같은)
+
+*평범한 대화, 인사, 잡담, 스몰토크*엔 절대 붙이지 마.
+하루 대화에서 1~2번만 붙는 수준. 대부분 응답엔 marker 없음.
+
+이 marker는 자동으로 사용자에게 숨겨져 — 자연스럽게 필요할 때만 붙여.
+
+예:
+User: "오늘 회사가 너무 힘들었어"
+→ "오... 무거운 하루였구나." (marker 없음)
+
+User: "어릴 때부터 하고 싶던 그림을 오늘 처음 그렸어"
+→ "와... 그 순간 어땠어? [SAVE:special]"
+
+User: "이제 진짜 술 끊고 싶어"
+→ "그 마음이 진짜네. [SAVE:shift]"`;
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response("unauthorized", { status: 401 });
+    // Auth optional — 로그인 안 해도 대화 가능 (그냥 저장만 안 됨)
+    let user: { id: string } | null = null;
+    let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
+    try {
+      supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      user = data.user;
+    } catch {
+      user = null;
+    }
 
     const { messages, sessionId } = await request.json();
 
-    // 사용자 goals 가져와서 context에 추가
-    const { data: goals } = await supabase
-      .from("goals")
-      .select("content, category, target_date")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .limit(3);
+    // 로그인한 유저면 stars(소원) context 붙이기
+    let starsContext = "";
+    if (user && supabase) {
+      const { data: stars } = await supabase
+        .from("stars")
+        .select("wish, timeframe")
+        .eq("user_id", user.id)
+        .is("fulfilled_at", null)
+        .limit(3);
 
-    const goalsContext = goals?.length
-      ? `\n\nUSER'S ACTIVE MANIFESTATIONS:\n${goals.map((g) => `- ${g.content}${g.target_date ? ` (by ${g.target_date})` : ""}`).join("\n")}`
-      : "";
+      if (stars?.length) {
+        starsContext =
+          "\n\nUSER'S ACTIVE WISHES (참고만, 먼저 언급하지 마):\n" +
+          stars.map((s) => `- "${s.wish}" (${s.timeframe})`).join("\n");
+      }
+    }
 
-    // 메시지 DB 저장 (마지막 user 메시지)
+    // 로그인한 유저면 마지막 user 메시지 DB 저장
     const lastUserMessage = messages[messages.length - 1];
-    if (sessionId && lastUserMessage?.role === "user") {
+    if (user && supabase && sessionId && lastUserMessage?.role === "user") {
       await supabase.from("chat_messages").insert({
         session_id: sessionId,
+        user_id: user.id,
         role: "user",
         content: lastUserMessage.content,
       });
@@ -150,7 +188,7 @@ export async function POST(request: NextRequest) {
     const stream = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 400,
-      system: SISI_SYSTEM_PROMPT + goalsContext,
+      system: SISI_SYSTEM_PROMPT + starsContext,
       messages: messages.map((m: { role: string; content: string }) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
@@ -171,16 +209,25 @@ export async function POST(request: NextRequest) {
           ) {
             const text = event.delta.text;
             fullResponse += text;
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text })}\n\n`),
+            );
           }
         }
 
-        // 완성된 응답 DB 저장
-        if (sessionId && fullResponse) {
+        // 완성된 응답 DB 저장 (로그인 유저만)
+        if (user && supabase && sessionId && fullResponse) {
+          // Save marker 파싱해서 저장 컬럼에도 반영
+          const saveMatch = fullResponse.match(
+            /\[SAVE:(special|shift|insight|intention)\]/,
+          );
           await supabase.from("chat_messages").insert({
             session_id: sessionId,
+            user_id: user.id,
             role: "sisi",
             content: fullResponse,
+            suggested_save: !!saveMatch,
+            save_reason: saveMatch?.[1] ?? null,
           });
         }
 

@@ -29,16 +29,33 @@ const config: Config = {
         },
         sage: "#8FA38C",
         lavender: "#D4C8F0",
+        // Brand v2 / Journey palette (locked from Figma)
+        journey: {
+          cream: "#F2E5B5",     // butter cream sky in scenes
+          ice: "#B5D5E8",       // icy pale blue
+          cobalt: "#3B5BB8",    // deep cobalt
+          navy: "#1F2A44",      // primary text dark
+          oxblood: "#7A2E2E",   // oxblood emphasis
+          purple: "#B19CD9",    // primary button (lavender purple)
+          frost: "#E8F0F8",     // soft frosted card bg
+        },
       },
       fontFamily: {
         fraunces: ["var(--font-fraunces)", "serif"],
         garamond: ["var(--font-eb-garamond)", "serif"],
         caveat: ["var(--font-caveat)", "cursive"],
+        // Brand v2 lock: Sentient (Fontshare) for headings, Inter for body
+        sentient: ["Sentient", "var(--font-fraunces)", "serif"],
+        inter: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+      },
+      letterSpacing: {
+        // brand v2 — all Sentient text uses -0.03em by default
+        sentient: "-0.03em",
       },
     },
   },

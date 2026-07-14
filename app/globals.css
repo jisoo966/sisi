@@ -13,6 +13,21 @@
   --rose-coral: #D89789;
   --sage: #8FA38C;
   --lavender: #D4C8F0;
+
+  /* Brand v2 / Journey palette */
+  --journey-cream: #F2E5B5;
+  --journey-ice: #B5D5E8;
+  --journey-cobalt: #3B5BB8;
+  --journey-navy: #1F2A44;
+  --journey-oxblood: #7A2E2E;
+  --journey-purple: #B19CD9;
+  --journey-frost: #E8F0F8;
+}
+
+/* Brand v2: any element using Sentient inherits light weight (300) + tracking -3% */
+.font-sentient {
+  font-weight: 300;
+  letter-spacing: -0.03em;
 }
 
 * {

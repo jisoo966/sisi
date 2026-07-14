@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, EB_Garamond, Caveat } from "next/font/google";
+import { Fraunces, EB_Garamond, Caveat, Inter } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/sisi/ServiceWorkerRegister";
 
@@ -20,6 +20,15 @@ const caveat = Caveat({
   variable: "--font-caveat",
   display: "swap",
 });
+
+// Brand v2: Inter for body text (sans)
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+// Sentient (Fontshare) loaded via <link> below — not on Google Fonts
 
 export const metadata: Metadata = {
   title: "sísí — manifest with sísí.",
@@ -49,8 +58,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${ebGaramond.variable} ${caveat.variable}`}
+      className={`${fraunces.variable} ${ebGaramond.variable} ${caveat.variable} ${inter.variable}`}
     >
+      <head>
+        {/* Sentient — Fontshare (brand v2 heading font) */}
+        <link
+          rel="preconnect"
+          href="https://api.fontshare.com"
+          crossOrigin=""
+        />
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=sentient@200,300,400,500,700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <ServiceWorkerRegister />
         {children}

@@ -108,6 +108,23 @@ export default function LoginPage() {
               <p className="mt-8 text-center font-garamond text-sm text-[#6B5648]/60 italic">
                 no password. just you.
               </p>
+              <p className="mt-4 text-center font-garamond text-xs text-[#6B5648]/50 leading-relaxed">
+                by continuing, you agree to our{" "}
+                <Link
+                  href="/terms"
+                  className="underline underline-offset-2 hover:text-[#3D2E25]"
+                >
+                  terms
+                </Link>
+                {" "}and{" "}
+                <Link
+                  href="/privacy"
+                  className="underline underline-offset-2 hover:text-[#3D2E25]"
+                >
+                  privacy policy
+                </Link>
+                .
+              </p>
             </motion.div>
           ) : (
             <motion.div
