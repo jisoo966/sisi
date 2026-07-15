@@ -4,6 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// DB columns are message_content/opened (pre-existing schema, shared with
+// planned save/heart features) — the client-facing shape below (content/
+// read_at) predates that and is kept as-is so lib/angelMessages.ts and
+// AngelMessageCard.tsx don't need to change. This maps one to the other.
+type AngelMessageRow = {
+  id: string;
+  message_content: string;
+  sent_at: string;
+  opened: boolean;
+};
+
+function toClientMessage(row: AngelMessageRow) {
+  return {
+    id: row.id,
+    content: row.message_content,
+    sent_at: row.sent_at,
+    read_at: row.opened ? row.sent_at : null,
+    related_star_id: null,
+  };
+}
+
 /**
  * /api/angel-message
  *   POST — 사용자 위해 새 angel message 생성 (Claude Sonnet).
@@ -100,14 +121,14 @@ export async function GET() {
     // 안 읽은 최근 메시지 반환
     const { data } = await supabase
       .from("angel_messages")
-      .select("id, content, sent_at, related_star_id, read_at")
+      .select("id, message_content, sent_at, opened")
       .eq("user_id", user.id)
-      .is("read_at", null)
+      .eq("opened", false)
       .order("sent_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    return NextResponse.json({ message: data });
+    return NextResponse.json({ message: data ? toClientMessage(data) : null });
   } catch (err) {
     console.error("angel-message GET error:", err);
     return NextResponse.json({ message: null });
@@ -126,7 +147,7 @@ export async function POST() {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabase
       .from("angel_messages")
-      .select("id, content, sent_at, related_star_id, read_at")
+      .select("id, message_content, sent_at, opened")
       .eq("user_id", user.id)
       .gte("sent_at", oneDayAgo)
       .order("sent_at", { ascending: false })
@@ -134,7 +155,7 @@ export async function POST() {
       .maybeSingle();
 
     if (recent) {
-      return NextResponse.json({ message: recent, generated: false });
+      return NextResponse.json({ message: toClientMessage(recent), generated: false });
     }
 
     // 사용자 stars 로드 (개인화용)
@@ -152,10 +173,10 @@ export async function POST() {
       .from("angel_messages")
       .insert({
         user_id: user.id,
-        content,
+        message_content: content,
         sent_at: new Date().toISOString(),
       })
-      .select("id, content, sent_at, related_star_id, read_at")
+      .select("id, message_content, sent_at, opened")
       .single();
 
     if (error) {
@@ -163,7 +184,7 @@ export async function POST() {
       return NextResponse.json({ message: null }, { status: 500 });
     }
 
-    return NextResponse.json({ message: inserted, generated: true });
+    return NextResponse.json({ message: toClientMessage(inserted), generated: true });
   } catch (err) {
     console.error("angel-message POST error:", err);
     return NextResponse.json({ message: null }, { status: 500 });
@@ -184,7 +205,7 @@ export async function PATCH(request: Request) {
 
     await supabase
       .from("angel_messages")
-      .update({ read_at: new Date().toISOString() })
+      .update({ opened: true })
       .eq("id", id)
       .eq("user_id", user.id);
 
