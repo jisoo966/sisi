@@ -19,15 +19,18 @@ import { loadStars, type Star } from "@/lib/myStars";
  * 글자 없음 = 상징만. 순수한 연결감.
  */
 function SkyStar({ star }: { star: Star }) {
-  // 별 위치 (하늘 상단, 살짝 오른쪽) — position 데이터 활용 가능하나 여기선 고정
-  const top = 12 + (Math.abs(star.x) % 8); // 12~20%
+  // 별 위치 (하늘 상단, 살짝 오른쪽) — position 데이터 활용 가능하나 여기선 고정.
+  // 인사말 텍스트 바로 아래에 붙어있던 것 → 좀 더 내려서 여백 확보 (28~36%).
+  const top = 28 + (Math.abs(star.x) % 8); // 28~36%
   const left = 45 + (star.y % 20); // 45~65%
   const size = 28;
 
   return (
     <Link
       href="/my-stars"
-      className="absolute z-[8] -translate-x-1/2 -translate-y-1/2 group"
+      // 인사말을 감싸는 header wrapper가 z-10 + h-screen이라 투명한 영역까지
+      // 클릭을 가로채고 있었음 — 그보다 높은 z로 올려서 실제로 탭되게 함.
+      className="absolute z-20 -translate-x-1/2 -translate-y-1/2 group"
       style={{ top: `${top}%`, left: `${left}%` }}
       aria-label="Your star in the sky"
     >
