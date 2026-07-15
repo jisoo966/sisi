@@ -17,10 +17,14 @@ export const dynamic = "force-dynamic";
  */
 export default function GalleryPage() {
   const [postcards, setPostcards] = useState<Postcard[]>([]);
+  const [loaded, setLoaded] = useState(false); // 로딩 전엔 empty state 안 보여줌
   const [selectedPostcard, setSelectedPostcard] = useState<Postcard | null>(null);
 
   useEffect(() => {
-    loadPostcards().then(setPostcards);
+    loadPostcards().then((data) => {
+      setPostcards(data);
+      setLoaded(true);
+    });
   }, []);
 
   const isDetailOpen = selectedPostcard !== null;
@@ -52,8 +56,10 @@ export default function GalleryPage() {
           moments you&apos;ve kept
         </p>
 
-        {/* Grid + new memory CTA */}
-        <PostcardsGrid postcards={postcards} onSelect={setSelectedPostcard} />
+        {/* Grid + new memory CTA — 로딩 전엔 empty state 안 flash */}
+        {loaded && (
+          <PostcardsGrid postcards={postcards} onSelect={setSelectedPostcard} />
+        )}
       </motion.div>
 
       {/* Bottom nav — postcard 열리면 숨김 (전체 몰입) */}
