@@ -25,10 +25,12 @@ const TIMEFRAME_POSITIONS: Record<
   Timeframe,
   { x: number; y: number; size: Star["size"]; labelSide: "left" | "right" }
 > = {
-  someday:      { x: 68, y: 14, size: "md", labelSide: "left" },
-  "this year":  { x: 40, y: 26, size: "md", labelSide: "right" },
-  "this season":{ x: 58, y: 40, size: "md", labelSide: "left" },
-  "this month": { x: 22, y: 52, size: "lg", labelSide: "right" },
+  // y값 조정 — tab bar (약 ~15% 차지) 밑으로 여유 확보.
+  // 크기 gradient: 먼 미래 = 작음(sm), 가까운 미래 = 큼(md).
+  someday:      { x: 65, y: 22, size: "sm", labelSide: "left" },
+  "this year":  { x: 38, y: 33, size: "sm", labelSide: "right" },
+  "this season":{ x: 60, y: 44, size: "md", labelSide: "left" },
+  "this month": { x: 22, y: 55, size: "md", labelSide: "right" },
 };
 
 /** 시간대 표시 순서 — 위(먼 미래)에서 아래(가까운 미래)로 */
@@ -136,23 +138,32 @@ export default function MyStarsPage() {
 
       {/* UI Layer — pointer-events-none로 클릭 통과, interactive elements만 auto */}
       <div className="relative z-30 flex h-svh flex-col text-white pointer-events-none">
-        {/* Header — 탭 스위처가 있으면 title 없이 탭만 (별 있을 때) */}
+        {/* Header — 두 줄: (1) 타이틀 + 벨, (2) full-width 탭 */}
         {phase === "default" && (
-          <header className="flex items-center justify-between pt-[52px] px-[24px] pointer-events-auto gap-3">
-            {stars.length > 0 ? (
-              <TabSwitcher current={tab} onChange={setTab} />
-            ) : (
-              <span />
+          <header className="shrink-0 pt-[52px] px-[24px] pointer-events-auto">
+            <div className="flex items-center justify-between">
+              {stars.length > 0 ? (
+                <h1 className="font-sentient text-[22px] text-white/95">
+                  My Stars
+                </h1>
+              ) : (
+                <span />
+              )}
+              <button
+                aria-label="Notifications"
+                className="shrink-0 h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+              </button>
+            </div>
+            {stars.length > 0 && (
+              <div className="mt-[14px]">
+                <TabSwitcher current={tab} onChange={setTab} />
+              </div>
             )}
-            <button
-              aria-label="Notifications"
-              className="shrink-0 h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-              </svg>
-            </button>
           </header>
         )}
 
@@ -382,7 +393,8 @@ function ClickableStar({
   appearDelay?: number;
   justAdded?: boolean;
 }) {
-  const sizeMap = { sm: 22, md: 32, lg: 44 };
+  // 크기 축소 — 화면에서 좀 더 은은하게. 라벨과 겹침 방지.
+  const sizeMap = { sm: 18, md: 26, lg: 34 };
   const size = sizeMap[position.size];
   // 별마다 다른 숨쉬기 사이클 — 7~11초 사이 (별끼리 동시에 안 깜빡이도록)
   const breatheDur = 7 + (Math.abs(position.x) % 4);
@@ -548,24 +560,25 @@ function ClickableStar({
         </svg>
       </motion.div>
 
-      {/* Label — 시간대 slot에 지정된 방향 (labelSide) 기준 */}
+      {/* Label — 시간대 slot에 지정된 방향 (labelSide) 기준.
+          텍스트 사이즈 축소로 별과 라벨 사이 겹침 최소화. */}
       <div
         className={`absolute -translate-y-1/2 ${
           position.labelSide === "left"
-            ? "right-full mr-3 text-right"
-            : "left-full ml-3 text-left"
+            ? "right-full mr-2 text-right"
+            : "left-full ml-2 text-left"
         }`}
         style={{ top: "50%" }}
       >
-        <p className="font-sentient text-[13px] text-white/95 leading-tight whitespace-nowrap">
+        <p className="font-sentient text-[12px] text-white/90 leading-tight whitespace-nowrap">
           {star.timeframe}
         </p>
-        <p className="font-sentient text-[11px] text-white/65 leading-tight mt-[3px] max-w-[130px]">
+        <p className="font-sentient text-[10px] text-white/60 leading-snug mt-[2px] max-w-[110px]">
           {star.wish}
         </p>
-        {/* +N indicator — 같은 timeframe에 다른 wish 있으면 잔잔히 표시 */}
+        {/* +N indicator — 같은 timeframe에 다른 wish 있으면 잔잔히 */}
         {extraCount > 0 && (
-          <p className="font-sentient italic text-[10px] text-white/45 mt-[3px] whitespace-nowrap">
+          <p className="font-sentient italic text-[9px] text-white/40 mt-[2px] whitespace-nowrap">
             + {extraCount} more
           </p>
         )}
@@ -684,7 +697,7 @@ function TabSwitcher({
   onChange: (t: Tab) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-full p-1">
+    <div className="grid grid-cols-2 gap-1 w-full bg-white/10 backdrop-blur-md border border-white/15 rounded-full p-1">
       <TabButton
         active={current === "following"}
         onClick={() => onChange("following")}
@@ -713,7 +726,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`font-sentient text-[12px] rounded-full h-[28px] px-[14px] transition ${
+      className={`font-sentient text-[13px] rounded-full h-[34px] w-full transition ${
         active
           ? "bg-[#B19CD9]/85 text-journey-navy shadow-sm"
           : "text-white/75 hover:text-white/95"
