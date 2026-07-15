@@ -7,8 +7,10 @@ import { WalkingFoxRear } from "@/components/sisi/WalkingFoxRear";
 import { JourneyScene } from "@/components/sisi/JourneyScene";
 import { BottomNav } from "@/components/sisi/BottomNav";
 import { MenuSheet } from "@/components/sisi/MenuSheet";
+import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 import { useVideoLuminance } from "@/lib/useVideoLuminance";
 import { createClient } from "@/lib/supabase/client";
+import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 
 /** 시간대별 인사 */
 function getGreeting(): string {
@@ -48,8 +50,17 @@ export default function JourneyPage() {
   // Profile에서 사용자 이름 가져옴 (없으면 fallback "you")
   const [name, setName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
   const greeting = getGreeting();
   const dateStr = formatDate();
+
+  // Angel message — 홈 열 때 오늘의 편지 확인 (24h 내 없으면 생성)
+  useEffect(() => {
+    ensureTodaysMessage().then((msg) => {
+      // 안 읽은 것만 카드로 표시
+      if (msg && !msg.read_at) setAngelMessage(msg);
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -198,6 +209,12 @@ export default function JourneyPage() {
 
       {/* Menu sheet — profile · music · settings · logout */}
       <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      {/* Angel message — 오늘의 편지 (안 읽었을 때만) */}
+      <AngelMessageCard
+        message={angelMessage}
+        onRead={() => setAngelMessage(null)}
+      />
     </main>
   );
 }
