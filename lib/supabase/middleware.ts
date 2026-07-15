@@ -87,8 +87,11 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // 로그인 필수 라우트인데 로그인 안 됨 → /login으로
-    if (!user && matchesRoute(pathname, AUTH_REQUIRED)) {
+    // Guest 모드 체크 — sisi_guest 쿠키 있으면 로그인 없이도 통과
+    const isGuest = request.cookies.get("sisi_guest")?.value === "1";
+
+    // 로그인 필수 라우트인데 로그인/게스트 둘 다 아니면 → /login
+    if (!user && !isGuest && matchesRoute(pathname, AUTH_REQUIRED)) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       return NextResponse.redirect(url);

@@ -25,7 +25,7 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // 이미 온보딩 완료된 사용자면 /journey로 우회
+  // 이미 온보딩 완료된 사용자면 /journey로 우회 (게스트 모드도 지원)
   useEffect(() => {
     (async () => {
       const supabase = createClient();
@@ -33,15 +33,32 @@ export default function OnboardingPage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
+      // 게스트 모드 — 로컬 스토리지 확인
+      const isGuest = localStorage.getItem("sisi:guest") === "true";
+
+      if (!user && !isGuest) {
         router.push("/login");
         return;
       }
 
+      // 게스트: localStorage에서 이름/온보딩 상태 확인
+      if (!user && isGuest) {
+        const guestName = localStorage.getItem("sisi:guest-name");
+        const guestOnboarded = localStorage.getItem("sisi:guest-onboarded");
+        if (guestOnboarded === "true") {
+          router.push("/journey");
+          return;
+        }
+        if (guestName) setName(guestName);
+        setReady(true);
+        return;
+      }
+
+      // 로그인 유저: Supabase profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarded, display_name")
-        .eq("id", user.id)
+        .eq("id", user!.id)
         .maybeSingle();
 
       if (profile?.onboarded) {
@@ -72,6 +89,9 @@ export default function OnboardingPage() {
         await supabase
           .from("profiles")
           .upsert({ id: user.id, email: user.email, display_name: trimmed });
+      } else {
+        // 게스트 — localStorage 저장
+        localStorage.setItem("sisi:guest-name", trimmed);
       }
     } catch (err) {
       console.error("save name failed:", err);
@@ -99,6 +119,9 @@ export default function OnboardingPage() {
         await supabase
           .from("profiles")
           .upsert({ id: user.id, email: user.email, onboarded: true });
+      } else {
+        // 게스트 — localStorage에 onboarded 마크
+        localStorage.setItem("sisi:guest-onboarded", "true");
       }
 
       router.push("/journey");
@@ -111,7 +134,7 @@ export default function OnboardingPage() {
   if (!ready) {
     return (
       <main
-        className="relative min-h-screen w-full overflow-hidden"
+        className="relative min-h-svh w-full overflow-hidden"
         style={{
           background:
             "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
@@ -122,7 +145,7 @@ export default function OnboardingPage() {
 
   return (
     <main
-      className="relative min-h-screen w-full overflow-hidden"
+      className="relative min-h-svh w-full overflow-hidden"
       style={{
         background:
           "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
@@ -132,7 +155,7 @@ export default function OnboardingPage() {
       <StarField />
 
       {/* Content */}
-      <div className="relative z-10 flex min-h-screen flex-col px-[24px] pt-[52px] pb-[42px]">
+      <div className="relative z-10 flex min-h-svh flex-col px-[24px] pt-[52px] pb-[42px]">
         {/* Progress dots */}
         <div className="flex items-center justify-center gap-2 mb-[36px]">
           <Dot active={step === "name"} />

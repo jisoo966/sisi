@@ -11,7 +11,7 @@ export const metadata = {
  */
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[#f7f2e3] px-[24px] py-[52px] pb-[80px]">
+    <main className="min-h-svh bg-[#f7f2e3] px-[24px] py-[52px] pb-[80px]">
       <div className="max-w-[640px] mx-auto">
         <Link
           href="/"

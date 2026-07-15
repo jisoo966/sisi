@@ -264,7 +264,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#F5F4EC]">
+    <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
       {/* 배경 2개 crossfade */}
       <div className="absolute inset-0">
         <motion.div
@@ -306,7 +306,7 @@ export default function MessagesPage() {
         </motion.div>
       </div>
 
-      <div className="relative z-10 flex h-screen flex-col">
+      <div className="relative z-10 flex h-svh flex-col">
         {/* TOP — messages는 nav가 없어서 X로 대화 닫기 → 홈으로.
              (뒤로가기 아이콘은 이전 탭으로 가면 이상함 — 여긴 대화 세션) */}
         <header className="shrink-0 pt-[52px] px-[24px]">

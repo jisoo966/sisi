@@ -124,7 +124,7 @@ export default function MomentPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#F5F4EC]">
+    <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
       {/* Phase 1: VIEWFINDER */}
       {phase === "viewfinder" && (
         <>
@@ -151,7 +151,7 @@ export default function MomentPage() {
             <div className="absolute right-[12%] bottom-[36%] h-[60px] w-[60px] border-r-[3px] border-b-[3px] border-white/95 rounded-br-[10px]" />
           </div>
 
-          <div className="relative z-20 flex h-screen flex-col">
+          <div className="relative z-20 flex h-svh flex-col">
             <div className="pt-[28px] px-[21px]">
               <BackButton />
             </div>
@@ -195,7 +195,7 @@ export default function MomentPage() {
           {/* Soft cream background */}
           <div className="absolute inset-0 bg-[#F5F4EC]" />
 
-          <div className="relative z-20 flex min-h-screen flex-col">
+          <div className="relative z-20 flex min-h-svh flex-col">
             {/* Back button — 넉넉한 top space */}
             <div className="pt-[24px] px-[24px]">
               <BackButton />

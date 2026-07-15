@@ -47,17 +47,19 @@ export default function PostcardSavedPage() {
 
   return (
     <main
-      className="relative min-h-screen w-full overflow-hidden"
+      className="relative w-full overflow-hidden flex flex-col"
       style={{
         background:
           "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
+        minHeight: "100svh",
+        height: "100svh",
       }}
     >
       {/* Starry background — 밤하늘 별들 */}
       <StarField />
 
-      {/* Header */}
-      <div className="relative z-20 flex items-center justify-between pt-[52px] px-[24px]">
+      {/* HEADER — 고정 상단 */}
+      <div className="shrink-0 relative z-20 flex items-center justify-between pt-[52px] px-[24px]">
         <Link
           href="/journey"
           aria-label="close"
@@ -88,29 +90,11 @@ export default function PostcardSavedPage() {
           className="h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition disabled:opacity-40"
         >
           {shareState === "done" ? (
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           ) : (
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
               <polyline points="16 6 12 2 8 6" />
               <line x1="12" y1="2" x2="12" y2="15" />
@@ -119,14 +103,14 @@ export default function PostcardSavedPage() {
         </button>
       </div>
 
-      {/* Middle content */}
-      <div className="relative z-10 flex flex-col items-center px-[24px] pt-[48px]">
-        {/* Small twinkle above */}
+      {/* MIDDLE — flex-1로 남는 공간 채움 (스크롤 없음, 딱 맞게) */}
+      <div className="flex-1 relative z-10 flex flex-col items-center justify-center px-[24px] py-[20px] min-h-0">
+        {/* Small twinkle */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-[24px] text-[#F5F4EC]/80 mb-3"
+          className="text-[24px] text-[#F5F4EC]/80 mb-2 shrink-0"
         >
           ✦
         </motion.div>
@@ -135,7 +119,7 @@ export default function PostcardSavedPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="font-sentient text-[28px] text-white/95 text-center leading-tight"
+          className="font-sentient text-[24px] text-white/95 text-center leading-tight shrink-0"
         >
           Your moment is saved
         </motion.h1>
@@ -144,12 +128,12 @@ export default function PostcardSavedPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.35 }}
-          className="font-sentient italic text-[15px] text-white/60 text-center mt-2 mb-[36px]"
+          className="font-sentient italic text-[13px] text-white/60 text-center mt-1 mb-[20px] shrink-0"
         >
           It&apos;s always here when you need it.
         </motion.p>
 
-        {/* Postcard card */}
+        {/* Postcard card — flex-1 안 이지만 max-h로 절대 오버플로우 안 남 */}
         <motion.div
           initial={{ opacity: 0, y: 30, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -160,49 +144,33 @@ export default function PostcardSavedPage() {
             damping: 20,
             stiffness: 200,
           }}
-          className="relative w-full max-w-[280px]"
+          className="relative w-full max-w-[220px] flex-shrink min-h-0"
         >
           <div className="bg-[#f7f2e3] rounded-[14px] p-[10px] pb-[14px] shadow-2xl">
             <div className="relative rounded-[8px] overflow-hidden aspect-[3/4] bg-journey-cream">
               {postcard?.image ? (
                 postcard.image.startsWith("data:") ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={postcard.image}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={postcard.image} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <Image
-                    src={postcard.image}
-                    alt=""
-                    fill
-                    sizes="280px"
-                    className="object-cover"
-                  />
+                  <Image src={postcard.image} alt="" fill sizes="220px" className="object-cover" />
                 )
               ) : (
                 <div className="w-full h-full bg-journey-cream" />
               )}
 
-              {/* Stamp on the card — top-right */}
+              {/* Stamp */}
               <motion.div
                 initial={{ rotate: 15, scale: 0.7, opacity: 0 }}
                 animate={{ rotate: -8, scale: 1, opacity: 1 }}
-                transition={{
-                  delay: 0.9,
-                  duration: 0.5,
-                  type: "spring",
-                  damping: 12,
-                  stiffness: 180,
-                }}
+                transition={{ delay: 0.9, duration: 0.5, type: "spring", damping: 12, stiffness: 180 }}
                 className="absolute top-[8px] right-[8px] z-10"
               >
                 <MiniStamp />
               </motion.div>
             </div>
 
-            {/* Date at bottom of postcard */}
+            {/* Date */}
             {postcard && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -210,32 +178,32 @@ export default function PostcardSavedPage() {
                 transition={{ delay: 1.1, duration: 0.4 }}
                 className="flex items-center justify-between mt-[8px] px-[6px]"
               >
-                <p className="font-sentient text-[11px] text-journey-navy/60 tracking-wider">
+                <p className="font-sentient text-[10px] text-journey-navy/60 tracking-wider">
                   {formatDateTime(postcard.createdAt)}
                 </p>
-                <span className="text-[14px] text-[#D4A82A]">✦</span>
+                <span className="text-[12px] text-[#D4A82A]">✦</span>
               </motion.div>
             )}
           </div>
         </motion.div>
       </div>
 
-      {/* Bottom CTAs */}
+      {/* BOTTOM — 고정 CTA 영역 */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.2 }}
-        className="absolute inset-x-0 bottom-0 px-[24px] pb-[42px] z-20 flex flex-col gap-3"
+        className="shrink-0 relative z-20 px-[24px] pb-[36px] flex flex-col gap-3"
       >
         <Link
           href="/gallery"
-          className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/85 backdrop-blur-md border border-white/30 text-journey-navy text-[17px] h-[56px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition"
+          className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/85 backdrop-blur-md border border-white/30 text-journey-navy text-[16px] h-[52px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition"
         >
           View Postcard
         </Link>
         <Link
           href="/journey"
-          className="font-sentient block w-full text-center rounded-[30px] bg-white/15 backdrop-blur-md border border-white/25 text-white text-[17px] h-[56px] flex items-center justify-center hover:bg-white/25 transition"
+          className="font-sentient block w-full text-center rounded-[30px] bg-white/15 backdrop-blur-md border border-white/25 text-white text-[16px] h-[52px] flex items-center justify-center hover:bg-white/25 transition"
         >
           Back to Journey
         </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -15,10 +16,20 @@ export const dynamic = "force-dynamic";
  *   - journey palette (cream / navy / purple)
  */
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  /** 게스트 모드 — 이메일 없이 시작. Cookie 로 미들웨어 통과. */
+  function continueAsGuest() {
+    // 1년 유효 게스트 쿠키
+    const oneYear = 60 * 60 * 24 * 365;
+    document.cookie = `sisi_guest=1; path=/; max-age=${oneYear}; SameSite=Lax`;
+    localStorage.setItem("sisi:guest", "true");
+    router.push("/onboarding");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +66,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-journey-cream">
+    <main className="relative min-h-svh w-full overflow-hidden bg-journey-cream">
       {/* Background — same as splash */}
       <Image
         src="/journey/OnboardingScreen.png"
@@ -88,7 +99,7 @@ export default function LoginPage() {
         </svg>
       </Link>
 
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-[24px]">
+      <div className="relative z-10 flex min-h-svh flex-col items-center justify-center px-[24px]">
         <div className="w-full max-w-[340px]">
           {/* Title */}
           <motion.div
@@ -152,8 +163,24 @@ export default function LoginPage() {
                   </button>
                 </form>
 
-                <p className="mt-8 text-center font-sentient italic text-[13px] text-journey-navy/50">
-                  no password. just you.
+                {/* "or" divider */}
+                <div className="flex items-center gap-3 my-6">
+                  <div className="flex-1 h-px bg-journey-navy/15" />
+                  <span className="font-sentient italic text-[12px] text-journey-navy/40">
+                    or
+                  </span>
+                  <div className="flex-1 h-px bg-journey-navy/15" />
+                </div>
+
+                {/* Guest mode — 이메일 없이 바로 시작 */}
+                <button
+                  onClick={continueAsGuest}
+                  className="w-full h-[52px] rounded-[24px] bg-white/40 backdrop-blur-md border border-white/50 text-journey-navy/85 font-sentient text-[15px] hover:bg-white/60 active:scale-98 transition-all"
+                >
+                  continue as guest
+                </button>
+                <p className="mt-2 text-center font-sentient italic text-[11px] text-journey-navy/45">
+                  try sísí first · save your journey later
                 </p>
                 <p className="mt-4 text-center font-sentient text-[11px] text-journey-navy/50 leading-relaxed">
                   by continuing, you agree to our{" "}

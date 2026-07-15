@@ -65,7 +65,7 @@ export default function IntroPage() {
   const isLast = index === SLIDES.length - 1;
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#1a1737]">
+    <main className="relative min-h-svh w-full overflow-hidden bg-[#1a1737]">
       {/* Background image */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -101,7 +101,7 @@ export default function IntroPage() {
       </button>
 
       {/* Content — bottom section */}
-      <div className="relative z-10 flex min-h-screen flex-col justify-end px-[24px] pb-[52px]">
+      <div className="relative z-10 flex min-h-svh flex-col justify-end px-[24px] pb-[52px]">
         {/* Dots pagination */}
         <div className="flex items-center justify-center gap-2 mb-[36px]">
           {SLIDES.map((_, i) => (

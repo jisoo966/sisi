@@ -80,7 +80,7 @@ export default function RootLayout({
              - 모바일 (< 500px): 그냥 full width, transform 없음 (iOS 터치 이벤트 안전)
              - 데스크탑 (>= 500px): 430px 중앙, transform으로 fixed 요소들도 wrapper 안에 갇힘
              이렇게 media query로 나눠야 모바일에서 nav/버튼 터치 정상 작동. */}
-        <div className="phone-frame relative mx-auto min-h-screen w-full max-w-[430px] bg-[#f7f2e3] md:shadow-[0_0_80px_rgba(0,0,0,0.15)]">
+        <div className="phone-frame relative mx-auto min-h-svh w-full max-w-[430px] bg-[#f7f2e3] md:shadow-[0_0_80px_rgba(0,0,0,0.15)]">
           {children}
         </div>
         <style>{`

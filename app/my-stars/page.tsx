@@ -79,7 +79,7 @@ export default function MyStarsPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#1a1737]">
+    <main className="relative min-h-svh w-full overflow-hidden bg-[#1a1737]">
       {/* Background — phase에 따라 다름 */}
       <BackgroundLayer phase={phase} onVideoEnd={onVideoEnd} />
 
@@ -89,7 +89,7 @@ export default function MyStarsPage() {
       )}
 
       {/* UI Layer — pointer-events-none로 클릭 통과, interactive elements만 auto */}
-      <div className="relative z-30 flex h-screen flex-col text-white pointer-events-none">
+      <div className="relative z-30 flex h-svh flex-col text-white pointer-events-none">
         {/* Header */}
         {phase === "default" && (
           <header className="flex items-center justify-between pt-[52px] px-[24px] pointer-events-auto">

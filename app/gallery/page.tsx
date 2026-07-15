@@ -27,7 +27,7 @@ export default function GalleryPage() {
 
   return (
     <main
-      className="relative min-h-screen w-full"
+      className="relative min-h-svh w-full"
       style={{ backgroundColor: "#f7f2e3" }}
     >
       {/* Grid content — postcard 열리면 dim + slight scale (behind feel) */}
@@ -37,7 +37,7 @@ export default function GalleryPage() {
           scale: isDetailOpen ? 0.97 : 1,
         }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 flex min-h-screen flex-col pt-[52px] px-[24px] pb-[100px]"
+        className="relative z-10 flex min-h-svh flex-col pt-[52px] px-[24px] pb-[100px]"
       >
         {/* Header — 탭 페이지: back 없음. title + counter만 */}
         <header className="flex items-baseline justify-between mb-1">

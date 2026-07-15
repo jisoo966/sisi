@@ -38,6 +38,20 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ─── Mobile viewport lock ───
+ * min-h-screen 대신 svh (small viewport height) 사용 시,
+ * iOS Safari URL bar 있어도 정확히 화면에 맞음 (스크롤 X).
+ * Tailwind에 svh 유틸 없어서 사용처에서 style로 지정하되
+ * 여기서 예비 helper class 만들어둠. */
+.h-viewport {
+  height: 100vh; /* fallback */
+  height: 100svh; /* modern browsers — accounts for URL bar */
+}
+.min-h-viewport {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
 body {
   background-color: var(--cream);
   color: var(--plum);

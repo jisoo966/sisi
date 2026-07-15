@@ -88,7 +88,7 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
   if (!star) return null;
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#1a1737]">
+    <main className="relative min-h-svh w-full overflow-hidden bg-[#1a1737]">
       {/* Video background */}
       <video
         src="/mystars/aftersendingstar.mp4"
@@ -102,7 +102,7 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#1a1737]/60 via-[#1a1737]/40 to-[#1a1737]/70" />
 
-      <div className="relative z-10 flex min-h-screen flex-col text-white">
+      <div className="relative z-10 flex min-h-svh flex-col text-white">
         {/* Header */}
         <header className="flex items-center justify-between pt-[52px] px-[24px]">
           <Link

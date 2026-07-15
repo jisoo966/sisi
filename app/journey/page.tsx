@@ -69,16 +69,19 @@ export default function JourneyPage() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (!user) return;
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (profile?.display_name) {
-          setName(profile.display_name);
+        if (user) {
+          // 로그인 유저 — Supabase profile
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (profile?.display_name) setName(profile.display_name);
+        } else {
+          // 게스트 — localStorage 이름
+          const guestName = localStorage.getItem("sisi:guest-name");
+          if (guestName) setName(guestName);
         }
       } catch {
         // fail silent — 이름 없어도 앱 동작
@@ -87,7 +90,7 @@ export default function JourneyPage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#F5F4EC]">
+    <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
       {/* Background video world — 48fps interpolated *smooth 명상 페이스* (0.5x = 24fps effective) */}
       <JourneyScene />
 

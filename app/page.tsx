@@ -14,7 +14,7 @@ import { motion } from "framer-motion";
  */
 export default function SplashPage() {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-journey-cream">
+    <main className="relative min-h-svh w-full overflow-hidden bg-journey-cream">
       {/* Background scene */}
       <Image
         src="/journey/OnboardingScreen.png"
@@ -29,7 +29,7 @@ export default function SplashPage() {
       <Link
         href="/intro"
         aria-label="Enter Sísí"
-        className="relative z-10 flex h-screen flex-col items-center px-8 group"
+        className="relative z-10 flex h-svh flex-col items-center px-8 group"
       >
         {/* Title — Figma: Sentient Light 여우 위 중앙 */}
         <motion.h1
