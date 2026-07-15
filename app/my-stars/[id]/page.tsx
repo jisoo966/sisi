@@ -285,7 +285,7 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
               onClick={() => setShowAddSign(true)}
               className="font-sentient text-[15px] w-full rounded-full bg-[#B19CD9]/85 backdrop-blur-md border border-white/20 text-journey-navy py-[16px] mt-[16px] shadow-lg hover:brightness-105 active:scale-98 transition"
             >
-              i noticed a sign
+              I noticed a sign
             </button>
           ) : !isFulfilled ? (
             <motion.div
@@ -322,16 +322,16 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
             </motion.div>
           ) : null}
 
-          {/* "i've arrived" (SECONDARY) — white translucent filled.
+          {/* "I've arrived" (SECONDARY) — white translucent filled.
               디자인 시스템: primary=purple, secondary=white, 둘 다 filled + dark text.
-              ✦ 만 warm gold (`#FFB570`, 별 색) 로 celestial hint. */}
+              ✦ 도 dark text 색으로 통일 (흰 배경에 warm gold는 어색). */}
           {!isFulfilled && !showAddSign && (
             <button
               onClick={() => setRitualOpen(true)}
               className="font-sentient text-[15px] w-full rounded-full mt-[10px] py-[14px] bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy hover:bg-white/60 active:scale-98 transition flex items-center justify-center gap-2"
             >
-              <span className="text-[14px] text-[#FFB570]">✦</span>
-              i&apos;ve arrived
+              <span className="text-[14px]">✦</span>
+              I&apos;ve arrived
             </button>
           )}
         </div>
@@ -743,7 +743,7 @@ function ArrivalRitual({
                   onClick={confirm}
                   className="flex-1 font-sentient text-[15px] rounded-full bg-[#B19CD9]/90 backdrop-blur-md border border-white/25 text-journey-navy h-[52px] shadow-lg hover:brightness-105 active:scale-95 transition"
                 >
-                  i&apos;ve arrived ✦
+                  I&apos;ve arrived ✦
                 </button>
               </div>
             </motion.div>
