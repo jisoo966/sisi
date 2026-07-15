@@ -52,22 +52,34 @@ export function MenuSheet({
     })();
   }, [open]);
 
-  // Music state load — default ON (off only if explicitly turned off)
+  // Music state — BackgroundMusic is the source of truth for whether audio
+  // is ACTUALLY playing (autoplay is usually blocked until a user gesture,
+  // so localStorage intent alone doesn't reflect reality). Seed from
+  // localStorage for the initial paint, then let BackgroundMusic's
+  // "sisi:music-state" broadcast correct it.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("sisi-music-on");
     setMusicOn(saved !== "off");
+    function handler(e: Event) {
+      const detail = (e as CustomEvent<{ on: boolean }>).detail;
+      setMusicOn(detail.on);
+    }
+    window.addEventListener("sisi:music-state", handler);
+    return () => window.removeEventListener("sisi:music-state", handler);
   }, [open]);
 
   function toggleMusic() {
     const next = !musicOn;
-    setMusicOn(next);
     localStorage.setItem("sisi-music-on", next ? "on" : "off");
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("sisi:music-toggle", { detail: { on: next } }),
       );
     }
+    // Don't optimistically setMusicOn(next) here — wait for BackgroundMusic's
+    // "sisi:music-state" event, which reflects whether play() actually
+    // succeeded (it can still be blocked without a fresh user gesture).
   }
 
   async function signOut() {
@@ -131,18 +143,13 @@ export function MenuSheet({
 
             {/* Menu items — right-aligned, big tap targets, big spacing */}
             <nav className="flex flex-col items-end gap-[28px]">
-              <MenuItem onClick={toggleMusic}>
-                <span className="flex items-center gap-3">
-                  AMBIENT MUSIC
-                  <span
-                    className={`text-[13px] tracking-wider ${
-                      musicOn ? "text-journey-navy/70" : "text-journey-navy/30"
-                    }`}
-                  >
-                    {musicOn ? "ON" : "OFF"}
-                  </span>
-                </span>
-              </MenuItem>
+              <button
+                onClick={toggleMusic}
+                className="flex items-center gap-4 font-sentient text-[20px] tracking-[0.1em] text-journey-navy hover:opacity-70 transition-opacity"
+              >
+                AMBIENT MUSIC
+                <Toggle on={musicOn} />
+              </button>
 
               <MenuLink href="/privacy" onClose={onClose}>
                 PRIVACY POLICY
@@ -203,5 +210,24 @@ function MenuLink({
     >
       {children}
     </Link>
+  );
+}
+
+/** 예쁜 토글 스위치 (iOS 스타일) */
+function Toggle({ on }: { on: boolean }) {
+  return (
+    <span
+      role="switch"
+      aria-checked={on}
+      className={`relative inline-block h-[26px] w-[46px] rounded-full transition-colors ${
+        on ? "bg-journey-purple" : "bg-journey-navy/25"
+      }`}
+    >
+      <motion.span
+        animate={{ x: on ? 22 : 2 }}
+        transition={{ type: "spring", damping: 25, stiffness: 350 }}
+        className="absolute top-[2px] block h-[22px] w-[22px] rounded-full bg-white shadow-sm"
+      />
+    </span>
   );
 }

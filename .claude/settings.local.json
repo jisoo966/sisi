@@ -66,7 +66,11 @@
       "Bash(npx next *)",
       "Bash(pkill -f \"next lint\")",
       "Bash(vercel ls *)",
-      "Bash(vercel --prod --yes)"
+      "Bash(vercel --prod --yes)",
+      "Bash(vercel logs *)",
+      "Bash(wait)",
+      "Bash(echo \"started, pid $!\")",
+      "mcp__plugin_supabase_supabase__search_docs"
     ]
   }
 }

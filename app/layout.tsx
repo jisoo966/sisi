@@ -73,10 +73,21 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>
+      <body className="bg-[#e8e0cf] overflow-x-hidden">
         <ServiceWorkerRegister />
         <BackgroundMusic />
-        {children}
+        {/* Phone-frame — mobile-first 앱은 데스크탑에서도 폰 크기로만 렌더.
+             - 모바일: max-w가 뷰포트보다 크면 무시됨 → full width
+             - 데스크탑: 430px 중앙, 양옆 neutral 크림 색상 노출
+             - transform:translate(0) — 자식의 position:fixed를
+               뷰포트가 아니라 이 wrapper 기준으로 constraint되게 함
+               (BottomNav, 모달, 시트 등이 폰 프레임 안에 갇혀서 좋게 보임) */}
+        <div
+          className="relative mx-auto min-h-screen w-full max-w-[430px] bg-[#f7f2e3] shadow-[0_0_80px_rgba(0,0,0,0.15)]"
+          style={{ transform: "translate(0)" }}
+        >
+          {children}
+        </div>
       </body>
     </html>
   );

@@ -19,7 +19,22 @@ export function BackgroundMusic({
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Initial load — 기본 ON (사용자가 explicit off 안 했으면)
+  // BackgroundMusic is the only thing that knows whether audio is actually
+  // playing. MenuSheet's toggle previously trusted localStorage alone, so a
+  // blocked autoplay (the default on first visit — browsers require a user
+  // gesture before playing audio) left the menu showing "ON" while nothing
+  // played; tapping it just silently turned an already-silent player "off".
+  // Announcing the real state lets MenuSheet stay in sync with reality.
+  function announce(on: boolean) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("sisi:music-state", { detail: { on } }),
+      );
+    }
+  }
+
+  // Initial load — 기본 ON (사용자가 explicit off 안 했으면). Autoplay is
+  // usually blocked here (no user gesture yet) — that's expected.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("sisi-music-on");
@@ -30,10 +45,14 @@ export function BackgroundMusic({
         .play()
         .then(() => {
           if (audioRef.current) fadeIn(audioRef.current, volume);
+          announce(true);
         })
         .catch(() => {
           // Autoplay blocked — user needs to interact first (menu toggle)
+          announce(false);
         });
+    } else {
+      announce(false);
     }
   }, [volume]);
 
@@ -48,12 +67,17 @@ export function BackgroundMusic({
         audio.volume = 0;
         audio
           .play()
-          .then(() => fadeIn(audio, volume))
+          .then(() => {
+            fadeIn(audio, volume);
+            announce(true);
+          })
           .catch(() => {
             /* browser blocked */
+            announce(false);
           });
       } else {
         fadeOut(audio, () => audio.pause());
+        announce(false);
       }
     }
     window.addEventListener("sisi:music-toggle", handler);
