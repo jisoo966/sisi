@@ -56,8 +56,33 @@ export default function MomentPage() {
     // 완전 하얀 동안 *walking → posed* swap
     setPosing(true);
 
-    // Posed fox paint 대기
-    await new Promise((r) => setTimeout(r, 80));
+    // Posed fox 이미지가 실제로 디코드될 때까지 대기 (PosedFox가 mount 시
+    // 미리 fetch해두지만, decode는 paint 직전에 끝나는 경우가 많음 — 고정
+    // 80ms만 기다리면 captureJourneyScreenshot이 naturalWidth=0인 이미지를
+    // 그리려다 실패해서 사진에 여우가 안 나오는 경우가 있었음).
+    // 최악의 경우(느린 네트워크로 아직 fetch도 안 끝남)를 대비해 600ms
+    // 타임아웃을 둠 — 그래도 실패하면 captureJourneyScreenshot의 fallback
+    // 처리(background만이라도 찍힘)로 넘어감.
+    await new Promise<void>((resolve) => {
+      const img = document.querySelector(
+        'img[alt="Sísí posed"]',
+      ) as HTMLImageElement | null;
+      if (!img) {
+        resolve();
+        return;
+      }
+      const timeout = setTimeout(resolve, 600);
+      img
+        .decode()
+        .catch(() => {
+          /* decode failed — still try the capture, drawImage's own
+             try/catch in captureJourneyScreenshot handles it */
+        })
+        .finally(() => {
+          clearTimeout(timeout);
+          resolve();
+        });
+    });
 
     // Screenshot 찍기 (flash 여전히 peak)
     try {

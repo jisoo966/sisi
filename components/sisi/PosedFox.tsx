@@ -57,6 +57,17 @@ export function PosedFox({
 
   const finalPoseSrc = poseSrc ?? randomPose;
 
+  // 미리 로드 — 이 이미지들은 600KB~1.2MB라 실제 capture 시점(walking → posed
+  // swap 직후)에 처음 fetch를 시작하면 네트워크가 절대 제때 못 따라옴 →
+  // captureScreenshot이 naturalWidth=0인 <img>를 그리려다 실패해서 사진에
+  // 여우가 안 보이는 원인이었음. mount 시점(뷰파인더 보이는 동안, 유저가
+  // 셔터 누르기 전)에 미리 fetch를 시작해서 실제 capture 때는 이미
+  // 캐시되어 있도록 함.
+  useEffect(() => {
+    const img = new Image();
+    img.src = finalPoseSrc;
+  }, [finalPoseSrc]);
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <AnimatePresence mode="sync">
