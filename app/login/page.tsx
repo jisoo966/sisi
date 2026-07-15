@@ -98,7 +98,7 @@ export default function LoginPage() {
             className="text-center mb-[48px]"
           >
             <p className="font-sentient italic text-[15px] text-journey-navy/70 mb-3">
-              welcome back
+              enter your journey
             </p>
             <h1 className="font-sentient text-[42px] text-journey-navy leading-none">
               SiSi

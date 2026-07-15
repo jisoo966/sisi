@@ -27,7 +27,7 @@ export default function SplashPage() {
 
       {/* Foreground overlay — Figma layout: title top, fox middle, tagline bottom */}
       <Link
-        href="/journey"
+        href="/intro"
         aria-label="Enter Sísí"
         className="relative z-10 flex h-screen flex-col items-center px-8 group"
       >

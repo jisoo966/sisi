@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // 항상 공개 (로그인 안 해도 접근 가능)
 const ALWAYS_PUBLIC = [
   "/",           // splash
+  "/intro",      // 3-slide intro before login
   "/login",
   "/auth",       // /auth/confirm
   "/privacy",
