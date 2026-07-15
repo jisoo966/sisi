@@ -249,8 +249,8 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
           </p>
           {/* Arrived 뱃지 — 이미 도착한 별 */}
           {isFulfilled && (
-            <p className="font-sentient italic text-[12px] text-[#FFB570] mt-[10px] tracking-widest uppercase">
-              ✦ arrived
+            <p className="font-sentient italic text-[12px] text-[#B19CD9] mt-[10px] tracking-widest uppercase">
+              <span className="text-[#FFB570] not-italic">✦</span> arrived
             </p>
           )}
         </motion.div>
@@ -278,13 +278,14 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
             )}
           </div>
 
-          {/* Add sign — 아직 도착 안 한 별에서만 (fulfilled 별은 신 못 넣음) */}
+          {/* Add sign (PRIMARY) — frequent action, prominent purple pill.
+              Copy: first-person으로 "i've arrived"와 톤 통일. */}
           {!isFulfilled && !showAddSign ? (
             <button
               onClick={() => setShowAddSign(true)}
-              className="font-sentient text-[14px] w-full rounded-[16px] bg-white/10 border border-dashed border-white/25 text-white/80 py-[14px] mt-[16px] hover:bg-white/15 transition"
+              className="font-sentient text-[15px] w-full rounded-full bg-[#B19CD9]/85 backdrop-blur-md border border-white/20 text-journey-navy py-[16px] mt-[16px] shadow-lg hover:brightness-105 active:scale-98 transition"
             >
-              + Add a sign
+              i noticed a sign
             </button>
           ) : !isFulfilled ? (
             <motion.div
@@ -321,13 +322,15 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
             </motion.div>
           ) : null}
 
-          {/* "i've arrived" — full-screen arrival ritual 열기 */}
+          {/* "i've arrived" (SECONDARY) — white translucent filled.
+              디자인 시스템: primary=purple, secondary=white, 둘 다 filled + dark text.
+              ✦ 만 warm gold (`#FFB570`, 별 색) 로 celestial hint. */}
           {!isFulfilled && !showAddSign && (
             <button
               onClick={() => setRitualOpen(true)}
-              className="font-sentient text-[14px] w-full rounded-[16px] mt-[10px] py-[14px] text-white/90 border border-[#FFB570]/30 bg-gradient-to-r from-[#FFB570]/10 to-[#B19CD9]/10 hover:from-[#FFB570]/20 hover:to-[#B19CD9]/20 transition flex items-center justify-center gap-2"
+              className="font-sentient text-[15px] w-full rounded-full mt-[10px] py-[14px] bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy hover:bg-white/60 active:scale-98 transition flex items-center justify-center gap-2"
             >
-              <span className="text-[16px]">✦</span>
+              <span className="text-[14px] text-[#FFB570]">✦</span>
               i&apos;ve arrived
             </button>
           )}
@@ -732,18 +735,13 @@ function ArrivalRitual({
               <div className="flex gap-[10px]">
                 <button
                   onClick={onCancel}
-                  className="flex-1 font-sentient text-[15px] rounded-full bg-white/10 border border-white/20 text-white h-[52px] backdrop-blur-sm hover:bg-white/15 active:scale-95 transition"
+                  className="flex-1 font-sentient text-[15px] rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy h-[52px] hover:bg-white/60 active:scale-95 transition"
                 >
                   still walking
                 </button>
                 <button
                   onClick={confirm}
-                  className="flex-1 font-sentient text-[15px] rounded-full text-journey-navy h-[52px] active:scale-95 transition"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgb(255,225,180) 0%, rgb(255,181,112) 100%)",
-                    boxShadow: "0 8px 20px rgba(255,181,112, 0.4)",
-                  }}
+                  className="flex-1 font-sentient text-[15px] rounded-full bg-[#B19CD9]/90 backdrop-blur-md border border-white/25 text-journey-navy h-[52px] shadow-lg hover:brightness-105 active:scale-95 transition"
                 >
                   i&apos;ve arrived ✦
                 </button>
@@ -766,9 +764,9 @@ function ArrivalRitual({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.0, duration: 0.8 }}
-                className="font-sentient italic text-[13px] text-[#FFB570]/85 mt-[24px] tracking-widest uppercase"
+                className="font-sentient italic text-[13px] text-[#B19CD9] mt-[24px] tracking-widest uppercase"
               >
-                ✦ kept in your constellation ✦
+                <span className="text-[#FFB570] not-italic">✦</span> kept in your constellation <span className="text-[#FFB570] not-italic">✦</span>
               </motion.p>
             </motion.div>
           )}
