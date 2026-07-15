@@ -33,9 +33,7 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [arrivalPhase, setArrivalPhase] = useState<
-    "idle" | "confirming" | "celebrating"
-  >("idle");
+  const [ritualOpen, setRitualOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,15 +87,18 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
     setShowEdit(false);
   }
 
-  /** "You've arrived at this star" 축하 화면 → constellation으로 이동 */
+  /**
+   * 유저가 ritual 안에서 "i've arrived" 확정 —
+   * DB 업데이트 + 축하 애니메이션 (ritual이 내부에서 처리) + navigation 예약.
+   * Ritual 컴포넌트가 스스로 asking → celebrating 으로 morph 함.
+   */
   async function handleArrive() {
     if (!star) return;
-    setArrivalPhase("celebrating");
     await fulfillStar(star.id);
-    // 축하 화면 3초 후 my-stars의 constellation 탭으로
+    // ritual celebration 진행되는 동안 뒤에서 navigate 예약
     setTimeout(() => {
       router.push("/my-stars?tab=constellation");
-    }, 3200);
+    }, 3400);
   }
 
   const isFulfilled = !!star?.fulfilledAt;
@@ -320,34 +321,27 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
             </motion.div>
           ) : null}
 
-          {/* "마음에 담기" — 도착 완료 처리. 아직 fulfilled 안 된 별에서만 */}
+          {/* "i've arrived" — full-screen arrival ritual 열기 */}
           {!isFulfilled && !showAddSign && (
             <button
-              onClick={() => setArrivalPhase("confirming")}
+              onClick={() => setRitualOpen(true)}
               className="font-sentient text-[14px] w-full rounded-[16px] mt-[10px] py-[14px] text-white/90 border border-[#FFB570]/30 bg-gradient-to-r from-[#FFB570]/10 to-[#B19CD9]/10 hover:from-[#FFB570]/20 hover:to-[#B19CD9]/20 transition flex items-center justify-center gap-2"
             >
               <span className="text-[16px]">✦</span>
-              마음에 담기
+              i&apos;ve arrived
             </button>
           )}
         </div>
       </div>
 
-      {/* Arrival confirm modal — "이 별에 도착했나요?" */}
+      {/* Full-screen arrival ritual — asking → celebrating을 한 화면에서 morph */}
       <AnimatePresence>
-        {arrivalPhase === "confirming" && star && (
-          <ArrivalConfirmModal
+        {ritualOpen && star && (
+          <ArrivalRitual
             wish={star.wish}
             onConfirm={handleArrive}
-            onCancel={() => setArrivalPhase("idle")}
+            onCancel={() => setRitualOpen(false)}
           />
-        )}
-      </AnimatePresence>
-
-      {/* Arrival celebration — "You've arrived at this star" */}
-      <AnimatePresence>
-        {arrivalPhase === "celebrating" && star && (
-          <ArrivalCelebration wish={star.wish} />
         )}
       </AnimatePresence>
 
@@ -593,10 +587,16 @@ function ConfirmDeleteModal({
 }
 
 /**
- * Arrival confirm modal — "이 별에 도착했나요?"
- * 부드러운 톤. 되돌릴 수 없다는 뉘앙스는 없음 — 그냥 축하해줌.
+ * ArrivalRitual — full-screen 도착 의식.
+ *
+ * 한 화면에서 두 페이즈가 seamlessly morph:
+ *   1. "asking" — "have you arrived here?" + [still walking] [i've arrived]
+ *   2. "celebrating" — 큰 halo + "you've arrived at ..." + "kept in your constellation ✦"
+ *
+ * Popup 없이 하나의 연속된 ritual이라서 sacred moment 감각 유지.
+ * Star element는 두 페이즈 사이에 유지 (사라졌다 다시 나오지 않음) — 연속성.
  */
-function ArrivalConfirmModal({
+function ArrivalRitual({
   wish,
   onConfirm,
   onCancel,
@@ -605,100 +605,14 @@ function ArrivalConfirmModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      className="fixed inset-0 z-40 flex items-center justify-center px-[24px] bg-black/70 backdrop-blur-md"
-    >
-      <motion.div
-        initial={{ scale: 0.95, y: 12 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.95, y: 12 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[340px] rounded-[24px] p-[28px] text-center"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(35, 30, 75, 0.96) 0%, rgba(20, 17, 55, 0.96) 100%)",
-          border: "1px solid rgba(255, 236, 189, 0.14)",
-          boxShadow:
-            "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255,181,112, 0.10)",
-        }}
-      >
-        {/* Bright star icon — 도착 준비 */}
-        <div className="flex justify-center mb-[18px]">
-          <div className="relative flex items-center justify-center" style={{ width: 60, height: 60 }}>
-            <div
-              className="absolute rounded-full pointer-events-none"
-              style={{
-                width: 55,
-                height: 55,
-                background: "radial-gradient(circle, rgba(255,181,112,0.5), transparent 90%)",
-                filter: "blur(8px)",
-              }}
-            />
-            <svg width="42" height="42" viewBox="0 0 100 100" className="relative">
-              <defs>
-                <radialGradient id="arriving-star" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="rgb(255,248,225)" />
-                  <stop offset="35%" stopColor="rgb(255,236,189)" />
-                  <stop offset="100%" stopColor="rgb(251,198,106)" />
-                </radialGradient>
-              </defs>
-              <path
-                d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
-                fill="url(#arriving-star)"
-              />
-            </svg>
-          </div>
-        </div>
+  const [phase, setPhase] = useState<"asking" | "celebrating">("asking");
 
-        <p className="font-sentient text-[22px] text-white/95 mb-[10px] leading-tight">
-          이 별에 도착했나요?
-        </p>
-        <p
-          className="font-sentient italic text-[15px] mb-[20px] leading-snug"
-          style={{ color: "rgb(255, 236, 189)" }}
-        >
-          &ldquo;{wish}&rdquo;
-        </p>
-        <p className="font-sentient text-[13px] text-white/55 mb-[26px] leading-relaxed">
-          당신의 여정이 여기서 한 순간 완성돼요.
-          <br />
-          이 별은 별자리에 남아 계속 빛나요.
-        </p>
+  function confirm() {
+    setPhase("celebrating");
+    onConfirm();
+    // 부모가 navigation 예약함 (약 3.4초 후 constellation 탭으로)
+  }
 
-        <div className="flex gap-[10px]">
-          <button
-            onClick={onCancel}
-            className="flex-1 font-sentient text-[15px] rounded-full bg-white/10 border border-white/20 text-white h-[48px] backdrop-blur-sm hover:bg-white/15 active:scale-95 transition"
-          >
-            아직 걷는 중
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 font-sentient text-[15px] rounded-full text-journey-navy h-[48px] active:scale-95 transition"
-            style={{
-              background:
-                "linear-gradient(135deg, rgb(255,225,180) 0%, rgb(255,181,112) 100%)",
-              boxShadow: "0 8px 20px rgba(255,181,112, 0.4)",
-            }}
-          >
-            마음에 담기
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-/**
- * Arrival celebration — full-screen 축하.
- * "You've arrived at this star" + 큰 반짝이는 별 + fade to constellation.
- */
-function ArrivalCelebration({ wish }: { wish: string }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -708,50 +622,74 @@ function ArrivalCelebration({ wish }: { wish: string }) {
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-[32px] text-center"
       style={{
         background:
-          "radial-gradient(circle at center, rgba(35, 30, 75, 0.96) 0%, rgba(15, 12, 40, 0.98) 100%)",
+          "radial-gradient(circle at center, rgba(35, 30, 75, 0.97) 0%, rgba(15, 12, 40, 0.99) 100%)",
       }}
     >
-      {/* Big pulsing star */}
+      {/* Ambient star field — 잔잔한 배경 별들 (분위기) */}
+      <RitualStarField />
+
+      {/* Big central star — 두 페이즈 사이 유지 (연속성).
+          asking 상태에서는 gentle pulse, celebrating 상태에서는 큰 halo 폭발. */}
       <motion.div
         initial={{ scale: 0.4, opacity: 0 }}
-        animate={{ scale: [0.4, 1.15, 1], opacity: [0, 1, 1] }}
-        transition={{
-          duration: 1.4,
-          times: [0, 0.6, 1],
-          ease: [0.16, 1, 0.3, 1],
+        animate={{
+          scale: phase === "asking" ? 1 : [1, 1.25, 1.15],
+          opacity: 1,
         }}
-        className="relative flex items-center justify-center mb-[32px]"
-        style={{ width: 180, height: 180 }}
+        transition={{
+          scale: {
+            duration: phase === "asking" ? 1.0 : 1.4,
+            ease: [0.16, 1, 0.3, 1],
+          },
+          opacity: { duration: 0.8 },
+        }}
+        className="relative flex items-center justify-center z-10"
+        style={{ width: 180, height: 180, marginBottom: 32 }}
       >
-        {/* Outer expanding halo */}
-        <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: [0.5, 2.2, 3], opacity: [0, 0.9, 0] }}
-          transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute rounded-full"
-          style={{
-            width: 140,
-            height: 140,
-            background:
-              "radial-gradient(circle, rgba(255,181,112,0.8) 0%, rgba(255,181,112,0.25) 45%, transparent 90%)",
-            filter: "blur(12px)",
-          }}
-        />
-        {/* Inner glow */}
+        {/* asking: 부드럽게 숨쉬는 halo — celebrating: 폭발적으로 확장 */}
+        {phase === "asking" ? (
+          <motion.div
+            animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0.85, 0.6] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: 130,
+              height: 130,
+              background:
+                "radial-gradient(circle, rgba(255,181,112,0.55) 0%, rgba(255,181,112,0.15) 55%, transparent 100%)",
+              filter: "blur(12px)",
+            }}
+          />
+        ) : (
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: [0.5, 2.5, 3.5], opacity: [0, 0.9, 0] }}
+            transition={{ duration: 2.4, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: 140,
+              height: 140,
+              background:
+                "radial-gradient(circle, rgba(255,181,112,0.9) 0%, rgba(255,181,112,0.3) 45%, transparent 90%)",
+              filter: "blur(14px)",
+            }}
+          />
+        )}
+        {/* Inner glow (양쪽 페이즈 공통) */}
         <div
-          className="absolute rounded-full"
+          className="absolute rounded-full pointer-events-none"
           style={{
             width: 110,
             height: 110,
             background:
-              "radial-gradient(circle, rgba(255,181,112,0.9) 0%, rgba(255,181,112,0.3) 50%, transparent 100%)",
-            filter: "blur(10px)",
+              "radial-gradient(circle, rgba(255,181,112,0.85) 0%, rgba(255,181,112,0.28) 55%, transparent 100%)",
+            filter: "blur(9px)",
           }}
         />
-        {/* Star svg */}
+        {/* Star svg (양쪽 공통 — 연속성의 핵심) */}
         <svg width="90" height="90" viewBox="0 0 100 100" className="relative">
           <defs>
-            <radialGradient id="celebration-star" cx="50%" cy="50%">
+            <radialGradient id="ritual-star" cx="50%" cy="50%">
               <stop offset="0%" stopColor="rgb(255,248,225)" />
               <stop offset="35%" stopColor="rgb(255,236,189)" />
               <stop offset="100%" stopColor="rgb(251,198,106)" />
@@ -759,36 +697,121 @@ function ArrivalCelebration({ wish }: { wish: string }) {
           </defs>
           <path
             d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
-            fill="url(#celebration-star)"
+            fill="url(#ritual-star)"
           />
           <circle cx="50" cy="50" r="7" fill="rgb(255,248,225)" opacity="0.9" />
         </svg>
       </motion.div>
 
-      <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7, duration: 0.7 }}
-        className="font-sentient italic text-[15px] text-white/60 mb-[8px]"
-      >
-        you&apos;ve arrived at
-      </motion.p>
-      <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9, duration: 0.7 }}
-        className="font-sentient text-[26px] text-white/95 leading-tight max-w-[300px]"
-      >
-        &ldquo;{wish}&rdquo;
-      </motion.p>
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.6, duration: 0.8 }}
-        className="font-sentient italic text-[13px] text-[#FFB570]/85 mt-[24px] tracking-widest uppercase"
-      >
-        ✦ kept in your constellation ✦
-      </motion.p>
+      {/* Text content — asking과 celebrating이 crossfade */}
+      <div className="relative z-10 w-full max-w-[340px]">
+        <AnimatePresence mode="wait">
+          {phase === "asking" ? (
+            <motion.div
+              key="asking"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5 }}
+            >
+              <p className="font-sentient text-[24px] text-white/95 mb-[10px] leading-tight">
+                have you arrived here?
+              </p>
+              <p
+                className="font-sentient italic text-[16px] mb-[18px] leading-snug"
+                style={{ color: "rgb(255, 236, 189)" }}
+              >
+                &ldquo;{wish}&rdquo;
+              </p>
+              <p className="font-sentient text-[13px] text-white/55 mb-[36px] leading-relaxed">
+                this star will stay in your constellation,
+                <br />
+                quietly shining.
+              </p>
+
+              <div className="flex gap-[10px]">
+                <button
+                  onClick={onCancel}
+                  className="flex-1 font-sentient text-[15px] rounded-full bg-white/10 border border-white/20 text-white h-[52px] backdrop-blur-sm hover:bg-white/15 active:scale-95 transition"
+                >
+                  still walking
+                </button>
+                <button
+                  onClick={confirm}
+                  className="flex-1 font-sentient text-[15px] rounded-full text-journey-navy h-[52px] active:scale-95 transition"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, rgb(255,225,180) 0%, rgb(255,181,112) 100%)",
+                    boxShadow: "0 8px 20px rgba(255,181,112, 0.4)",
+                  }}
+                >
+                  i&apos;ve arrived ✦
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="celebrating"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+            >
+              <p className="font-sentient italic text-[15px] text-white/60 mb-[8px]">
+                you&apos;ve arrived at
+              </p>
+              <p className="font-sentient text-[26px] text-white/95 leading-tight max-w-[300px] mx-auto">
+                &ldquo;{wish}&rdquo;
+              </p>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.0, duration: 0.8 }}
+                className="font-sentient italic text-[13px] text-[#FFB570]/85 mt-[24px] tracking-widest uppercase"
+              >
+                ✦ kept in your constellation ✦
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
+  );
+}
+
+/** Ritual 배경 별들 — asking 페이즈에서 mood 잡아주는 잔잔한 twinkle */
+function RitualStarField() {
+  const stars = [
+    { top: "12%", left: "18%", size: 2, delay: 0 },
+    { top: "18%", left: "78%", size: 1.5, delay: 0.6 },
+    { top: "26%", left: "50%", size: 1.5, delay: 1.1 },
+    { top: "32%", left: "12%", size: 2, delay: 0.4 },
+    { top: "68%", left: "8%", size: 1.5, delay: 0.9 },
+    { top: "72%", left: "88%", size: 2, delay: 0.3 },
+    { top: "82%", left: "35%", size: 1.5, delay: 1.4 },
+    { top: "86%", left: "72%", size: 1.5, delay: 0.7 },
+  ];
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none">
+      {stars.map((s, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full bg-white"
+          style={{
+            top: s.top,
+            left: s.left,
+            width: s.size,
+            height: s.size,
+            boxShadow: `0 0 ${s.size * 3}px rgba(255,236,189,0.7)`,
+          }}
+          animate={{ opacity: [0.3, 0.9, 0.3] }}
+          transition={{
+            duration: 3.5 + (i % 3),
+            repeat: Infinity,
+            delay: s.delay,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
   );
 }
