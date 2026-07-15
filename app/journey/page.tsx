@@ -20,8 +20,8 @@ import { loadStars, type Star } from "@/lib/myStars";
  */
 function SkyStar({ star }: { star: Star }) {
   // 별 위치 (하늘 상단, 살짝 오른쪽) — position 데이터 활용 가능하나 여기선 고정.
-  // 인사말 텍스트 바로 아래에 붙어있던 것 → 좀 더 내려서 여백 확보 (28~36%).
-  const top = 28 + (Math.abs(star.x) % 8); // 28~36%
+  // 인사말 텍스트 바로 아래에 붙어있던 것 → 여백 확보하되 살짝 위로 (22~30%).
+  const top = 22 + (Math.abs(star.x) % 8); // 22~30%
   const left = 45 + (star.y % 20); // 45~65%
   const size = 28;
 
