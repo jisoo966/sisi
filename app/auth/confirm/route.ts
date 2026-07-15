@@ -15,18 +15,37 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const explicitNext = searchParams.get("next");
+  const errorParam = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
+
+  // TEMP DEBUG — remove after diagnosing the magic-link bounce-to-login bug
+  console.log("[auth/confirm] incoming", {
+    url: request.url,
+    hasCode: !!code,
+    hasTokenHash: !!token_hash,
+    type,
+    errorParam,
+    errorDescription,
+    cookieNames: request.cookies.getAll().map((c) => c.name),
+  });
 
   const supabase = await createClient();
 
   // Session 교환
   let sessionOk = false;
+  let exchangeError: string | null = null;
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     sessionOk = !error;
+    exchangeError = error?.message ?? null;
   } else if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     sessionOk = !error;
+    exchangeError = error?.message ?? null;
   }
+
+  // TEMP DEBUG
+  console.log("[auth/confirm] exchange result", { sessionOk, exchangeError });
 
   if (!sessionOk) {
     return NextResponse.redirect(
