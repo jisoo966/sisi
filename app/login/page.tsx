@@ -22,12 +22,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /** 게스트 모드 — 이메일 없이 시작. Cookie 로 미들웨어 통과. */
+  /** 게스트 모드 — 이메일 없이 시작. Cookie 로 미들웨어 통과.
+   *  새 게스트 세션 = 이전 이름/온보딩 상태 리셋 → 항상 fresh 시작. */
   function continueAsGuest() {
     // 1년 유효 게스트 쿠키
     const oneYear = 60 * 60 * 24 * 365;
     document.cookie = `sisi_guest=1; path=/; max-age=${oneYear}; SameSite=Lax`;
     localStorage.setItem("sisi:guest", "true");
+    // 이전 게스트 이름/온보딩 상태 리셋 — 항상 새로 이름 물어봄
+    localStorage.removeItem("sisi:guest-name");
+    localStorage.removeItem("sisi:guest-onboarded");
     router.push("/onboarding");
   }
 

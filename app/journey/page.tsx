@@ -11,6 +11,88 @@ import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 import { useVideoLuminance } from "@/lib/useVideoLuminance";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
+import { loadStars, type Star } from "@/lib/myStars";
+
+/**
+ * SkyStar — 하늘에 떠 있는 하나의 별.
+ * 유저 최근 wish를 시적으로 표현. 탭 시 /my-stars 이동.
+ * 글자 없음 = 상징만. 순수한 연결감.
+ */
+function SkyStar({ star }: { star: Star }) {
+  // 별 위치 (하늘 상단, 살짝 오른쪽) — position 데이터 활용 가능하나 여기선 고정
+  const top = 12 + (Math.abs(star.x) % 8); // 12~20%
+  const left = 45 + (star.y % 20); // 45~65%
+  const size = 28;
+
+  return (
+    <Link
+      href="/my-stars"
+      className="absolute z-[8] -translate-x-1/2 -translate-y-1/2 group"
+      style={{ top: `${top}%`, left: `${left}%` }}
+      aria-label="Your star in the sky"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{
+          opacity: [0.85, 1, 0.85],
+          scale: [1, 1.05, 1],
+        }}
+        transition={{
+          opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+          scale: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+        }}
+        className="relative flex items-center justify-center"
+        style={{ width: size * 2.5, height: size * 2.5 }}
+      >
+        {/* Middle glow */}
+        <div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: size * 1.6,
+            height: size * 1.6,
+            background:
+              "radial-gradient(circle, rgba(238,137,79,0.5) 0%, rgba(238,137,79,0.2) 50%, transparent 90%)",
+            filter: "blur(4px)",
+            zIndex: 2,
+          }}
+        />
+        {/* Inner halo */}
+        <div
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: size,
+            height: size,
+            background:
+              "radial-gradient(circle, rgba(255,181,112,1) 0%, rgba(255,181,112,0.35) 55%, transparent 100%)",
+            filter: "blur(3.5px)",
+            zIndex: 3,
+          }}
+        />
+        {/* Star SVG */}
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 100 100"
+          className="relative"
+          style={{ zIndex: 4 }}
+        >
+          <defs>
+            <radialGradient id={`journey-star-${star.id}`} cx="50%" cy="50%">
+              <stop offset="0%" stopColor="rgb(255,248,225)" />
+              <stop offset="35%" stopColor="rgb(255,236,189)" />
+              <stop offset="100%" stopColor="rgb(251,198,106)" />
+            </radialGradient>
+          </defs>
+          <path
+            d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
+            fill={`url(#journey-star-${star.id})`}
+          />
+          <circle cx="50" cy="50" r="7" fill="rgb(255,248,225)" opacity="0.85" />
+        </svg>
+      </motion.div>
+    </Link>
+  );
+}
 
 /** 시간대별 인사 */
 function getGreeting(): string {
@@ -51,6 +133,7 @@ export default function JourneyPage() {
   const [name, setName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
+  const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
   const greeting = getGreeting();
   const dateStr = formatDate();
 
@@ -59,6 +142,13 @@ export default function JourneyPage() {
     ensureTodaysMessage().then((msg) => {
       // 안 읽은 것만 카드로 표시
       if (msg && !msg.read_at) setAngelMessage(msg);
+    });
+  }, []);
+
+  // 최근 별 하나 하늘에 — 여우가 걷는 방향의 상징 (탭 시 /my-stars)
+  useEffect(() => {
+    loadStars().then((stars) => {
+      if (stars.length > 0) setFeaturedStar(stars[0]); // 최근 별
     });
   }, []);
 
@@ -93,6 +183,9 @@ export default function JourneyPage() {
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
       {/* Background video world — 48fps interpolated *smooth 명상 페이스* (0.5x = 24fps effective) */}
       <JourneyScene />
+
+      {/* ✦ 하늘의 별 — 여우가 향해 걷는 상징. 탭 시 /my-stars로. */}
+      {featuredStar && <SkyStar star={featuredStar} />}
 
       {/* Fox + cast shadow — *유저가 매뉴얼 튜닝한 path following*.
           /journey/tune 페이지에서 슬라이더로 조절해서 완성한 값들.
