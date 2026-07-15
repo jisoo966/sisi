@@ -206,7 +206,7 @@ export function AngelMessageCard({
   );
 }
 
-/** Small envelope for card */
+/** Small envelope for card — closed envelope (표준 mail 아이콘) */
 function EnvelopeIcon() {
   return (
     <svg
@@ -216,75 +216,109 @@ function EnvelopeIcon() {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Envelope body */}
-      <path
-        d="M6 14 L6 38 A2 2 0 0 0 8 40 L40 40 A2 2 0 0 0 42 38 L42 14 L24 28 L6 14 Z"
+      {/* Envelope body — 완전한 rectangle */}
+      <rect
+        x="6"
+        y="12"
+        width="36"
+        height="24"
+        rx="3"
         fill="#f7f2e3"
         stroke="#1F2A44"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
+        strokeWidth="1.4"
       />
-      {/* Flap */}
+      {/* Flap V-line (앞면 접힘 표시) */}
       <path
-        d="M6 14 L24 28 L42 14"
+        d="M6 14 L24 26 L42 14"
         fill="none"
         stroke="#1F2A44"
-        strokeWidth="1.2"
+        strokeWidth="1.4"
         strokeLinejoin="round"
+        strokeLinecap="round"
       />
     </svg>
   );
 }
 
-/** Big envelope for letter view — with subtle wreath (Figma inspired) */
+/**
+ * 큰 편지 아이콘 — 열려있는 편지 + 편지지 나옴.
+ * Flap이 위로 열려있고, 안에서 편지가 나와있는 상태.
+ */
 function EnvelopeIconLarge() {
   return (
     <svg
-      width="120"
-      height="120"
-      viewBox="0 0 120 120"
+      width="140"
+      height="140"
+      viewBox="0 0 140 140"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Wreath — small branches above */}
-      <g opacity="0.55">
-        <path
-          d="M60 20 Q56 14 52 15 M60 20 Q64 14 68 15 M60 20 Q60 12 60 8"
-          stroke="#f7f2e3"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <circle cx="52" cy="15" r="1.5" fill="#f7f2e3" />
-        <circle cx="68" cy="15" r="1.5" fill="#f7f2e3" />
-        <circle cx="60" cy="8" r="1.5" fill="#f7f2e3" />
-      </g>
-
-      {/* Envelope shadow */}
+      {/* 그림자 */}
       <ellipse
-        cx="60"
-        cy="102"
-        rx="42"
-        ry="4"
+        cx="70"
+        cy="128"
+        rx="46"
+        ry="3.5"
         fill="#000000"
-        opacity="0.2"
+        opacity="0.25"
       />
 
-      {/* Envelope body */}
+      {/* 편지지 (letter paper) — 편지 뒤에 살짝 나옴 */}
+      <g>
+        <rect
+          x="34"
+          y="18"
+          width="72"
+          height="70"
+          rx="2"
+          fill="#faf5e6"
+          stroke="#1F2A44"
+          strokeWidth="1.2"
+        />
+        {/* 편지 위 작은 줄들 (편지 내용 표시) */}
+        <line x1="42" y1="32" x2="98" y2="32" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="42" x2="88" y2="42" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="52" x2="92" y2="52" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="62" x2="78" y2="62" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        {/* 서명 위치 표시 */}
+        <line x1="80" y1="76" x2="98" y2="76" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+      </g>
+
+      {/* 편지 봉투 앞면 (뒤에 편지가 나와있게) */}
       <path
-        d="M18 40 L18 92 A3 3 0 0 0 21 95 L99 95 A3 3 0 0 0 102 92 L102 40 L60 72 L18 40 Z"
-        fill="#f7f2e3"
+        d="M18 66 L18 116 A3 3 0 0 0 21 119 L119 119 A3 3 0 0 0 122 116 L122 66 L70 100 L18 66 Z"
+        fill="#f0e8d0"
         stroke="#1F2A44"
         strokeWidth="1.4"
         strokeLinejoin="round"
       />
-      {/* Flap — showing letter behind */}
+
+      {/* 편지 봉투 앞면 V-line */}
       <path
-        d="M18 40 L60 72 L102 40"
+        d="M18 66 L70 100 L122 66"
         fill="none"
         stroke="#1F2A44"
         strokeWidth="1.4"
         strokeLinejoin="round"
+      />
+
+      {/* 열린 flap (위로 접힘 — 뒤로 살짝 회전) */}
+      <path
+        d="M18 66 L70 30 L122 66"
+        fill="#f7f2e3"
+        stroke="#1F2A44"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+        opacity="0.7"
+      />
+
+      {/* Wax seal (봉투 뒤에 살짝) */}
+      <circle
+        cx="70"
+        cy="66"
+        r="4"
+        fill="#B19CD9"
+        opacity="0.5"
       />
     </svg>
   );
