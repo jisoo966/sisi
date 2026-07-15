@@ -80,8 +80,9 @@ export default function LoginPage() {
         sizes="100vw"
         className="object-cover opacity-70"
       />
-      {/* Soft cream overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-journey-cream/40 via-journey-cream/70 to-journey-cream/85" />
+      {/* Soft cream overlay — 여우 이미지 위 텍스트 readability를 위해 강화.
+          가운데(form 영역)를 더 진하게 해서 label/placeholder 잘 보이게. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-journey-cream/55 via-journey-cream/85 to-journey-cream/95" />
 
       {/* Back */}
       <Link
@@ -112,7 +113,7 @@ export default function LoginPage() {
             transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
             className="text-center mb-[48px]"
           >
-            <p className="font-sentient italic text-[15px] text-journey-navy/70 mb-3">
+            <p className="font-sentient italic text-[15px] text-journey-navy mb-3">
               enter your journey
             </p>
             <h1 className="font-sentient text-[42px] text-journey-navy leading-none">
@@ -137,7 +138,7 @@ export default function LoginPage() {
                   <div>
                     <label
                       htmlFor="email"
-                      className="block font-sentient text-[13px] text-journey-navy/60 mb-2 tracking-wider"
+                      className="block font-sentient text-[13px] text-journey-navy mb-2 tracking-wider"
                     >
                       your email
                     </label>
@@ -148,7 +149,7 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
                       required
-                      className="w-full bg-transparent border-b border-journey-navy/25 focus:border-journey-navy/70 outline-none py-3 font-sentient text-[18px] text-journey-navy placeholder:text-journey-navy/30 transition-colors"
+                      className="w-full bg-transparent border-b border-journey-navy/50 focus:border-journey-navy outline-none py-3 font-sentient text-[18px] text-journey-navy placeholder:text-journey-navy/65 transition-colors"
                     />
                   </div>
 
@@ -158,13 +159,13 @@ export default function LoginPage() {
                     </p>
                   )}
 
-                  {/* Enabled: full-opacity purple (vibrant primary CTA).
-                      Disabled: 완전 다른 색 (white/gray) — "아직 못 눌러요" 명확한 신호.
-                      단순히 opacity 낮추면 "고장난 버튼" 처럼 보임. */}
+                  {/* Purple primary CTA. Disabled여도 purple 색상 유지 —
+                      opacity만 낮춰서 "이 버튼이야, 아직 활성 안 됨" 신호.
+                      완전 다른 색(gray)은 오히려 "다른 버튼" 처럼 헷갈림. */}
                   <button
                     type="submit"
                     disabled={loading || !email.trim()}
-                    className="mt-4 w-full h-[56px] rounded-[24px] bg-journey-purple backdrop-blur-md border border-white/40 text-journey-navy font-sentient text-[16px] shadow-lg hover:brightness-105 active:scale-98 disabled:bg-white/25 disabled:text-journey-navy/35 disabled:border-white/25 disabled:shadow-none disabled:cursor-not-allowed transition-all"
+                    className="mt-4 w-full h-[56px] rounded-[24px] bg-journey-purple backdrop-blur-md border border-white/40 text-journey-navy font-sentient text-[16px] shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-55 disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? "sending..." : "send magic link ✦"}
                   </button>
@@ -172,24 +173,24 @@ export default function LoginPage() {
 
                 {/* "or" divider */}
                 <div className="flex items-center gap-3 my-6">
-                  <div className="flex-1 h-px bg-journey-navy/15" />
-                  <span className="font-sentient italic text-[12px] text-journey-navy/40">
+                  <div className="flex-1 h-px bg-journey-navy/40" />
+                  <span className="font-sentient italic text-[12px] text-journey-navy">
                     or
                   </span>
-                  <div className="flex-1 h-px bg-journey-navy/15" />
+                  <div className="flex-1 h-px bg-journey-navy/40" />
                 </div>
 
-                {/* Guest mode — 이메일 없이 바로 시작 */}
+                {/* Guest mode (SECONDARY) — 이메일 없이 바로 시작 */}
                 <button
                   onClick={continueAsGuest}
-                  className="w-full h-[52px] rounded-[24px] bg-white/40 backdrop-blur-md border border-white/50 text-journey-navy/85 font-sentient text-[15px] hover:bg-white/60 active:scale-98 transition-all"
+                  className="w-full h-[52px] rounded-[24px] bg-white/50 backdrop-blur-md border border-white/60 text-journey-navy font-sentient text-[15px] hover:bg-white/70 active:scale-98 transition-all"
                 >
                   continue as guest
                 </button>
-                <p className="mt-2 text-center font-sentient italic text-[11px] text-journey-navy/45">
+                <p className="mt-2 text-center font-sentient italic text-[11px] text-journey-navy">
                   try sísí first · save your journey later
                 </p>
-                <p className="mt-4 text-center font-sentient text-[11px] text-journey-navy/50 leading-relaxed">
+                <p className="mt-4 text-center font-sentient text-[11px] text-journey-navy leading-relaxed">
                   by continuing, you agree to our{" "}
                   <Link
                     href="/terms"
@@ -215,7 +216,7 @@ export default function LoginPage() {
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="text-center"
               >
-                <div className="text-[32px] text-journey-navy/70 mb-6">✦</div>
+                <div className="text-[32px] text-journey-navy mb-6">✦</div>
                 <p className="font-sentient text-[22px] text-journey-navy mb-3">
                   check your inbox.
                 </p>
