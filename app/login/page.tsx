@@ -158,10 +158,13 @@ export default function LoginPage() {
                     </p>
                   )}
 
+                  {/* Enabled: full-opacity purple (vibrant primary CTA).
+                      Disabled: 완전 다른 색 (white/gray) — "아직 못 눌러요" 명확한 신호.
+                      단순히 opacity 낮추면 "고장난 버튼" 처럼 보임. */}
                   <button
                     type="submit"
                     disabled={loading || !email.trim()}
-                    className="mt-4 w-full h-[56px] rounded-[24px] bg-journey-purple/85 backdrop-blur-md border border-white/30 text-journey-navy font-sentient text-[16px] shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="mt-4 w-full h-[56px] rounded-[24px] bg-journey-purple backdrop-blur-md border border-white/40 text-journey-navy font-sentient text-[16px] shadow-lg hover:brightness-105 active:scale-98 disabled:bg-white/25 disabled:text-journey-navy/35 disabled:border-white/25 disabled:shadow-none disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? "sending..." : "send magic link ✦"}
                   </button>
