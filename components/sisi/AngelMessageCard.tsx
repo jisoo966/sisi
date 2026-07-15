@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { markAsRead, type AngelMessage } from "@/lib/angelMessages";
 
@@ -25,32 +25,38 @@ export function AngelMessageCard({
   message: AngelMessage | null;
   onRead: () => void;
 }) {
-  const [opened, setOpened] = useState(false);
-  const [dismissing, setDismissing] = useState(false);
+  // handleOpen calls onRead() as soon as the letter opens (so Journey stops
+  // treating it as unread), which nulls the `message` prop from the parent.
+  // Keep our own copy so the letter view still has content to show instead
+  // of the whole card vanishing mid-open (the "레터 오픈 눌렀을 때 그냥
+  // 없어져" bug — `if (!message) return null` was firing the instant the
+  // prop went null, before the user ever saw the letter).
+  const [displayMessage, setDisplayMessage] = useState(message);
+  const [phase, setPhase] = useState<"envelope" | "letter" | "closed">(
+    "envelope",
+  );
 
-  if (!message) return null;
+  useEffect(() => {
+    if (message) setDisplayMessage(message);
+  }, [message]);
 
-  async function handleDismiss() {
-    if (!message || dismissing) return;
-    setDismissing(true);
-    await markAsRead(message.id);
+  if (!displayMessage || phase === "closed") return null;
+
+  async function handleOpen() {
+    setPhase("letter");
+    await markAsRead(displayMessage!.id);
     onRead();
   }
 
-  async function handleOpen() {
-    setOpened(true);
-    // opened되면 자동으로 read 처리 (뒤에서)
-    if (message) {
-      await markAsRead(message.id);
-      onRead();
-    }
+  function handleClose() {
+    setPhase("closed");
   }
 
   return (
     <>
       {/* Envelope card overlay — Journey 홈에 은은히 뜸 */}
       <AnimatePresence>
-        {!opened && !dismissing && (
+        {phase === "envelope" && (
           <motion.div
             key="envelope-card"
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -88,7 +94,7 @@ export function AngelMessageCard({
 
       {/* Full-screen letter view */}
       <AnimatePresence>
-        {opened && (
+        {phase === "letter" && (
           <motion.div
             key="letter-view"
             initial={{ opacity: 0 }}
@@ -129,7 +135,7 @@ export function AngelMessageCard({
 
             {/* Close X */}
             <button
-              onClick={() => setOpened(false)}
+              onClick={handleClose}
               aria-label="Close"
               className="absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 h-11 w-11 flex items-center justify-center rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white/85 hover:bg-white/25 transition"
             >
@@ -180,7 +186,7 @@ export function AngelMessageCard({
                 transition={{ duration: 0.7, delay: 0.7 }}
                 className="font-sentient text-[22px] text-white/95 leading-[1.5]"
               >
-                {message.content}
+                {displayMessage.content}
               </motion.p>
 
               {/* Signature */}
