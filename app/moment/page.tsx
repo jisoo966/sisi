@@ -264,22 +264,29 @@ export default function MomentPage() {
         </>
       )}
 
-      {/* Camera flash overlay — phase 전환 동안 swap 가려줌 */}
-      <AnimatePresence>
-        {flashing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 1, 0] }}
-            exit={{ opacity: 0 }}
-            transition={{
-              duration: 0.8,
-              times: [0, 0.18, 0.55, 1],
-              ease: "easeOut",
-            }}
-            className="absolute inset-0 bg-white z-50 pointer-events-none"
-          />
-        )}
-      </AnimatePresence>
+      {/* Camera flash — 진짜 카메라처럼 한 번만 팟! (Framer 없이 순수 CSS로 double-fire 방지) */}
+      {flashing && (
+        <div
+          key="camera-flash"
+          className="absolute inset-0 bg-white z-50 pointer-events-none"
+          style={{
+            animation: "camera-flash 0.7s ease-out forwards",
+          }}
+        />
+      )}
+      <style jsx global>{`
+        @keyframes camera-flash {
+          0% {
+            opacity: 0;
+          }
+          8% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
+      `}</style>
     </main>
   );
 }

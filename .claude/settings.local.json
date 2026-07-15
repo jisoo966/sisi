@@ -70,7 +70,8 @@
       "Bash(vercel logs *)",
       "Bash(wait)",
       "Bash(echo \"started, pid $!\")",
-      "mcp__plugin_supabase_supabase__search_docs"
+      "mcp__plugin_supabase_supabase__search_docs",
+      "Bash(awk '{print $5, $9}')"
     ]
   }
 }
