@@ -2,20 +2,47 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/sisi/BottomNav";
 import {
   loadStars,
   saveStar,
   createStar,
+  starsByTimeframe,
+  followingStars,
+  constellationStars,
   type Star,
   type Timeframe,
 } from "@/lib/myStars";
 
+/**
+ * 시간대별 별의 하늘 위치 (고정).
+ * someday=가장 멀리(위+오른쪽), this month=가장 가깝게(아래+왼쪽).
+ * → 여우가 하늘 올려다볼 때 시간의 원근감이 자연스럽게 느껴짐.
+ */
+const TIMEFRAME_POSITIONS: Record<
+  Timeframe,
+  { x: number; y: number; size: Star["size"]; labelSide: "left" | "right" }
+> = {
+  someday:      { x: 68, y: 14, size: "md", labelSide: "left" },
+  "this year":  { x: 40, y: 26, size: "md", labelSide: "right" },
+  "this season":{ x: 58, y: 40, size: "md", labelSide: "left" },
+  "this month": { x: 22, y: 52, size: "lg", labelSide: "right" },
+};
+
+/** 시간대 표시 순서 — 위(먼 미래)에서 아래(가까운 미래)로 */
+const TIMEFRAME_ORDER: Timeframe[] = [
+  "someday",
+  "this year",
+  "this season",
+  "this month",
+];
+
 export const dynamic = "force-dynamic";
 
 type Phase = "default" | "receiving" | "wish" | "sending";
+type Tab = "following" | "constellation";
 
 /**
  * /my-stars — Wish → Star 페이지.
@@ -30,11 +57,27 @@ type Phase = "default" | "receiving" | "wish" | "sending";
  */
 export default function MyStarsPage() {
   const [phase, setPhase] = useState<Phase>("default");
+  const [tab, setTab] = useState<Tab>("following");
   const [stars, setStars] = useState<Star[]>([]);
   const [pendingStar, setPendingStar] = useState<Star | null>(null);
   const [mounted, setMounted] = useState(false);
   // 방금 추가된 별 ID — 뾰로롱 spawn animation 적용
   const [justAddedStarId, setJustAddedStarId] = useState<string | null>(null);
+
+  // 방금 arrive해서 constellation 탭으로 넘어오는 케이스 감지
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("tab") === "constellation") {
+      setTab("constellation");
+      url.searchParams.delete("tab");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
+  // 파생된 값
+  const following = followingStars(stars);
+  const constellation = constellationStars(stars);
 
   useEffect(() => {
     loadStars().then((s) => {
@@ -83,26 +126,27 @@ export default function MyStarsPage() {
       {/* Background — phase에 따라 다름 */}
       <BackgroundLayer phase={phase} onVideoEnd={onVideoEnd} />
 
-      {/* 별들 overlay — default phase에서만 (별 있으면) */}
-      {phase === "default" && mounted && stars.length > 0 && (
-        <StarsLayer stars={stars} justAddedStarId={justAddedStarId} />
+      {/* 별들 overlay — default phase에서만, 탭에 따라 다르게 */}
+      {phase === "default" && mounted && following.length > 0 && tab === "following" && (
+        <StarsLayer stars={following} justAddedStarId={justAddedStarId} />
+      )}
+      {phase === "default" && mounted && tab === "constellation" && (
+        <ConstellationLayer stars={constellation} />
       )}
 
       {/* UI Layer — pointer-events-none로 클릭 통과, interactive elements만 auto */}
       <div className="relative z-30 flex h-svh flex-col text-white pointer-events-none">
-        {/* Header */}
+        {/* Header — 탭 스위처가 있으면 title 없이 탭만 (별 있을 때) */}
         {phase === "default" && (
-          <header className="flex items-center justify-between pt-[52px] px-[24px] pointer-events-auto">
+          <header className="flex items-center justify-between pt-[52px] px-[24px] pointer-events-auto gap-3">
             {stars.length > 0 ? (
-              <h1 className="font-sentient text-[22px] text-white/95 pointer-events-none">
-                My Stars
-              </h1>
+              <TabSwitcher current={tab} onChange={setTab} />
             ) : (
               <span />
             )}
             <button
               aria-label="Notifications"
-              className="h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition"
+              className="shrink-0 h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
@@ -112,10 +156,26 @@ export default function MyStarsPage() {
           </header>
         )}
 
+        {/* Constellation 탭인데 완료된 별이 없을 때 empty state */}
+        {phase === "default" && mounted && tab === "constellation" && constellation.length === 0 && (
+          <div className="pointer-events-none flex-1 flex flex-col items-center justify-center px-[24px] text-center">
+            <p className="font-sentient text-[20px] text-white/85 leading-[1.4] mb-3">
+              your constellation
+              <br />
+              is still forming.
+            </p>
+            <p className="font-sentient italic text-[14px] text-white/50 leading-relaxed max-w-[280px]">
+              when you arrive at a star, it stays here.
+              <br />
+              a memory in the sky.
+            </p>
+          </div>
+        )}
+
         <div className="flex-1" />
 
-        {/* Plus button — pointer-events-auto */}
-        {phase === "default" && mounted && stars.length > 0 && (
+        {/* Plus button — Following 탭에서만 (별 있을 때) */}
+        {phase === "default" && mounted && stars.length > 0 && tab === "following" && (
           <motion.button
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -260,7 +320,10 @@ function FirstTimePrompt({ onYes }: { onYes: () => void }) {
   );
 }
 
-/** Clickable stars overlay */
+/**
+ * Clickable stars overlay — 시간대별로 하나씩만, 고정 위치.
+ * 각 timeframe의 최신 wish를 대표 별로. 여러 개 있으면 잔잔한 +N indicator.
+ */
 function StarsLayer({
   stars,
   justAddedStarId,
@@ -268,41 +331,69 @@ function StarsLayer({
   stars: Star[];
   justAddedStarId: string | null;
 }) {
+  const grouped = starsByTimeframe(stars); // 각 시간대 배열 (최신 순 아닐 수 있음)
+
   return (
     <div className="absolute inset-0 z-20 pointer-events-none">
-      {stars.map((star, i) => (
-        <ClickableStar
-          key={star.id}
-          star={star}
-          appearDelay={i * 0.1}
-          justAdded={star.id === justAddedStarId}
-        />
-      ))}
+      {TIMEFRAME_ORDER.map((tf, i) => {
+        const tfStars = grouped[tf];
+        if (!tfStars || tfStars.length === 0) return null;
+
+        // 최신 순 정렬 — 대표 별은 가장 최근에 만든 것
+        const sorted = [...tfStars].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() -
+            new Date(a.createdAt).getTime(),
+        );
+        const primary = sorted[0];
+        const extraCount = sorted.length - 1;
+        const pos = TIMEFRAME_POSITIONS[tf];
+
+        return (
+          <ClickableStar
+            key={tf}
+            star={primary}
+            position={pos}
+            extraCount={extraCount}
+            appearDelay={i * 0.15}
+            justAdded={primary.id === justAddedStarId}
+          />
+        );
+      })}
     </div>
   );
 }
 
 function ClickableStar({
   star,
+  position,
+  extraCount = 0,
   appearDelay = 0,
   justAdded = false,
 }: {
   star: Star;
+  position: {
+    x: number;
+    y: number;
+    size: Star["size"];
+    labelSide: "left" | "right";
+  };
+  extraCount?: number;
   appearDelay?: number;
   justAdded?: boolean;
 }) {
   const sizeMap = { sm: 22, md: 32, lg: 44 };
-  const size = sizeMap[star.size];
+  const size = sizeMap[position.size];
   // 별마다 다른 숨쉬기 사이클 — 7~11초 사이 (별끼리 동시에 안 깜빡이도록)
-  const breatheDur = 7 + (Math.abs(star.x) % 4);
+  const breatheDur = 7 + (Math.abs(position.x) % 4);
   // 별마다 다른 시작 offset — 완전 랜덤 phase
-  const breatheOffset = (star.x + star.y) % 3;
+  const breatheOffset = (position.x + position.y) % 3;
 
   return (
     <Link
       href={`/my-stars/${star.id}`}
       className="absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${star.x}%`, top: `${star.y}%` }}
+      style={{ left: `${position.x}%`, top: `${position.y}%` }}
     >
       {/* ✦ 뾰로롱 spawn burst — 방금 만든 별에만 (한 번 크게 반짝!) */}
       {justAdded && (
@@ -457,21 +548,27 @@ function ClickableStar({
         </svg>
       </motion.div>
 
-      {/* Label — 별 위치에 따라 자동으로 좌/우 정렬 (edge 넘어가지 않도록) */}
+      {/* Label — 시간대 slot에 지정된 방향 (labelSide) 기준 */}
       <div
-        className={`absolute -translate-y-1/2 whitespace-nowrap ${
-          star.x > 55
-            ? "right-full mr-4 text-right" // 오른쪽 별 → label 왼쪽
-            : "left-full ml-4 text-left" // 왼쪽/중앙 별 → label 오른쪽
+        className={`absolute -translate-y-1/2 ${
+          position.labelSide === "left"
+            ? "right-full mr-3 text-right"
+            : "left-full ml-3 text-left"
         }`}
         style={{ top: "50%" }}
       >
-        <p className="font-sentient text-[13px] text-white/95 leading-tight">
+        <p className="font-sentient text-[13px] text-white/95 leading-tight whitespace-nowrap">
           {star.timeframe}
         </p>
-        <p className="font-sentient text-[11px] text-white/65 leading-tight mt-[3px] max-w-[130px] whitespace-normal">
+        <p className="font-sentient text-[11px] text-white/65 leading-tight mt-[3px] max-w-[130px]">
           {star.wish}
         </p>
+        {/* +N indicator — 같은 timeframe에 다른 wish 있으면 잔잔히 표시 */}
+        {extraCount > 0 && (
+          <p className="font-sentient italic text-[10px] text-white/45 mt-[3px] whitespace-nowrap">
+            + {extraCount} more
+          </p>
+        )}
       </div>
     </Link>
   );
@@ -572,6 +669,150 @@ function WishModal({
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+/**
+ * Tab switcher — Following | Constellation.
+ * 활성 탭은 purple pill, 비활성은 투명 white.
+ */
+function TabSwitcher({
+  current,
+  onChange,
+}: {
+  current: Tab;
+  onChange: (t: Tab) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-full p-1">
+      <TabButton
+        active={current === "following"}
+        onClick={() => onChange("following")}
+      >
+        Following
+      </TabButton>
+      <TabButton
+        active={current === "constellation"}
+        onClick={() => onChange("constellation")}
+      >
+        Constellation
+      </TabButton>
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`font-sentient text-[12px] rounded-full h-[28px] px-[14px] transition ${
+        active
+          ? "bg-[#B19CD9]/85 text-journey-navy shadow-sm"
+          : "text-white/75 hover:text-white/95"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Constellation layer — 도착한 별들 (fulfilled_at 있는) 을 하늘에 픽셀로 pin +
+ * 시간 순서대로 얇은 선으로 연결. 유저의 여정을 시각화.
+ *
+ * 위치는 저장된 x/y를 그대로 쓰되, y를 살짝 위로 (fox 영역 피해).
+ * 선은 부드러운 SVG polyline (opacity 낮게 = 별자리 실선 느낌).
+ */
+function ConstellationLayer({ stars }: { stars: Star[] }) {
+  if (stars.length === 0) return null;
+
+  // 도착 순서대로 정렬 (오래된 → 최신) — 시간의 흐름이 선으로
+  const sorted = [...stars].sort(
+    (a, b) =>
+      new Date(a.fulfilledAt ?? a.createdAt).getTime() -
+      new Date(b.fulfilledAt ?? b.createdAt).getTime(),
+  );
+
+  // 별 크기 (constellation은 조금 더 작게, 별자리 느낌)
+  const STAR_SIZE = 20;
+
+  return (
+    <div className="absolute inset-0 z-20 pointer-events-none">
+      {/* Constellation lines — 별들을 시간 순서로 연결 */}
+      {sorted.length >= 2 && (
+        <svg
+          className="absolute inset-0 w-full h-full"
+          preserveAspectRatio="none"
+          viewBox="0 0 100 100"
+        >
+          <polyline
+            fill="none"
+            stroke="rgba(255,236,189,0.35)"
+            strokeWidth="0.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="0.6 0.4"
+            points={sorted.map((s) => `${s.x},${s.y}`).join(" ")}
+          />
+        </svg>
+      )}
+
+      {/* 각 별 — Following과 같은 look, 살짝 작고 warm */}
+      {sorted.map((star, i) => (
+        <Link
+          key={star.id}
+          href={`/my-stars/${star.id}`}
+          className="absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${star.x}%`, top: `${star.y}%` }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 0.95, scale: 1 }}
+            transition={{ duration: 0.5, delay: i * 0.08 }}
+            className="relative flex items-center justify-center"
+            style={{ width: STAR_SIZE * 2, height: STAR_SIZE * 2 }}
+          >
+            {/* Warm halo — fulfilled 별은 orange-cream glow */}
+            <div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                width: STAR_SIZE * 1.4,
+                height: STAR_SIZE * 1.4,
+                background:
+                  "radial-gradient(circle, rgba(255,181,112,0.9) 0%, rgba(255,181,112,0.3) 50%, transparent 100%)",
+                filter: "blur(3px)",
+              }}
+            />
+            <svg
+              width={STAR_SIZE}
+              height={STAR_SIZE}
+              viewBox="0 0 100 100"
+              className="relative"
+            >
+              <defs>
+                <radialGradient id={`cst-grad-${star.id}`} cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="rgb(255,248,225)" />
+                  <stop offset="35%" stopColor="rgb(255,236,189)" />
+                  <stop offset="100%" stopColor="rgb(251,198,106)" />
+                </radialGradient>
+              </defs>
+              <path
+                d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
+                fill={`url(#cst-grad-${star.id})`}
+              />
+            </svg>
+          </motion.div>
+        </Link>
+      ))}
+    </div>
   );
 }
 

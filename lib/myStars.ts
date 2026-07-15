@@ -22,6 +22,8 @@ export type Star = {
   /** 별 크기 (스몰/미디엄/라지, 시각적 다양성) */
   size: "sm" | "md" | "lg";
   createdAt: string; // ISO
+  /** 도착 시각 — null이면 아직 Following, 있으면 Constellation에 속함 */
+  fulfilledAt?: string | null;
 };
 
 export type Sign = {
@@ -62,6 +64,7 @@ type StarRow = {
   y: string | number;
   size: "sm" | "md" | "lg";
   created_at: string;
+  fulfilled_at?: string | null;
 };
 
 function dbToStar(row: StarRow): Star {
@@ -73,6 +76,7 @@ function dbToStar(row: StarRow): Star {
     y: Number(row.y),
     size: row.size,
     createdAt: row.created_at,
+    fulfilledAt: row.fulfilled_at ?? null,
   };
 }
 
@@ -102,7 +106,7 @@ export async function loadStars(): Promise<Star[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("stars")
-      .select("id, wish, timeframe, x, y, size, created_at")
+      .select("id, wish, timeframe, x, y, size, created_at, fulfilled_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -155,7 +159,7 @@ export async function getStarById(id: string): Promise<Star | undefined> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("stars")
-      .select("id, wish, timeframe, x, y, size, created_at")
+      .select("id, wish, timeframe, x, y, size, created_at, fulfilled_at")
       .eq("id", id)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -190,6 +194,33 @@ export async function deleteStar(id: string): Promise<void> {
   const signs = await loadSigns();
   const filteredSigns = signs.filter((s) => s.starId !== id);
   localStorage.setItem(SIGNS_KEY, JSON.stringify(filteredSigns));
+}
+
+/**
+ * 별을 "도착"으로 마킹 — Constellation으로 이동.
+ * fulfilled_at을 현재 시각으로 설정.
+ */
+export async function fulfillStar(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const user = await getCurrentUser();
+
+  if (user) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("stars")
+      .update({ fulfilled_at: now })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) console.error("fulfillStar error:", error);
+    return;
+  }
+
+  // localStorage fallback
+  const stars = await loadStars();
+  const updated = stars.map((s) =>
+    s.id === id ? { ...s, fulfilledAt: now } : s,
+  );
+  localStorage.setItem(STARS_KEY, JSON.stringify(updated));
 }
 
 /** 별 부분 업데이트 (wish + timeframe 지원). */
@@ -390,4 +421,14 @@ export function starsByTimeframe(stars: Star[]): Record<Timeframe, Star[]> {
     if (map[s.timeframe]) map[s.timeframe].push(s);
   }
   return map;
+}
+
+/** Following = 아직 도착 안 한 별 (활성) */
+export function followingStars(stars: Star[]): Star[] {
+  return stars.filter((s) => !s.fulfilledAt);
+}
+
+/** Constellation = 이미 도착한 별 (완료) */
+export function constellationStars(stars: Star[]): Star[] {
+  return stars.filter((s) => !!s.fulfilledAt);
 }
