@@ -106,9 +106,11 @@ export default function JourneyPage() {
           }}
           transition={{
             duration: 40, // Video 20s @ 0.5x speed = 40s wall clock
-            times: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+            // 🚶 각 구간 시간 = 거리에 비례해서 배분 → 여우가 일정한 속도로 걸음
+            // (기존: 모두 0.1씩 균등 → 짧은 구간은 멈춘 듯, 긴 구간은 뛰는 듯)
+            times: [0, 0.097, 0.111, 0.130, 0.273, 0.319, 0.394, 0.398, 0.570, 0.718, 1],
             repeat: Infinity,
-            ease: "easeInOut",
+            ease: "linear", // 각 구간 내에서도 일정한 속도 (easeInOut은 뚝뚝 끊기게 함)
           }}
         >
           {/* Walking fox — shadow layer 내장 (같은 img 뒤집어서 발밑 cast) */}
