@@ -265,8 +265,11 @@ export default function MessagesPage() {
 
   return (
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* 배경 2개 crossfade */}
-      <div className="absolute inset-0">
+      {/* 배경 2개 crossfade — fixed로 뷰포트/phone-frame에 붙여둠.
+          iOS Safari 키보드 열릴 때 페이지가 위로 스크롤돼도 배경은 안 움직임.
+          데스크탑(>=500px)에선 phone-frame에 transform이 있어서 fixed도
+          phone-frame 안에 갇힘 → 그대로 430px 프레임 안에서 fixed. */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
         <motion.div
           animate={{ opacity: mode === "opening" ? 1 : 0 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
@@ -442,7 +445,7 @@ export default function MessagesPage() {
         </div>
 
         {/* BOTTOM */}
-        <footer className="shrink-0 px-[24px] pb-[42px]">
+        <footer className="shrink-0 px-[24px] pt-[16px] pb-[42px]">
           <AnimatePresence>
             {mode === "opening" && (
               <motion.div

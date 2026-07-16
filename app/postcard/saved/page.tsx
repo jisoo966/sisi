@@ -58,7 +58,7 @@ export default function PostcardSavedPage() {
       {/* Starry background — 밤하늘 별들 */}
       <StarField />
 
-      {/* HEADER — 고정 상단 */}
+      {/* HEADER — back + share만 (center 텍스트 제거, 카드가 주인공) */}
       <div className="shrink-0 relative z-20 flex items-center justify-between pt-[52px] px-[24px]">
         <Link
           href="/journey"
@@ -78,10 +78,6 @@ export default function PostcardSavedPage() {
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </Link>
-
-        <p className="font-sentient text-[13px] text-white/70 tracking-wider">
-          A moment, saved
-        </p>
 
         <button
           onClick={handleShare}
@@ -103,14 +99,16 @@ export default function PostcardSavedPage() {
         </button>
       </div>
 
-      {/* MIDDLE — flex-1로 남는 공간 채움 (스크롤 없음, 딱 맞게) */}
-      <div className="flex-1 relative z-10 flex flex-col items-center justify-center px-[24px] py-[20px] min-h-0">
+      {/* MIDDLE — 위쪽에 붙이고 (justify-start), 텍스트+카드가 자연스럽게 위로 올라옴.
+          카드 아래 여백 확보 (flex-1이 자동으로 CTA와 gap 만들어줌).
+          짧은 폰에서도 CTA와 안 겹치도록 card 크기 조정. */}
+      <div className="flex-1 relative z-10 flex flex-col items-center px-[24px] pt-[8px] pb-[24px] min-h-0">
         {/* Small twinkle */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-[24px] text-[#F5F4EC]/80 mb-2 shrink-0"
+          className="text-[20px] text-[#F5F4EC]/80 mb-1 shrink-0"
         >
           ✦
         </motion.div>
@@ -119,7 +117,7 @@ export default function PostcardSavedPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="font-sentient text-[24px] text-white/95 text-center leading-tight shrink-0"
+          className="font-sentient text-[22px] text-white/95 text-center leading-tight shrink-0"
         >
           Your moment is saved
         </motion.h1>
@@ -128,12 +126,12 @@ export default function PostcardSavedPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.35 }}
-          className="font-sentient italic text-[13px] text-white/60 text-center mt-1 mb-[20px] shrink-0"
+          className="font-sentient italic text-[12px] text-white/60 text-center mt-1 mb-[16px] shrink-0"
         >
           It&apos;s always here when you need it.
         </motion.p>
 
-        {/* Postcard card — flex-1 안 이지만 max-h로 절대 오버플로우 안 남 */}
+        {/* Postcard card — 작게 유지해서 CTA와 넉넉한 gap. */}
         <motion.div
           initial={{ opacity: 0, y: 30, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -144,7 +142,7 @@ export default function PostcardSavedPage() {
             damping: 20,
             stiffness: 200,
           }}
-          className="relative w-full max-w-[220px] flex-shrink min-h-0"
+          className="relative w-full max-w-[170px] flex-shrink min-h-0"
         >
           <div className="bg-[#f7f2e3] rounded-[14px] p-[10px] pb-[14px] shadow-2xl">
             <div className="relative rounded-[8px] overflow-hidden aspect-[3/4] bg-journey-cream">
@@ -153,7 +151,7 @@ export default function PostcardSavedPage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={postcard.image} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <Image src={postcard.image} alt="" fill sizes="220px" className="object-cover" />
+                  <Image src={postcard.image} alt="" fill sizes="170px" className="object-cover" />
                 )
               ) : (
                 <div className="w-full h-full bg-journey-cream" />
@@ -188,12 +186,12 @@ export default function PostcardSavedPage() {
         </motion.div>
       </div>
 
-      {/* BOTTOM — 고정 CTA 영역 */}
+      {/* BOTTOM — 고정 CTA 영역. pt를 크게 줘서 카드와 gap 확보. */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.2 }}
-        className="shrink-0 relative z-20 px-[24px] pb-[36px] flex flex-col gap-3"
+        className="shrink-0 relative z-20 px-[24px] pt-[32px] pb-[36px] flex flex-col gap-3"
       >
         <Link
           href="/gallery"

@@ -1,27 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { createStar, saveStar, type Timeframe } from "@/lib/myStars";
 
 export const dynamic = "force-dynamic";
 
-type Step = "name" | "wish";
-
 /**
- * /onboarding — 최소 2단계 온보딩.
- *   1. 이름 (sísí가 뭐라고 부를지)
- *   2. 첫 소원 (첫 별)
- * 완료 → /journey로 진입 (하늘에 별 하나 이미 있음)
+ * /onboarding — 단일 단계: 이름만 물어봄.
+ * 첫 별(wish)은 /my-stars 페이지에서 receivingstar / sendingstar 애니메이션과 함께 만듦.
+ *
+ * Flow:
+ *   name 입력 → 저장 + onboarded=true → /my-stars?firstTime=true 로 이동
+ *   /my-stars가 firstTime 감지해서 자동으로 첫 별 만드는 애니메이션 시작
  */
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("name");
   const [name, setName] = useState("");
-  const [wish, setWish] = useState("");
-  const [timeframe, setTimeframe] = useState<Timeframe | null>(null);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -72,7 +68,7 @@ export default function OnboardingPage() {
     })();
   }, [router]);
 
-  async function handleNameSubmit() {
+  async function handleSubmit() {
     const trimmed = name.trim();
     if (!trimmed) return;
 
@@ -83,51 +79,26 @@ export default function OnboardingPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        // upsert, not update — no DB trigger creates the profiles row on
-        // signup anymore (handle_new_user was removed), so an update()
-        // against a nonexistent row would silently affect 0 rows.
-        await supabase
-          .from("profiles")
-          .upsert({ id: user.id, email: user.email, display_name: trimmed });
+        // upsert (no handle_new_user trigger) — display_name 저장 + onboarded 마크
+        await supabase.from("profiles").upsert({
+          id: user.id,
+          email: user.email,
+          display_name: trimmed,
+          onboarded: true,
+        });
       } else {
-        // 게스트 — localStorage 저장
+        // 게스트 — localStorage 이름 + onboarded 마크
         localStorage.setItem("sisi:guest-name", trimmed);
-      }
-    } catch (err) {
-      console.error("save name failed:", err);
-    } finally {
-      setSaving(false);
-      setStep("wish");
-    }
-  }
-
-  async function handleWishSubmit() {
-    const trimmed = wish.trim();
-    if (!trimmed || !timeframe) return;
-
-    setSaving(true);
-    try {
-      const star = createStar(trimmed, timeframe, []);
-      await saveStar(star);
-
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        // upsert — see handleNameSubmit for why (no auto-create trigger).
-        await supabase
-          .from("profiles")
-          .upsert({ id: user.id, email: user.email, onboarded: true });
-      } else {
-        // 게스트 — localStorage에 onboarded 마크
         localStorage.setItem("sisi:guest-onboarded", "true");
       }
-
-      router.push("/journey");
+      // /my-stars가 자동으로 첫 별 만드는 애니메이션 flow 시작
+      router.push("/my-stars?firstTime=true");
     } catch (err) {
-      console.error("save first star failed:", err);
-      router.push("/journey");
+      console.error("save name failed:", err);
+      // 실패해도 계속 진행 — 로컬 게스트로 fallback
+      router.push("/my-stars?firstTime=true");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -156,144 +127,47 @@ export default function OnboardingPage() {
 
       {/* Content */}
       <div className="relative z-10 flex min-h-svh flex-col px-[24px] pt-[52px] pb-[42px]">
-        {/* Progress dots */}
-        <div className="flex items-center justify-center gap-2 mb-[36px]">
-          <Dot active={step === "name"} />
-          <Dot active={step === "wish"} />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="flex-1 flex flex-col"
+        >
+          <div className="mt-[80px] mb-[36px]">
+            <p className="font-sentient italic text-[16px] text-white mb-3">
+              hello, love.
+            </p>
+            <h1 className="font-sentient text-[32px] text-white leading-[1.2]">
+              what should sísí
+              <br />
+              call you?
+            </h1>
+          </div>
 
-        <AnimatePresence mode="wait">
-          {step === "name" && (
-            <motion.div
-              key="name"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 flex flex-col"
-            >
-              <div className="mt-[60px] mb-[36px]">
-                <p className="font-sentient italic text-[16px] text-white/70 mb-3">
-                  hello, love.
-                </p>
-                <h1 className="font-sentient text-[32px] text-white/95 leading-[1.2]">
-                  what should sísí
-                  <br />
-                  call you?
-                </h1>
-              </div>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value.slice(0, 40))}
+            placeholder="your name"
+            autoFocus
+            className="font-sentient text-[22px] text-white placeholder:text-white/40 bg-transparent border-b border-white/40 focus:border-white/80 outline-none pb-3 mb-3 transition-colors"
+          />
+          <p className="font-sentient italic text-[13px] text-white/60">
+            or whatever feels like you.
+          </p>
 
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value.slice(0, 40))}
-                placeholder="your name"
-                autoFocus
-                className="font-sentient text-[22px] text-white placeholder:text-white/30 bg-transparent border-b border-white/30 focus:border-white/70 outline-none pb-3 mb-3 transition-colors"
-              />
-              <p className="font-sentient italic text-[13px] text-white/40">
-                or whatever feels like you.
-              </p>
+          <div className="flex-1" />
 
-              <div className="flex-1" />
-
-              <button
-                onClick={handleNameSubmit}
-                disabled={!name.trim() || saving}
-                className="font-sentient text-[16px] rounded-[24px] bg-white/95 text-journey-navy h-[56px] w-full shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-30 transition"
-              >
-                {saving ? "..." : "continue"}
-              </button>
-            </motion.div>
-          )}
-
-          {step === "wish" && (
-            <motion.div
-              key="wish"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 flex flex-col"
-            >
-              <div className="mt-[60px] mb-[24px]">
-                <p className="font-sentient italic text-[16px] text-white/70 mb-3">
-                  nice to meet you, {name || "you"}.
-                </p>
-                <h1 className="font-sentient text-[28px] text-white/95 leading-[1.25]">
-                  what&apos;s one thing
-                  <br />
-                  meant for you?
-                </h1>
-                <p className="font-sentient italic text-[14px] text-white/50 mt-3 leading-[1.5]">
-                  we&apos;ll place it in the sky.
-                  <br />
-                  a star to walk toward.
-                </p>
-              </div>
-
-              <textarea
-                value={wish}
-                onChange={(e) => setWish(e.target.value.slice(0, 80))}
-                placeholder="I want to..."
-                rows={2}
-                autoFocus
-                className="font-sentient text-[18px] text-white placeholder:text-white/30 bg-transparent border-b border-white/30 focus:border-white/70 outline-none resize-none pb-3 leading-snug transition-colors"
-              />
-              <p className="font-mono text-[11px] text-white/30 text-right mt-1">
-                {wish.length}/80
-              </p>
-
-              <p className="font-sentient text-[12px] text-white/60 tracking-widest uppercase mt-[20px] mb-[10px]">
-                By when?
-              </p>
-              <div className="grid grid-cols-2 gap-[8px]">
-                {(
-                  [
-                    "this month",
-                    "this season",
-                    "this year",
-                    "someday",
-                  ] as Timeframe[]
-                ).map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => setTimeframe(tf)}
-                    className={`font-sentient text-[14px] rounded-[12px] h-[44px] transition ${
-                      timeframe === tf
-                        ? "bg-white/95 text-journey-navy"
-                        : "bg-white/10 border border-white/25 text-white/80 hover:bg-white/15"
-                    }`}
-                  >
-                    {tf}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1" />
-
-              <button
-                onClick={handleWishSubmit}
-                disabled={!wish.trim() || !timeframe || saving}
-                className="font-sentient text-[16px] rounded-[24px] bg-[#B19CD9] text-journey-navy h-[56px] w-full shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-30 transition"
-              >
-                {saving ? "..." : "send this star ✦"}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <button
+            onClick={handleSubmit}
+            disabled={!name.trim() || saving}
+            className="font-sentient text-[16px] rounded-[24px] bg-[#B19CD9] text-journey-navy h-[56px] w-full shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-40 transition"
+          >
+            {saving ? "..." : "continue"}
+          </button>
+        </motion.div>
       </div>
     </main>
-  );
-}
-
-function Dot({ active }: { active: boolean }) {
-  return (
-    <div
-      className={`h-[6px] rounded-full transition-all duration-300 ${
-        active ? "w-[24px] bg-white/90" : "w-[6px] bg-white/30"
-      }`}
-    />
   );
 }
 

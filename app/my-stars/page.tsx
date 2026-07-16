@@ -25,12 +25,13 @@ const TIMEFRAME_POSITIONS: Record<
   Timeframe,
   { x: number; y: number; size: Star["size"]; labelSide: "left" | "right" }
 > = {
-  // y값 조정 — tab bar (약 ~15% 차지) 밑으로 여유 확보.
+  // Tab bar (~19% 차지) 밑 여유 확보 + 별들 사이 균등 간격 (~9%).
+  // 위(먼 미래)에서 아래(가까운 미래)로 부드럽게 cascade.
   // 크기 gradient: 먼 미래 = 작음(sm), 가까운 미래 = 큼(md).
-  someday:      { x: 65, y: 22, size: "sm", labelSide: "left" },
-  "this year":  { x: 38, y: 33, size: "sm", labelSide: "right" },
-  "this season":{ x: 60, y: 44, size: "md", labelSide: "left" },
-  "this month": { x: 22, y: 55, size: "md", labelSide: "right" },
+  someday:      { x: 65, y: 29, size: "sm", labelSide: "left" },
+  "this year":  { x: 38, y: 39, size: "sm", labelSide: "right" },
+  "this season":{ x: 60, y: 49, size: "md", labelSide: "left" },
+  "this month": { x: 22, y: 58, size: "md", labelSide: "right" },
 };
 
 /** 시간대 표시 순서 — 위(먼 미래)에서 아래(가까운 미래)로 */
@@ -65,14 +66,23 @@ export default function MyStarsPage() {
   const [mounted, setMounted] = useState(false);
   // 방금 추가된 별 ID — 뾰로롱 spawn animation 적용
   const [justAddedStarId, setJustAddedStarId] = useState<string | null>(null);
+  // 첫 유저 flow 진입 (?firstTime=true) — receivingstar 애니메이션 자동 시작
+  const [isFirstTime, setIsFirstTime] = useState(false);
+  // 첫 별이 하늘에 pin된 직후 CTA 카드 노출 여부
+  const [showFirstStarCTA, setShowFirstStarCTA] = useState(false);
 
-  // 방금 arrive해서 constellation 탭으로 넘어오는 케이스 감지
+  // Query params 감지 — tab 스위치 + firstTime flag
   useEffect(() => {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     if (url.searchParams.get("tab") === "constellation") {
       setTab("constellation");
       url.searchParams.delete("tab");
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (url.searchParams.get("firstTime") === "true") {
+      setIsFirstTime(true);
+      url.searchParams.delete("firstTime");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
@@ -87,6 +97,14 @@ export default function MyStarsPage() {
       setMounted(true);
     });
   }, []);
+
+  // firstTime flag가 있고 별이 아직 없으면 → receivingstar 자동 재생.
+  // Onboarding에서 이름만 받고 바로 이 화면으로 넘어오는 flow.
+  useEffect(() => {
+    if (mounted && isFirstTime && stars.length === 0 && phase === "default") {
+      setPhase("receiving");
+    }
+  }, [mounted, isFirstTime, stars.length, phase]);
 
   function startAddingStar() {
     if (stars.length === 0) {
@@ -119,6 +137,12 @@ export default function MyStarsPage() {
         setPhase("default");
         // 스며드는 animation 끝나면 flag clear (그 후엔 일반 twinkle만)
         setTimeout(() => setJustAddedStarId(null), 2800);
+
+        // 첫 유저 flow였다면 → CTA 카드로 홈으로 유도
+        if (isFirstTime) {
+          setTimeout(() => setShowFirstStarCTA(true), 1600);
+          setIsFirstTime(false); // 한 번만
+        }
       }, 900);
     }
   }
@@ -193,7 +217,7 @@ export default function MyStarsPage() {
             transition={{ duration: 0.4, delay: 0.3 }}
             onClick={startAddingStar}
             aria-label="Add a wish"
-            className="absolute bottom-[110px] right-[24px] h-[56px] w-[56px] rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg flex items-center justify-center hover:bg-white/30 active:scale-95 transition z-30 pointer-events-auto"
+            className="fixed bottom-[95px] right-[24px] h-[56px] w-[56px] rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg flex items-center justify-center hover:bg-white/30 active:scale-95 transition z-30 pointer-events-auto"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -220,6 +244,25 @@ export default function MyStarsPage() {
           <WishModal
             onCreate={handleWishSubmit}
             onCancel={() => setPhase("default")}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* First-time CTA — 첫 별 pin된 직후 잔잔하게 아래에서 올라옴.
+          "start walking" → /journey. "see how this works"는 Phase 2 walkthrough (TODO). */}
+      <AnimatePresence>
+        {showFirstStarCTA && (
+          <FirstStarCTA
+            onStartWalking={() => {
+              setShowFirstStarCTA(false);
+              // 홈으로 이동
+              window.location.href = "/journey";
+            }}
+            onSeeHowItWorks={() => {
+              // Phase 2: 말풍선 tour. 지금은 그냥 dismiss + /journey로 유도.
+              setShowFirstStarCTA(false);
+              window.location.href = "/journey";
+            }}
           />
         )}
       </AnimatePresence>
@@ -826,6 +869,72 @@ function ConstellationLayer({ stars }: { stars: Star[] }) {
         </Link>
       ))}
     </div>
+  );
+}
+
+/**
+ * FirstStarCTA — 첫 별 pin된 직후 아래에서 잔잔하게 올라오는 CTA 카드.
+ *
+ * Goals:
+ *  - 유저가 방금 만든 별을 잠깐 감상할 수 있게 (delay 1.6초 후 등장)
+ *  - "start walking to that star?" 로 자연스럽게 홈으로 유도
+ *  - "see how this works" 보조 옵션 (Phase 2에서 walkthrough tour 붙일 자리)
+ *
+ * Design system: 다크 배경이라 primary는 purple pill, secondary는 subtle text link.
+ */
+function FirstStarCTA({
+  onStartWalking,
+  onSeeHowItWorks,
+}: {
+  onStartWalking: () => void;
+  onSeeHowItWorks: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 40 }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      className="fixed bottom-[95px] left-[24px] right-[24px] z-40"
+    >
+      <div
+        className="rounded-[24px] p-[24px] shadow-2xl"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(35, 30, 75, 0.96) 0%, rgba(20, 17, 55, 0.96) 100%)",
+          border: "1px solid rgba(255, 236, 189, 0.15)",
+          boxShadow:
+            "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(177, 156, 217, 0.12)",
+        }}
+      >
+        <p className="font-sentient text-[20px] text-white/95 text-center leading-tight mb-[6px]">
+          shall we start walking
+          <br />
+          to that star?
+        </p>
+        <p className="font-sentient italic text-[13px] text-white/60 text-center mb-[20px]">
+          your journey begins now.
+        </p>
+
+        <div className="flex flex-col gap-[10px]">
+          {/* Primary — start walking → /journey */}
+          <button
+            onClick={onStartWalking}
+            className="w-full h-[52px] rounded-full bg-[#B19CD9] backdrop-blur-md border border-white/25 text-journey-navy font-sentient text-[15px] shadow-lg hover:brightness-105 active:scale-98 transition-all"
+          >
+            start walking ✦
+          </button>
+
+          {/* Secondary — see how this works (Phase 2 walkthrough) */}
+          <button
+            onClick={onSeeHowItWorks}
+            className="w-full h-[42px] font-sentient italic text-[13px] text-white/60 hover:text-white/85 transition"
+          >
+            see how this works
+          </button>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 

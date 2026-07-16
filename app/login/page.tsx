@@ -23,8 +23,18 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   /** 게스트 모드 — 이메일 없이 시작. Cookie 로 미들웨어 통과.
-   *  새 게스트 세션 = 이전 이름/온보딩 상태 리셋 → 항상 fresh 시작. */
-  function continueAsGuest() {
+   *  새 게스트 세션 = 이전 이름/온보딩 상태 리셋 → 항상 fresh 시작.
+   *  중요: 예전 auth 세션이 남아있으면 onboarding이 그 프로필을 잡아버려서
+   *  이름을 다시 안 물어봄 → 게스트 모드 진입 시 supabase.signOut() 필수. */
+  async function continueAsGuest() {
+    const supabase = createClient();
+    // 이전 이메일 로그인 세션 있으면 지움 — 진짜 fresh 게스트로 시작
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // 세션 없으면 그냥 통과
+    }
+
     // 1년 유효 게스트 쿠키
     const oneYear = 60 * 60 * 24 * 365;
     document.cookie = `sisi_guest=1; path=/; max-age=${oneYear}; SameSite=Lax`;

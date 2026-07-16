@@ -62,6 +62,14 @@ export default function RootLayout({
       className={`${fraunces.variable} ${ebGaramond.variable} ${caveat.variable} ${inter.variable}`}
     >
       <head>
+        {/* Viewport — interactive-widget=resizes-content가 핵심.
+            iOS Safari에서 키보드 나올 때 layout viewport 자체를 줄여줌
+            → fixed 요소, 100svh 등이 실제 visible 영역에 맞춰짐
+            → 채팅 배경 사진이 안 밀려올라감. */}
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+        />
         {/* Sentient — Fontshare (brand v2 heading font) */}
         <link
           rel="preconnect"
