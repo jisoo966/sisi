@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatBubble, ChoiceButton } from "@/components/sisi/ChatBubble";
 import { GuestLoginNudge } from "@/components/sisi/GuestLoginNudge";
+import { BottomNav } from "@/components/sisi/BottomNav";
 import { createClient } from "@/lib/supabase/client";
 
 export const dynamic = "force-dynamic";
@@ -103,6 +104,8 @@ export default function MessagesPage() {
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
   // Guest login nudge
   const [showNudge, setShowNudge] = useState(false);
+  // Nav 자동 hide — input focus 감지 (키보드가 뜨기 전에 미리 슬라이드 다운)
+  const [inputFocused, setInputFocused] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -341,27 +344,11 @@ export default function MessagesPage() {
       </div>
 
       <div className="relative z-10 flex h-svh flex-col">
-        {/* TOP — messages는 nav가 없어서 X로 대화 닫기 → 홈으로.
-             (뒤로가기 아이콘은 이전 탭으로 가면 이상함 — 여긴 대화 세션) */}
+        {/* TOP — Messages tab title (다른 탭들과 통일. X 닫기 대신 nav로 이동). */}
         <header className="shrink-0 pt-[52px] px-[24px]">
-          <Link
-            href="/journey"
-            aria-label="Close conversation"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </Link>
+          <h1 className="font-sentient text-[22px] text-journey-navy/95">
+            Messages
+          </h1>
         </header>
 
         {/* MIDDLE — content */}
@@ -475,8 +462,9 @@ export default function MessagesPage() {
           )}
         </div>
 
-        {/* BOTTOM */}
-        <footer className="shrink-0 px-[24px] pt-[16px] pb-[42px]">
+        {/* BOTTOM — input pill. pb는 nav 공간(85px = 30+50+여백) + 자체 여유.
+             Nav가 아래에 fixed로 위치. */}
+        <footer className="shrink-0 px-[24px] pt-[16px] pb-[100px]">
           <AnimatePresence>
             {mode === "opening" && (
               <motion.div
@@ -533,6 +521,8 @@ export default function MessagesPage() {
                 value={draftInput}
                 onChange={(e) => setDraftInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendReply()}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
                 disabled={streaming}
                 placeholder={streaming ? "sísí is thinking..." : "Write here..."}
                 className="font-sentient flex-1 bg-transparent text-[16px] text-journey-navy placeholder:text-journey-navy/40 outline-none disabled:opacity-50"
@@ -562,6 +552,19 @@ export default function MessagesPage() {
           )}
         </footer>
       </div>
+
+      {/* BottomNav — input focus 시 fade out + slide down (키보드 뜨기 전에 미리).
+          다른 탭들과 consistency 유지. blur되면 다시 slide up. */}
+      <motion.div
+        animate={{
+          y: inputFocused ? 90 : 0,
+          opacity: inputFocused ? 0 : 1,
+        }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        style={{ pointerEvents: inputFocused ? "none" : "auto" }}
+      >
+        <BottomNav theme="light" />
+      </motion.div>
 
       {/* Guest login nudge — 5개 메시지 후 자동 open */}
       <GuestLoginNudge
