@@ -92,7 +92,7 @@ export default function MessagesDashboardPage() {
           transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="mb-[20px]"
         >
-          <div className="rounded-[20px] bg-white/70 backdrop-blur-sm border border-journey-navy/8 px-[24px] py-[20px] text-center">
+          <div className="rounded-[20px] bg-white/60 backdrop-blur-md border border-white/50 px-[24px] py-[20px] text-center shadow-sm">
             <p className="font-sentient text-[11px] text-journey-navy/50 tracking-widest uppercase mb-[10px]">
               Today&apos;s check-in
             </p>
@@ -113,9 +113,9 @@ export default function MessagesDashboardPage() {
         >
           <Link
             href="/messages/chat"
-            className="font-sentient block w-full text-center rounded-[28px] bg-journey-purple text-journey-navy text-[16px] h-[56px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition-all"
+            className="font-sentient block w-full text-center rounded-[28px] bg-journey-purple/85 backdrop-blur-md border border-white/40 text-journey-navy text-[16px] h-[56px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition-all"
           >
-            Talk to the fox ✦
+            Talk to sísí ✦
           </Link>
         </motion.div>
 

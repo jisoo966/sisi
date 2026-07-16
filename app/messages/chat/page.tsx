@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ChatBubble, ChoiceButton } from "@/components/sisi/ChatBubble";
 import { GuestLoginNudge } from "@/components/sisi/GuestLoginNudge";
 import { createClient } from "@/lib/supabase/client";
@@ -12,13 +12,6 @@ import { createSession, loadSessionMessages } from "@/lib/chatSessions";
 
 export const dynamic = "force-dynamic";
 
-const CHIPS = [
-  "I felt grateful",
-  "Something surprised me",
-  "something is on my mind",
-];
-
-type Mode = "opening" | "chatting";
 type Role = "user" | "sisi";
 
 type Message = {
@@ -27,13 +20,19 @@ type Message = {
   text: string;
   time: string;
   saveReason?: SaveReason;
+  /** Greeting은 API로 안 보냄 (client-only placeholder) */
+  greeting?: boolean;
 };
 
 type SaveReason = "special" | "shift" | "insight" | "intention";
 
 type Step = "chatting" | "saveOffered" | "saving" | "savedReveal" | "continue";
 
-/** SAVE marker 파싱 — Sísí 응답 마지막에 붙는 [SAVE:reason]을 뽑아냄 */
+/** Sísí의 첫 인사 — dashboard 질문을 채팅 톤으로 재변환.
+    Client-only, API에 안 보냄 (안 그러면 conversation 처음이 어색해짐). */
+const OPENING_GREETING = "Here. What's stayed with you today?";
+
+/** SAVE marker 파싱 */
 function parseSaveMarker(text: string): {
   clean: string;
   reason: SaveReason | null;
@@ -86,11 +85,11 @@ const GUEST_NUDGE_SEEN_KEY = "sisi:guest-nudge-seen";
 const GUEST_NUDGE_THRESHOLD = 5;
 
 /**
- * /messages/chat — Immersive 대화 화면.
- *   - Nav 없음 (몰입감)
- *   - Back button → /messages dashboard
- *   - ?session=xyz로 과거 세션 이어보기
- *   - 새 대화면 첫 메시지에 session 자동 생성 (로그인 유저)
+ * /messages/chat — 채팅 immersive 화면.
+ *   - No opening screen with chips (dashboard에서 이미 초대함)
+ *   - Sísí가 첫 인사 메시지로 채팅 시작 → 자연스럽게 대화
+ *   - Back button → dashboard
+ *   - ?session=xyz 로 과거 대화 로드
  */
 export default function ChatPageWrapper() {
   return (
@@ -105,7 +104,6 @@ function ChatPage() {
   const searchParams = useSearchParams();
   const sessionParam = searchParams.get("session");
 
-  const [mode, setMode] = useState<Mode>("opening");
   const [step, setStep] = useState<Step>("chatting");
   const [draftInput, setDraftInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -119,23 +117,35 @@ function ChatPage() {
 
   const time = useClientTime();
 
-  // 과거 세션 이어보기 (?session=xyz) — 로드해서 chatting 모드로 진입
+  // 초기 로드 — 과거 세션 이어보기 or 새 대화 (Sísí 인사로 시작)
   useEffect(() => {
-    if (!sessionParam) return;
-    (async () => {
-      const past = await loadSessionMessages(sessionParam);
-      if (past.length === 0) return;
-      const converted: Message[] = past.map((m) => ({
-        id: m.id,
-        from: m.role,
-        text: m.content,
-        time: formatTime(m.createdAt),
-        saveReason: m.saveReason as SaveReason | undefined,
-      }));
-      setMessages(converted);
-      setSessionId(sessionParam);
-      setMode("chatting");
-    })();
+    if (sessionParam) {
+      // 과거 세션 로드
+      (async () => {
+        const past = await loadSessionMessages(sessionParam);
+        if (past.length === 0) return;
+        const converted: Message[] = past.map((m) => ({
+          id: m.id,
+          from: m.role,
+          text: m.content,
+          time: formatTime(m.createdAt),
+          saveReason: m.saveReason as SaveReason | undefined,
+        }));
+        setMessages(converted);
+        setSessionId(sessionParam);
+      })();
+    } else {
+      // 새 대화 — Sísí 첫 인사 (client-only greeting, API 안 보냄)
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          from: "sisi",
+          text: OPENING_GREETING,
+          time: currentTime(),
+          greeting: true,
+        },
+      ]);
+    }
   }, [sessionParam]);
 
   useEffect(() => {
@@ -145,20 +155,9 @@ function ChatPage() {
     });
   }, [messages, step]);
 
-  function enterChatMode() {
-    if (mode !== "opening") return;
-    setMode("chatting");
-  }
-
-  function handleChipClick(chip: string) {
-    setDraftInput(chip);
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }
-
   async function sendReply() {
     const input = draftInput.trim();
     if (!input || streaming) return;
-    if (mode === "opening") enterChatMode();
 
     // 로그인 유저: 세션 없으면 생성. 게스트: nudge counter 처리.
     let activeSessionId = sessionId;
@@ -173,7 +172,6 @@ function ChatPage() {
           if (activeSessionId) setSessionId(activeSessionId);
         }
       } else {
-        // 게스트 nudge
         const count =
           parseInt(localStorage.getItem(GUEST_MSG_COUNT_KEY) ?? "0", 10) + 1;
         localStorage.setItem(GUEST_MSG_COUNT_KEY, String(count));
@@ -184,7 +182,7 @@ function ChatPage() {
         }
       }
     } catch {
-      // 실패해도 대화는 진행
+      // 대화는 계속 진행
     }
 
     const userMsg: Message = {
@@ -205,10 +203,13 @@ function ChatPage() {
     setStreaming(true);
     setStep("chatting");
 
-    const history = [...messages, userMsg].map((m) => ({
-      role: m.from === "sisi" ? ("assistant" as const) : ("user" as const),
-      content: m.text,
-    }));
+    // 대화 history — greeting은 skip (client-only, API 안 보냄)
+    const history = [...messages, userMsg]
+      .filter((m) => !m.greeting)
+      .map((m) => ({
+        role: m.from === "sisi" ? ("assistant" as const) : ("user" as const),
+        content: m.text,
+      }));
 
     try {
       const res = await fetch("/api/chat", {
@@ -317,50 +318,20 @@ function ChatPage() {
 
   return (
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* 배경 2개 crossfade */}
+      {/* Background — single scene (openingscreen 없어져서 crossfade 불필요) */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div
-          initial={{ opacity: mode === "opening" ? 1 : 0 }}
-          animate={{ opacity: mode === "opening" ? 1 : 0 }}
-          transition={{ duration: 0.6, ease: "easeInOut" }}
-          className="absolute inset-0 overflow-hidden"
-        >
-          <div
-            className="absolute inset-0"
-            style={{
-              transformOrigin: "center top",
-              transform: "scale(1.35)",
-            }}
-          >
-            <Image
-              src="/journey/ChatScreen.png"
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              className="object-cover object-bottom"
-            />
-          </div>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: mode === "chatting" ? 1 : 0 }}
-          animate={{ opacity: mode === "chatting" ? 1 : 0 }}
-          transition={{ duration: 0.6, ease: "easeInOut" }}
-          className="absolute inset-0"
-        >
-          <Image
-            src="/journey/ChatScreen2.png"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-bottom"
-          />
-        </motion.div>
+        <Image
+          src="/journey/ChatScreen2.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-bottom"
+        />
       </div>
 
       <div className="relative z-10 flex h-svh flex-col">
-        {/* TOP — back button (→ dashboard). Nav 없음. */}
+        {/* TOP — back to dashboard. Nav 없음 (immersive). */}
         <header className="shrink-0 pt-[52px] px-[24px]">
           <button
             onClick={() => router.push("/messages")}
@@ -382,150 +353,99 @@ function ChatPage() {
           </button>
         </header>
 
-        {/* MIDDLE — content */}
+        {/* MIDDLE — chat scroll */}
         <div className="flex-1 relative min-h-0">
-          {/* Opening view (새 대화만) */}
-          <AnimatePresence>
-            {mode === "opening" && (
-              <motion.div
-                key="opening-card"
-                initial={{ opacity: 1 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-                className="absolute inset-0 flex flex-col items-center justify-center px-[24px] pb-[120px]"
-              >
-                <p
-                  className="font-sentient text-[26px] leading-[1.2] text-center text-journey-navy max-w-[300px]"
-                  style={{
-                    textShadow:
-                      "0 2px 8px rgba(255,255,255,0.7), 0 1px 3px rgba(255,255,255,0.9)",
-                  }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            ref={scrollRef}
+            className="absolute inset-0 overflow-y-auto px-[24px] pt-[24px] pb-[12px] flex flex-col gap-[24px]"
+          >
+            {messages.map((msg, i) => {
+              const isLastSisi =
+                msg.from === "sisi" && i === messages.length - 1;
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
                 >
-                  What stayed with
-                  <br />
-                  you today?
+                  <ChatBubble
+                    from={msg.from}
+                    text={
+                      msg.from === "sisi" &&
+                      !msg.text &&
+                      streaming &&
+                      isLastSisi ? (
+                        <TypingDots />
+                      ) : (
+                        msg.text
+                      )
+                    }
+                    time={msg.time}
+                  />
+                </motion.div>
+              );
+            })}
+
+            {step === "saveOffered" && !streaming && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className="flex flex-col items-end gap-2"
+              >
+                <ChoiceButton onClick={chooseSave}>Yes, save this</ChoiceButton>
+                <ChoiceButton variant="outline" onClick={chooseDontSave}>
+                  Not this one
+                </ChoiceButton>
+              </motion.div>
+            )}
+
+            {(step === "savedReveal" || step === "continue") && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                className="flex flex-col items-center gap-4 my-6"
+              >
+                <div className="relative w-40 h-40">
+                  <Image
+                    src="/journey/Sparkles.png"
+                    alt=""
+                    fill
+                    className="object-contain"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative w-24 h-24">
+                      <Image
+                        src="/journey/Star.png"
+                        alt="star"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="font-sentient text-[22px] text-journey-navy">
+                  {savedLabel || "a moment"}
+                </p>
+                <p className="font-sentient text-[15px] text-journey-navy/80">
+                  kept as a memory
                 </p>
               </motion.div>
             )}
-          </AnimatePresence>
-
-          {/* Chat view */}
-          {mode === "chatting" && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              ref={scrollRef}
-              className="absolute inset-0 overflow-y-auto px-[24px] pt-[24px] pb-[12px] flex flex-col gap-[24px]"
-            >
-              {messages.map((msg, i) => {
-                const isLastSisi =
-                  msg.from === "sisi" && i === messages.length - 1;
-                return (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                  >
-                    <ChatBubble
-                      from={msg.from}
-                      text={
-                        msg.from === "sisi" &&
-                        !msg.text &&
-                        streaming &&
-                        isLastSisi ? (
-                          <TypingDots />
-                        ) : (
-                          msg.text
-                        )
-                      }
-                      time={msg.time}
-                    />
-                  </motion.div>
-                );
-              })}
-
-              {step === "saveOffered" && !streaming && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.2 }}
-                  className="flex flex-col items-end gap-2"
-                >
-                  <ChoiceButton onClick={chooseSave}>Yes, save this</ChoiceButton>
-                  <ChoiceButton variant="outline" onClick={chooseDontSave}>
-                    Not this one
-                  </ChoiceButton>
-                </motion.div>
-              )}
-
-              {(step === "savedReveal" || step === "continue") && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex flex-col items-center gap-4 my-6"
-                >
-                  <div className="relative w-40 h-40">
-                    <Image
-                      src="/journey/Sparkles.png"
-                      alt=""
-                      fill
-                      className="object-contain"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="relative w-24 h-24">
-                        <Image
-                          src="/journey/Star.png"
-                          alt="star"
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <p className="font-sentient text-[22px] text-journey-navy">
-                    {savedLabel || "a moment"}
-                  </p>
-                  <p className="font-sentient text-[15px] text-journey-navy/80">
-                    kept as a memory
-                  </p>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
+          </motion.div>
         </div>
 
-        {/* BOTTOM — input pill.
-             Nav가 없으니 pb 여유롭게 (24px + safe area). */}
+        {/* BOTTOM — input pill. Focus 시 pb 축소로 keyboard 밀착. */}
         <footer
           className={`shrink-0 px-[24px] pt-[16px] transition-[padding] duration-300 ${
             inputFocused ? "pb-[20px]" : "pb-[36px]"
           }`}
         >
-          <AnimatePresence>
-            {mode === "opening" && (
-              <motion.div
-                key="chips"
-                initial={{ opacity: 1 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.4 }}
-                className="grid grid-cols-3 gap-[6px] mb-[14px]"
-              >
-                {CHIPS.map((chip) => (
-                  <button
-                    key={chip}
-                    onClick={() => handleChipClick(chip)}
-                    className="font-sentient text-[14px] text-[#5380C4] rounded-[10px] border border-[#5380C4] bg-white/70 backdrop-blur-sm h-[63px] px-3 leading-tight hover:bg-white transition flex items-center justify-center text-center"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {step === "continue" ? (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -535,7 +455,7 @@ function ChatPage() {
             >
               <Link
                 href="/journey"
-                className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/70 backdrop-blur-md border-2 border-white text-journey-navy text-[18px] h-[60px] flex items-center justify-center hover:bg-journey-purple transition"
+                className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/85 backdrop-blur-md border-2 border-white text-journey-navy text-[18px] h-[60px] flex items-center justify-center hover:bg-journey-purple transition"
               >
                 Continue Walking
               </Link>
@@ -553,7 +473,8 @@ function ChatPage() {
               </Link>
             </motion.div>
           ) : (
-            <div className="flex items-center gap-2 h-[56px] rounded-[28px] bg-white/60 backdrop-blur-md border-2 border-white px-5 shadow-sm">
+            // Glass morphic input pill — 시스템 통일 (nav/버튼 스타일)
+            <div className="flex items-center gap-2 h-[56px] rounded-[28px] bg-white/40 backdrop-blur-md border border-white/50 px-5 shadow-sm">
               <input
                 ref={inputRef}
                 type="text"
@@ -564,13 +485,13 @@ function ChatPage() {
                 onBlur={() => setInputFocused(false)}
                 disabled={streaming}
                 placeholder={streaming ? "sísí is thinking..." : "Write here..."}
-                className="font-sentient flex-1 bg-transparent text-[16px] text-journey-navy placeholder:text-journey-navy/40 outline-none disabled:opacity-50"
+                className="font-sentient flex-1 bg-transparent text-[16px] text-journey-navy placeholder:text-journey-navy/45 outline-none disabled:opacity-50"
               />
               <button
                 onClick={sendReply}
                 disabled={!draftInput.trim() || streaming}
                 aria-label="send"
-                className="relative z-10 shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-white text-journey-navy shadow-md ring-1 ring-black/5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="relative z-10 shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md border border-white/60 text-journey-navy shadow-md hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-50 transition"
               >
                 <svg
                   width="16"
