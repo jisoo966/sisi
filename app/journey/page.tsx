@@ -8,6 +8,7 @@ import { JourneyScene } from "@/components/sisi/JourneyScene";
 import { BottomNav } from "@/components/sisi/BottomNav";
 import { MenuSheet } from "@/components/sisi/MenuSheet";
 import { PostcardOptionsSheet } from "@/components/sisi/PostcardOptionsSheet";
+import { GuestLoginNudge } from "@/components/sisi/GuestLoginNudge";
 import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 import { useVideoLuminance } from "@/lib/useVideoLuminance";
 import { createClient } from "@/lib/supabase/client";
@@ -137,8 +138,22 @@ export default function JourneyPage() {
   const [name, setName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
+  const [nudgeOpen, setNudgeOpen] = useState(false);
+  const [hasNudge, setHasNudge] = useState(false); // bell dot badge
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
   const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
+
+  // Bell badge — 게스트 & nudge를 최소 한 번 봤으면 계속 badge (재열기 가능).
+  // 로그인 유저는 badge 없음.
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) return; // logged-in: no nudge
+      const seen = localStorage.getItem("sisi:guest-nudge-seen") === "true";
+      setHasNudge(seen);
+    })();
+  }, []);
   const greeting = getGreeting();
   const dateStr = formatDate();
 
@@ -242,10 +257,11 @@ export default function JourneyPage() {
           </div>
 
           <div className="flex items-center gap-2 mt-1">
-            {/* Notifications */}
+            {/* Notifications — 게스트 nudge를 봤으면 dot badge로 계속 접근 가능 */}
             <button
+              onClick={() => setNudgeOpen(true)}
               aria-label="Notifications"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
             >
               <svg
                 width="14"
@@ -260,6 +276,9 @@ export default function JourneyPage() {
                 <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
                 <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
               </svg>
+              {hasNudge && (
+                <span className="absolute top-[6px] right-[7px] h-[7px] w-[7px] rounded-full bg-[#B19CD9] border border-white" />
+              )}
             </button>
 
             {/* Menu (hamburger) — profile + settings + logout */}
@@ -324,6 +343,12 @@ export default function JourneyPage() {
       <PostcardOptionsSheet
         open={postcardSheetOpen}
         onClose={() => setPostcardSheetOpen(false)}
+      />
+
+      {/* Guest login nudge — bell 아이콘에서 접근 (dot badge). Dismiss해도 사라지지 않음. */}
+      <GuestLoginNudge
+        open={nudgeOpen}
+        onClose={() => setNudgeOpen(false)}
       />
 
       {/* Angel message — 오늘의 편지 (안 읽었을 때만) */}

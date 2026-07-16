@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatBubble, ChoiceButton } from "@/components/sisi/ChatBubble";
+import { GuestLoginNudge } from "@/components/sisi/GuestLoginNudge";
+import { createClient } from "@/lib/supabase/client";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +89,11 @@ function useClientTime(): string {
   return time;
 }
 
+// Guest nudge — 게스트 메시지 5개 이상 & nudge 아직 안 봤으면 자동 open
+const GUEST_MSG_COUNT_KEY = "sisi:guest-msg-count";
+const GUEST_NUDGE_SEEN_KEY = "sisi:guest-nudge-seen";
+const GUEST_NUDGE_THRESHOLD = 5;
+
 export default function MessagesPage() {
   const [mode, setMode] = useState<Mode>("opening");
   const [step, setStep] = useState<Step>("chatting");
@@ -94,10 +101,32 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
+  // 배경 높이 — visualViewport.height 기반으로 키보드 열려도 실제 visible 영역에 맞춤
+  const [bgHeight, setBgHeight] = useState<string>("100svh");
+  // Guest login nudge
+  const [showNudge, setShowNudge] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const time = useClientTime();
+
+  // visualViewport 추적 — iOS Safari에서 키보드가 열리면 visualViewport.height가
+  // 실제 visible 영역만큼 줄어듦. 이 값으로 배경 컨테이너 높이 셋팅하면
+  // 배경이 항상 visible 뷰포트 안에서 bottom 정렬됨. 배경 안 밀려올라감.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    function update() {
+      setBgHeight(`${vv!.height}px`);
+    }
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -120,6 +149,28 @@ export default function MessagesPage() {
     const input = draftInput.trim();
     if (!input || streaming) return;
     if (mode === "opening") enterChatMode();
+
+    // Guest nudge — 로그인 안 한 유저면 메시지 카운터 증가 + threshold 넘으면 nudge open.
+    // Nudge는 세션당 한 번만 (자동 open). 사용자가 "maybe later" 후엔 bell로만 접근.
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const count = parseInt(
+          localStorage.getItem(GUEST_MSG_COUNT_KEY) ?? "0",
+          10,
+        ) + 1;
+        localStorage.setItem(GUEST_MSG_COUNT_KEY, String(count));
+
+        const seen = localStorage.getItem(GUEST_NUDGE_SEEN_KEY) === "true";
+        if (count >= GUEST_NUDGE_THRESHOLD && !seen) {
+          // 메시지 몇 개 주고받은 뒤에 등장 (덜 갑작스러움)
+          setTimeout(() => setShowNudge(true), 2400);
+        }
+      }
+    } catch {
+      // Supabase 실패해도 대화는 계속 진행
+    }
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -265,11 +316,14 @@ export default function MessagesPage() {
 
   return (
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* 배경 2개 crossfade — fixed로 뷰포트/phone-frame에 붙여둠.
-          iOS Safari 키보드 열릴 때 페이지가 위로 스크롤돼도 배경은 안 움직임.
-          데스크탑(>=500px)에선 phone-frame에 transform이 있어서 fixed도
-          phone-frame 안에 갇힘 → 그대로 430px 프레임 안에서 fixed. */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      {/* 배경 2개 crossfade — visualViewport height로 강제 anchor.
+          iOS Safari 키보드 열릴 때 visualViewport.height가 실제 visible area
+          기준으로 줄어듦 → 배경 컨테이너도 그만큼 줄어들어서 항상 visible 뷰포트 안에 유지.
+          object-bottom으로 산/풀 부분이 항상 아래에 붙어있음. */}
+      <div
+        className="fixed left-0 right-0 top-0 z-0 pointer-events-none overflow-hidden"
+        style={{ height: bgHeight }}
+      >
         <motion.div
           animate={{ opacity: mode === "opening" ? 1 : 0 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
@@ -289,7 +343,7 @@ export default function MessagesPage() {
               fill
               priority
               sizes="100vw"
-              className="object-cover"
+              className="object-cover object-bottom"
             />
           </div>
         </motion.div>
@@ -304,7 +358,7 @@ export default function MessagesPage() {
             fill
             priority
             sizes="100vw"
-            className="object-cover"
+            className="object-cover object-bottom"
           />
         </motion.div>
       </div>
@@ -531,6 +585,15 @@ export default function MessagesPage() {
           )}
         </footer>
       </div>
+
+      {/* Guest login nudge — 5개 메시지 후 자동 open */}
+      <GuestLoginNudge
+        open={showNudge}
+        onClose={() => {
+          setShowNudge(false);
+          localStorage.setItem(GUEST_NUDGE_SEEN_KEY, "true");
+        }}
+      />
     </main>
   );
 }
