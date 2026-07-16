@@ -55,19 +55,20 @@ export default function SplashPage() {
           inner companion
         </motion.p>
 
-        {/* Subtle tap hint — 처음 몇 초만 잔잔히 pulse */}
+        {/* Subtle tap hint — 잔잔한 호흡 (opacity 0.55 ↔ 0.95).
+            Lowercase로 sísí voice 유지. */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.35, 0] }}
+          animate={{ opacity: [0.55, 0.95, 0.55] }}
           transition={{
-            duration: 3,
+            duration: 3.2,
             repeat: Infinity,
-            delay: 2,
+            delay: 1.2,
             ease: "easeInOut",
           }}
-          className="absolute bottom-[40px] left-1/2 -translate-x-1/2 font-sentient text-[11px] tracking-[0.3em] text-journey-navy/60"
+          className="absolute bottom-[42px] left-1/2 -translate-x-1/2 font-sentient text-[13px] tracking-[0.15em] text-journey-navy"
         >
-          TAP TO BEGIN
+          tap to begin
         </motion.div>
       </Link>
     </main>

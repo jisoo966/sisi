@@ -204,10 +204,10 @@ function OptionsView({
       {/* Header */}
       <div className="text-center mt-[6px] mb-[24px]">
         <p className="font-sentient text-[22px] text-journey-navy leading-tight">
-          make a postcard
+          keep a moment
         </p>
         <p className="font-sentient italic text-[13px] text-journey-navy/60 mt-[6px]">
-          what stayed with you?
+          choose how you&apos;d like to save it.
         </p>
       </div>
 
@@ -221,14 +221,14 @@ function OptionsView({
         />
         <OptionCard
           icon={<GalleryIcon />}
-          title="choose from gallery"
+          title="choose from library"
           subtitle="something from before"
           onClick={onChooseGallery}
         />
         <OptionCard
           icon={<SparkIcon />}
-          title="keep this walk"
-          subtitle="today's scene with sísí"
+          title="keep this journey scene"
+          subtitle="today's walk with sísí"
           onClick={onKeepWalk}
         />
       </div>
