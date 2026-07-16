@@ -101,32 +101,12 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
-  // 배경 높이 — visualViewport.height 기반으로 키보드 열려도 실제 visible 영역에 맞춤
-  const [bgHeight, setBgHeight] = useState<string>("100svh");
   // Guest login nudge
   const [showNudge, setShowNudge] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const time = useClientTime();
-
-  // visualViewport 추적 — iOS Safari에서 키보드가 열리면 visualViewport.height가
-  // 실제 visible 영역만큼 줄어듦. 이 값으로 배경 컨테이너 높이 셋팅하면
-  // 배경이 항상 visible 뷰포트 안에서 bottom 정렬됨. 배경 안 밀려올라감.
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-    const vv = window.visualViewport;
-    function update() {
-      setBgHeight(`${vv!.height}px`);
-    }
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -316,14 +296,11 @@ export default function MessagesPage() {
 
   return (
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* 배경 2개 crossfade — visualViewport height로 강제 anchor.
-          iOS Safari 키보드 열릴 때 visualViewport.height가 실제 visible area
-          기준으로 줄어듦 → 배경 컨테이너도 그만큼 줄어들어서 항상 visible 뷰포트 안에 유지.
-          object-bottom으로 산/풀 부분이 항상 아래에 붙어있음. */}
-      <div
-        className="fixed left-0 right-0 top-0 z-0 pointer-events-none overflow-hidden"
-        style={{ height: bgHeight }}
-      >
+      {/* 배경 2개 crossfade — fixed inset-0으로 뷰포트에 딱 붙여둠.
+          object-bottom으로 이미지의 산/풀 (아래쪽) 이 항상 화면 아래에 위치.
+          키보드가 열리면 이미지 하단은 키보드 뒤로 가리지만 (fixed는 layout viewport 기준),
+          유저는 화면 중앙의 fox+mountains를 계속 봄. */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <motion.div
           animate={{ opacity: mode === "opening" ? 1 : 0 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
