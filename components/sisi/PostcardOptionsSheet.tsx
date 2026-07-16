@@ -3,23 +3,19 @@
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { savePostcard } from "@/lib/postcards";
 
 /**
- * PostcardOptionsSheet — 3-way postcard creation flow.
+ * PostcardOptionsSheet — postcard 저장 방식 선택 bottom sheet.
  *
- * Journey home의 "Make a postcard" FAB이 열음. 3가지 방식:
- *   1. Take a photo          — 폰 카메라 즉시 (real photo journaling)
- *   2. Choose from gallery   — 폰 갤러리 (past moments)
- *   3. Keep this walk        — 기존 fox scene 캡쳐 (sísí 세계관 유지)
+ * 2가지 옵션:
+ *   1. Add a photo         — 폰 카메라/라이브러리 (iOS native picker가 알아서 처리)
+ *   2. Keep this journey scene — 기존 fox scene 캡쳐 (sísí 세계관 유지)
  *
- * Phases:
- *   - options   → 3개 옵션 노출
- *   - preview   → 유저 사진 선택 후 미리보기 + optional caption
- *   - uploading → 저장 중 spinner
+ * Sheet는 옵션만 담당. 사진 선택 후엔 sessionStorage에 저장하고
+ * /moment/write full-page로 이동 (몰입감 있는 reflection 공간).
  */
 
-type Phase = "options" | "preview" | "uploading";
+const PENDING_KEY = "sisi:pending-postcard";
 
 export function PostcardOptionsSheet({
   open,
@@ -29,45 +25,52 @@ export function PostcardOptionsSheet({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>("options");
-  const [photoDataURL, setPhotoDataURL] = useState<string | null>(null);
-  const [photoDims, setPhotoDims] = useState<{ w: number; h: number } | null>(
-    null,
-  );
-  const [caption, setCaption] = useState("");
   const [error, setError] = useState("");
+  const [processing, setProcessing] = useState(false);
 
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-
-  function reset() {
-    setPhase("options");
-    setPhotoDataURL(null);
-    setPhotoDims(null);
-    setCaption("");
-    setError("");
-  }
+  // 하나의 file input — iOS Safari가 native picker로 카메라/라이브러리/파일 다 보여줌.
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   function handleClose() {
-    reset();
+    setError("");
+    setProcessing(false);
     onClose();
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setProcessing(true);
+    setError("");
 
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataURL = reader.result as string;
-      // 이미지 사이즈 계산 (postcard 저장 시 width/height 필요)
-      const img = new window.Image();
-      img.onload = () => {
-        setPhotoDataURL(dataURL);
-        setPhotoDims({ w: img.width, h: img.height });
-        setPhase("preview");
-      };
-      img.src = dataURL;
+    reader.onload = async () => {
+      const rawDataURL = reader.result as string;
+      // 원본 로드 → canvas로 max 1200px 리사이즈 + JPEG q0.85 압축.
+      // (localStorage 5MB 한계 + Supabase 업로드 속도)
+      try {
+        const compressed = await compressImage(rawDataURL, 1200, 0.85);
+        // sessionStorage에 임시 저장하고 write page로 이동
+        // URL로 dataURL 넘길 수 없어서 sessionStorage 사용
+        sessionStorage.setItem(
+          PENDING_KEY,
+          JSON.stringify({
+            dataURL: compressed.dataURL,
+            width: compressed.width,
+            height: compressed.height,
+          }),
+        );
+        handleClose();
+        router.push("/moment/write");
+      } catch (err) {
+        console.error("image compression failed:", err);
+        setError("couldn't load photo. try another?");
+        setProcessing(false);
+      }
+    };
+    reader.onerror = () => {
+      setError("couldn't read file. try again?");
+      setProcessing(false);
     };
     reader.readAsDataURL(file);
 
@@ -75,42 +78,45 @@ export function PostcardOptionsSheet({
     e.target.value = "";
   }
 
-  async function handleSave() {
-    if (!photoDataURL || !photoDims) return;
-    setPhase("uploading");
-    setError("");
+  /**
+   * Canvas로 이미지 리사이즈 + JPEG 압축.
+   * 폰 사진 5MB → 200-500KB.
+   */
+  async function compressImage(
+    dataURL: string,
+    maxDim: number,
+    quality: number,
+  ): Promise<{ dataURL: string; width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const { width: srcW, height: srcH } = img;
+        const scale = Math.min(1, maxDim / Math.max(srcW, srcH));
+        const w = Math.round(srcW * scale);
+        const h = Math.round(srcH * scale);
 
-    try {
-      await savePostcard({
-        text: caption.trim(),
-        imageDataURL: photoDataURL,
-        width: photoDims.w,
-        height: photoDims.h,
-        takenAt: new Date().toISOString(),
-      });
-      // 저장 완료 화면으로
-      handleClose();
-      router.push("/postcard/saved");
-    } catch (err) {
-      console.error("Save postcard failed:", err);
-      setError("save failed. try again?");
-      setPhase("preview");
-    }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("canvas 2d context unavailable"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL("image/jpeg", quality);
+        resolve({ dataURL: out, width: w, height: h });
+      };
+      img.onerror = () => reject(new Error("image load failed"));
+      img.src = dataURL;
+    });
   }
 
   return (
     <>
-      {/* Hidden file inputs — 옵션 클릭 시 trigger */}
+      {/* Single hidden file input — iOS는 이걸로 카메라/라이브러리/파일 선택 시트 자동 표시 */}
       <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleFileSelect}
-      />
-      <input
-        ref={galleryInputRef}
+        ref={photoInputRef}
         type="file"
         accept="image/*"
         className="hidden"
@@ -137,230 +143,69 @@ export function PostcardOptionsSheet({
               exit={{ y: "100%" }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] bg-[#f7f2e3] shadow-2xl"
-              style={{ maxHeight: "88svh" }}
             >
               {/* Drag handle */}
               <div className="flex justify-center pt-[10px] pb-[6px]">
                 <div className="h-[4px] w-[42px] rounded-full bg-journey-navy/20" />
               </div>
 
-              <AnimatePresence mode="wait">
-                {phase === "options" && (
-                  <OptionsView
-                    key="options"
-                    onTakePhoto={() => cameraInputRef.current?.click()}
-                    onChooseGallery={() => galleryInputRef.current?.click()}
-                    onKeepWalk={() => {
+              <div className="px-[24px] pb-[28px]">
+                {/* Header */}
+                <div className="text-center mt-[6px] mb-[24px]">
+                  <p className="font-sentient text-[22px] text-journey-navy leading-tight">
+                    keep a moment
+                  </p>
+                  <p className="font-sentient italic text-[13px] text-journey-navy/60 mt-[6px]">
+                    choose how you&apos;d like to save it.
+                  </p>
+                </div>
+
+                {/* 2 options — iOS native picker가 camera/library/files 3선택 자동 제공 */}
+                <div className="flex flex-col gap-[10px]">
+                  <OptionCard
+                    icon={<CameraIcon />}
+                    title="add a photo"
+                    subtitle="from your camera or library"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={processing}
+                  />
+                  <OptionCard
+                    icon={<SparkIcon />}
+                    title="keep this journey scene"
+                    subtitle="today's walk with sísí"
+                    onClick={() => {
                       handleClose();
                       router.push("/moment");
                     }}
-                    onCancel={handleClose}
+                    disabled={processing}
                   />
+                </div>
+
+                {error && (
+                  <p className="mt-4 font-sentient italic text-[13px] text-journey-oxblood text-center">
+                    {error}
+                  </p>
                 )}
-                {phase === "preview" && photoDataURL && (
-                  <PreviewView
-                    key="preview"
-                    photoDataURL={photoDataURL}
-                    caption={caption}
-                    onCaptionChange={setCaption}
-                    onBack={() => setPhase("options")}
-                    onSave={handleSave}
-                    error={error}
-                  />
+
+                {processing && !error && (
+                  <p className="mt-4 font-sentient italic text-[13px] text-journey-navy/60 text-center">
+                    preparing your photo...
+                  </p>
                 )}
-                {phase === "uploading" && photoDataURL && (
-                  <UploadingView key="uploading" photoDataURL={photoDataURL} />
-                )}
-              </AnimatePresence>
+
+                {/* Cancel */}
+                <button
+                  onClick={handleClose}
+                  className="w-full mt-[16px] py-[14px] font-sentient text-[14px] text-journey-navy/50"
+                >
+                  cancel
+                </button>
+              </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-/* ─── Phase views ────────────────────────────────────── */
-
-function OptionsView({
-  onTakePhoto,
-  onChooseGallery,
-  onKeepWalk,
-  onCancel,
-}: {
-  onTakePhoto: () => void;
-  onChooseGallery: () => void;
-  onKeepWalk: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="px-[24px] pb-[28px]"
-    >
-      {/* Header */}
-      <div className="text-center mt-[6px] mb-[24px]">
-        <p className="font-sentient text-[22px] text-journey-navy leading-tight">
-          keep a moment
-        </p>
-        <p className="font-sentient italic text-[13px] text-journey-navy/60 mt-[6px]">
-          choose how you&apos;d like to save it.
-        </p>
-      </div>
-
-      {/* 3 options */}
-      <div className="flex flex-col gap-[10px]">
-        <OptionCard
-          icon={<CameraIcon />}
-          title="take a photo"
-          subtitle="capture this moment"
-          onClick={onTakePhoto}
-        />
-        <OptionCard
-          icon={<GalleryIcon />}
-          title="choose from library"
-          subtitle="something from before"
-          onClick={onChooseGallery}
-        />
-        <OptionCard
-          icon={<SparkIcon />}
-          title="keep this journey scene"
-          subtitle="today's walk with sísí"
-          onClick={onKeepWalk}
-        />
-      </div>
-
-      {/* Cancel */}
-      <button
-        onClick={onCancel}
-        className="w-full mt-[16px] py-[14px] font-sentient text-[14px] text-journey-navy/50"
-      >
-        cancel
-      </button>
-    </motion.div>
-  );
-}
-
-function PreviewView({
-  photoDataURL,
-  caption,
-  onCaptionChange,
-  onBack,
-  onSave,
-  error,
-}: {
-  photoDataURL: string;
-  caption: string;
-  onCaptionChange: (v: string) => void;
-  onBack: () => void;
-  onSave: () => void;
-  error: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="px-[24px] pb-[28px]"
-    >
-      {/* Header — back + title */}
-      <div className="flex items-center justify-between mb-[16px]">
-        <button
-          onClick={onBack}
-          aria-label="back"
-          className="h-9 w-9 flex items-center justify-center rounded-full bg-journey-navy/8 text-journey-navy/70 hover:bg-journey-navy/15 transition"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-        <p className="font-sentient text-[15px] text-journey-navy">preview</p>
-        <span className="w-9" />
-      </div>
-
-      {/* Photo preview — polaroid style */}
-      <div className="relative w-full max-w-[280px] mx-auto mb-[18px]">
-        <div className="bg-white rounded-[8px] p-[8px] pb-[12px] shadow-lg">
-          <div className="relative rounded-[4px] overflow-hidden aspect-square bg-journey-navy/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoDataURL}
-              alt="preview"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Caption */}
-      <textarea
-        value={caption}
-        onChange={(e) => onCaptionChange(e.target.value.slice(0, 200))}
-        placeholder="what stayed with you here?"
-        rows={2}
-        className="font-sentient w-full bg-transparent border-b border-journey-navy/20 focus:border-journey-navy/60 outline-none py-2 text-[15px] text-journey-navy placeholder:text-journey-navy/40 resize-none leading-snug transition-colors"
-      />
-      <p className="text-[10px] font-mono text-journey-navy/40 text-right mt-1">
-        {caption.length}/200
-      </p>
-
-      {error && (
-        <p className="mt-2 font-sentient italic text-[12px] text-journey-oxblood text-center">
-          {error}
-        </p>
-      )}
-
-      {/* Save button */}
-      <button
-        onClick={onSave}
-        className="w-full mt-[18px] h-[52px] rounded-full bg-journey-purple text-journey-navy font-sentient text-[15px] shadow-lg hover:brightness-105 active:scale-98 transition-all"
-      >
-        keep this postcard ✦
-      </button>
-    </motion.div>
-  );
-}
-
-function UploadingView({ photoDataURL }: { photoDataURL: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="px-[24px] pb-[36px]"
-    >
-      <div className="relative w-full max-w-[220px] mx-auto mb-[24px]">
-        <div className="bg-white rounded-[8px] p-[8px] pb-[12px] shadow-lg opacity-60">
-          <div className="relative rounded-[4px] overflow-hidden aspect-square bg-journey-navy/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photoDataURL} alt="" className="w-full h-full object-cover" />
-          </div>
-        </div>
-      </div>
-      <p className="font-sentient italic text-[15px] text-journey-navy/70 text-center">
-        saving your postcard...
-      </p>
-      <div className="flex justify-center gap-1 mt-3">
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut",
-            }}
-            className="inline-block h-[5px] w-[5px] rounded-full bg-journey-navy/60"
-          />
-        ))}
-      </div>
-    </motion.div>
   );
 }
 
@@ -371,28 +216,43 @@ function OptionCard({
   title,
   subtitle,
   onClick,
+  disabled,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-[16px] w-full p-[16px] rounded-[16px] bg-white/60 border border-journey-navy/8 hover:bg-white active:scale-98 transition text-left"
+      disabled={disabled}
+      className="flex items-center gap-[14px] w-full py-[18px] px-[18px] rounded-[16px] bg-white/70 hover:bg-white active:scale-98 transition text-left disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <div className="shrink-0 h-[42px] w-[42px] flex items-center justify-center rounded-full bg-journey-purple/25 text-journey-navy">
-        {icon}
-      </div>
+      <div className="shrink-0 text-journey-navy/70">{icon}</div>
       <div className="flex-1">
         <p className="font-sentient text-[16px] text-journey-navy leading-tight">
           {title}
         </p>
-        <p className="font-sentient italic text-[12px] text-journey-navy/55 mt-[2px]">
+        <p className="font-sentient italic text-[12px] text-journey-navy/55 mt-[3px]">
           {subtitle}
         </p>
       </div>
+      {/* Chevron for affordance */}
+      <svg
+        className="shrink-0 text-journey-navy/35"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="9 6 15 12 9 18" />
+      </svg>
     </button>
   );
 }
@@ -404,16 +264,6 @@ function CameraIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
       <circle cx="12" cy="13" r="4" />
-    </svg>
-  );
-}
-
-function GalleryIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="9" cy="9" r="2" />
-      <path d="M21 15l-5-5L5 21" />
     </svg>
   );
 }
@@ -435,4 +285,3 @@ function SparkIcon() {
     </svg>
   );
 }
-
