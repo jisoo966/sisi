@@ -15,17 +15,37 @@ export const dynamic = "force-dynamic";
  *   캡쳐한 순간들 grid. Tap → 1b lift & expand full-screen.
  *   Stars는 /my-stars에서 관리 (중복 제거).
  */
+type View = "timeline" | "grid";
+const VIEW_KEY = "sisi:gallery-view";
+
 export default function GalleryPage() {
   const [postcards, setPostcards] = useState<Postcard[]>([]);
   const [loaded, setLoaded] = useState(false); // 로딩 전엔 empty state 안 보여줌
   const [selectedPostcard, setSelectedPostcard] = useState<Postcard | null>(null);
+  const [view, setView] = useState<View>("timeline"); // Timeline default (저널링 감성)
 
   useEffect(() => {
     loadPostcards().then((data) => {
       setPostcards(data);
       setLoaded(true);
     });
+    // Persisted view preference
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "grid" || saved === "timeline") setView(saved);
+    } catch {
+      // ignore
+    }
   }, []);
+
+  function handleViewChange(v: View) {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // ignore
+    }
+  }
 
   const isDetailOpen = selectedPostcard !== null;
 
@@ -43,21 +63,35 @@ export default function GalleryPage() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative z-10 flex min-h-svh flex-col pt-[52px] px-[24px] pb-[100px]"
       >
-        {/* Header — 탭 페이지: back 없음. title + counter만 */}
+        {/* Header — 탭 페이지: back 없음. title + view toggle */}
         <header className="flex items-baseline justify-between mb-1">
           <h1 className="font-sentient text-[22px] text-journey-navy/95">
             Postcards
           </h1>
-          <p className="font-sentient text-[13px] text-journey-navy/50 italic">
-            {postcards.length} collected
-          </p>
+          <ViewToggle view={view} onChange={handleViewChange} />
         </header>
         <p className="font-sentient text-[13px] text-journey-navy/60 italic mb-6">
-          moments you&apos;ve kept
+          {postcards.length > 0
+            ? `${postcards.length} moment${postcards.length === 1 ? "" : "s"} you've kept`
+            : "moments you've kept"}
         </p>
 
-        {/* Grid + new memory CTA — 로딩 전엔 empty state 안 flash */}
-        {loaded && (
+        {/* Content view — timeline (default, 저널) OR grid (시각적 브라우징) */}
+        {loaded && postcards.length === 0 && (
+          <EmptyState
+            text="No postcards yet"
+            subtext="Capture a moment on your journey"
+            cta="+ new memory"
+            href="/moment"
+          />
+        )}
+        {loaded && postcards.length > 0 && view === "timeline" && (
+          <PostcardsTimeline
+            postcards={postcards}
+            onSelect={setSelectedPostcard}
+          />
+        )}
+        {loaded && postcards.length > 0 && view === "grid" && (
           <PostcardsGrid postcards={postcards} onSelect={setSelectedPostcard} />
         )}
       </motion.div>
@@ -84,6 +118,87 @@ export default function GalleryPage() {
   );
 }
 
+/* ─── View Toggle ─────────────────────────────────────── */
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: View;
+  onChange: (v: View) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 bg-white/60 backdrop-blur-md rounded-full p-[3px] border border-journey-navy/8">
+      <ToggleButton
+        active={view === "timeline"}
+        onClick={() => onChange("timeline")}
+        label="Timeline view"
+      >
+        <TimelineIcon />
+      </ToggleButton>
+      <ToggleButton
+        active={view === "grid"}
+        onClick={() => onChange("grid")}
+        label="Grid view"
+      >
+        <GridIcon />
+      </ToggleButton>
+    </div>
+  );
+}
+
+function ToggleButton({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={`h-[28px] w-[32px] flex items-center justify-center rounded-full transition ${
+        active
+          ? "bg-white text-journey-navy shadow-sm"
+          : "text-journey-navy/50 hover:text-journey-navy/80"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TimelineIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <circle cx="4" cy="6" r="1" fill="currentColor" />
+      <circle cx="4" cy="12" r="1" fill="currentColor" />
+      <circle cx="4" cy="18" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+/* ─── Grid view ───────────────────────────────────────── */
+
 function PostcardsGrid({
   postcards,
   onSelect,
@@ -91,16 +206,6 @@ function PostcardsGrid({
   postcards: Postcard[];
   onSelect: (p: Postcard) => void;
 }) {
-  if (postcards.length === 0) {
-    return (
-      <EmptyState
-        text="No postcards yet"
-        subtext="Capture a moment on your journey"
-        cta="+ new memory"
-        href="/moment"
-      />
-    );
-  }
   return (
     <>
       <div className="grid grid-cols-2 gap-3 mb-6">
@@ -142,6 +247,159 @@ function PostcardsGrid({
       </Link>
     </>
   );
+}
+
+/* ─── Timeline view ───────────────────────────────────── */
+
+/**
+ * Date-grouped 저널 스타일 timeline.
+ *   - 날짜 헤더 (May 22, 2026)
+ *   - 각 entry: 작은 thumbnail + 시간 + 텍스트 snippet + heart placeholder
+ *   - Tap → full detail
+ */
+function PostcardsTimeline({
+  postcards,
+  onSelect,
+}: {
+  postcards: Postcard[];
+  onSelect: (p: Postcard) => void;
+}) {
+  // Group by date (YYYY-MM-DD) → 각 그룹 안은 최신 시간 위
+  const grouped = groupByDate(postcards);
+
+  return (
+    <div className="flex flex-col gap-[24px] mb-6">
+      {grouped.map(({ dateLabel, items }) => (
+        <div key={dateLabel}>
+          {/* Date header */}
+          <div className="flex items-center gap-[8px] mb-[12px]">
+            <div className="h-[6px] w-[6px] rounded-full bg-journey-purple" />
+            <p className="font-sentient text-[13px] text-journey-navy/70 tracking-wider">
+              {dateLabel}
+            </p>
+          </div>
+
+          {/* Entries in this date */}
+          <div className="flex flex-col gap-[10px] pl-[14px]">
+            {items.map((p, i) => (
+              <TimelineEntry
+                key={p.id}
+                postcard={p}
+                onClick={() => onSelect(p)}
+                delay={i * 0.04}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* + new memory CTA (bottom) */}
+      <Link
+        href="/moment"
+        className="font-sentient block w-full text-center rounded-[24px] bg-journey-purple/80 backdrop-blur-md text-journey-navy text-[16px] h-[54px] flex items-center justify-center shadow-md hover:brightness-105 active:scale-98 transition mt-[8px]"
+      >
+        + new memory
+      </Link>
+    </div>
+  );
+}
+
+function TimelineEntry({
+  postcard,
+  onClick,
+  delay,
+}: {
+  postcard: Postcard;
+  onClick: () => void;
+  delay: number;
+}) {
+  const time = formatTime(postcard.createdAt);
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay }}
+      onClick={onClick}
+      className="flex items-start gap-[12px] w-full text-left p-[10px] rounded-[14px] bg-white/60 hover:bg-white active:scale-98 transition"
+    >
+      {/* Thumbnail — 작은 square */}
+      <div className="shrink-0 w-[64px] h-[64px] rounded-[8px] overflow-hidden bg-journey-cream relative">
+        {postcard.image.startsWith("data:") ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={postcard.image}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Image
+            src={postcard.image}
+            alt=""
+            fill
+            sizes="64px"
+            className="object-cover"
+          />
+        )}
+      </div>
+
+      {/* Time + text snippet */}
+      <div className="flex-1 min-w-0 pt-[2px]">
+        <p className="font-sentient text-[11px] text-journey-navy/50 tracking-wider mb-[4px]">
+          {time}
+        </p>
+        {postcard.text ? (
+          <p className="font-sentient text-[14px] text-journey-navy/90 leading-snug line-clamp-3">
+            {postcard.text}
+          </p>
+        ) : (
+          <p className="font-sentient italic text-[13px] text-journey-navy/50">
+            a moment kept in silence
+          </p>
+        )}
+      </div>
+    </motion.button>
+  );
+}
+
+/** postcards → 날짜별 그룹 (최신 날짜 위) */
+function groupByDate(postcards: Postcard[]): {
+  dateLabel: string;
+  items: Postcard[];
+}[] {
+  const map = new Map<string, Postcard[]>();
+  for (const p of postcards) {
+    const d = new Date(p.createdAt);
+    // YYYY-MM-DD 로 그룹 key (locale-agnostic)
+    const key = d.toISOString().slice(0, 10);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  // Key 최신 순 정렬 (내림차순)
+  const keys = Array.from(map.keys()).sort().reverse();
+  return keys.map((key) => ({
+    dateLabel: formatDateLabel(key),
+    items: map.get(key)!,
+  }));
+}
+
+/** "2026-05-22" → "May 22, 2026" */
+function formatDateLabel(isoDate: string): string {
+  const d = new Date(isoDate + "T00:00:00");
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** ISO → "7:24 PM" */
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  let h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${ampm}`;
 }
 
 /**
