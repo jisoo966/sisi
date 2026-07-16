@@ -7,6 +7,7 @@ import { WalkingFoxRear } from "@/components/sisi/WalkingFoxRear";
 import { JourneyScene } from "@/components/sisi/JourneyScene";
 import { BottomNav } from "@/components/sisi/BottomNav";
 import { MenuSheet } from "@/components/sisi/MenuSheet";
+import { PostcardOptionsSheet } from "@/components/sisi/PostcardOptionsSheet";
 import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 import { useVideoLuminance } from "@/lib/useVideoLuminance";
 import { createClient } from "@/lib/supabase/client";
@@ -135,6 +136,7 @@ export default function JourneyPage() {
   // Profile에서 사용자 이름 가져옴 (없으면 fallback "you")
   const [name, setName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
   const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
   const greeting = getGreeting();
@@ -286,11 +288,12 @@ export default function JourneyPage() {
         <div className="flex-1" />
       </div>
 
-      {/* Camera FAB — nav 위로 딱 (my-stars의 + 버튼과 같은 높이) */}
-      <Link
-        href="/moment"
-        aria-label="Capture this moment"
-        className="absolute bottom-[110px] right-[24px] z-30 flex h-[51px] w-[51px] items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-journey-navy shadow-lg hover:bg-white/60 active:scale-95 transition"
+      {/* Postcard FAB — 3-way sheet 열음 (take photo / gallery / keep this walk).
+          아이콘: 폴라로이드 카드 + 우표. "make a postcard" 개념 명확 전달. */}
+      <button
+        onClick={() => setPostcardSheetOpen(true)}
+        aria-label="Make a postcard"
+        className="fixed bottom-[95px] right-[24px] z-30 flex h-[51px] w-[51px] items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-journey-navy shadow-lg hover:bg-white/60 active:scale-95 transition"
       >
         <svg
           width="22"
@@ -299,17 +302,29 @@ export default function JourneyPage() {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-          <circle cx="12" cy="13" r="4" />
+          {/* Postcard rectangle */}
+          <rect x="3" y="5" width="18" height="14" rx="2" ry="2" />
+          {/* Note line */}
+          <line x1="6.5" y1="15" x2="12" y2="15" />
+          {/* Stamp corner */}
+          <rect x="15" y="8" width="4" height="4" rx="0.5" />
         </svg>
-      </Link>
+      </button>
 
       {/* Bottom nav — shared component */}
       <BottomNav theme="light" />
 
       {/* Menu sheet — profile · music · settings · logout */}
       <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      {/* Postcard creation sheet — take photo / gallery / keep this walk */}
+      <PostcardOptionsSheet
+        open={postcardSheetOpen}
+        onClose={() => setPostcardSheetOpen(false)}
+      />
 
       {/* Angel message — 오늘의 편지 (안 읽었을 때만) */}
       <AngelMessageCard
