@@ -658,18 +658,31 @@ function WishModal({
       transition={{ duration: 0.3 }}
       className="fixed inset-0 z-40 flex items-center justify-center px-[24px] bg-black/50 backdrop-blur-sm"
     >
+      {/* Dark theme modal — 별하늘과 매칭 (베이지 background 안 튀게).
+          my-stars의 밤 배경과 자연스럽게 연결. */}
       <motion.div
         initial={{ scale: 0.95, y: 10 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 10 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[340px] rounded-[16px] bg-[#f7f2e3] shadow-2xl p-[24px]"
+        className="w-full max-w-[340px] rounded-[24px] p-[24px]"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(35, 30, 75, 0.97) 0%, rgba(20, 17, 55, 0.98) 100%)",
+          border: "1px solid rgba(255, 236, 189, 0.14)",
+          boxShadow:
+            "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(177, 156, 217, 0.12)",
+        }}
       >
         <div className="flex items-center justify-between mb-[16px]">
-          <h3 className="font-sentient text-[13px] text-journey-navy tracking-widest uppercase">
+          <h3 className="font-sentient text-[13px] text-white/85 tracking-widest uppercase">
             Name a wish
           </h3>
-          <button onClick={onCancel} aria-label="close" className="text-journey-navy/60">
+          <button
+            onClick={onCancel}
+            aria-label="close"
+            className="text-white/60 hover:text-white/85 transition"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -683,13 +696,13 @@ function WishModal({
           placeholder="I want to..."
           rows={2}
           autoFocus
-          className="font-sentient w-full bg-transparent text-[18px] text-journey-navy placeholder:text-journey-navy/40 outline-none resize-none leading-snug border-b border-journey-navy/20 pb-2"
+          className="font-sentient w-full bg-transparent text-[18px] text-white placeholder:text-white/35 outline-none resize-none leading-snug border-b border-white/25 focus:border-white/50 pb-2 transition-colors"
         />
-        <p className="text-[11px] font-mono text-journey-navy/40 text-right mt-1">
+        <p className="text-[11px] font-mono text-white/35 text-right mt-1">
           {text.length}/80
         </p>
 
-        <p className="font-sentient text-[12px] text-journey-navy/70 tracking-widest uppercase mt-[16px] mb-[10px]">
+        <p className="font-sentient text-[12px] text-white/70 tracking-widest uppercase mt-[16px] mb-[10px]">
           By when?
         </p>
         <div className="grid grid-cols-2 gap-[8px]">
@@ -697,10 +710,10 @@ function WishModal({
             <button
               key={tf}
               onClick={() => setTimeframe(tf)}
-              className={`font-sentient text-[14px] rounded-[10px] h-[42px] transition ${
+              className={`font-sentient text-[14px] rounded-[12px] h-[42px] transition ${
                 timeframe === tf
-                  ? "bg-journey-navy text-white"
-                  : "bg-white/60 border border-journey-navy/15 text-journey-navy hover:bg-white/90"
+                  ? "bg-[#B19CD9]/90 text-journey-navy shadow-sm"
+                  : "bg-white/10 border border-white/20 text-white/80 hover:bg-white/15"
               }`}
             >
               {tf}
@@ -708,17 +721,17 @@ function WishModal({
           ))}
         </div>
 
-        <div className="flex items-center justify-between mt-[20px] pt-[12px] border-t border-journey-navy/10">
+        <div className="flex items-center justify-between mt-[20px] pt-[14px] border-t border-white/12">
           <button
             onClick={onCancel}
-            className="font-sentient text-[13px] text-journey-navy/60 tracking-widest uppercase"
+            className="font-sentient text-[13px] text-white/55 tracking-widest uppercase hover:text-white/80 transition"
           >
             Cancel
           </button>
           <button
             onClick={() => canSubmit && onCreate(text, timeframe!)}
             disabled={!canSubmit}
-            className="font-sentient text-[15px] rounded-[20px] bg-[#B19CD9] text-journey-navy px-[20px] h-[40px] disabled:opacity-40 transition"
+            className="font-sentient text-[15px] rounded-full bg-[#B19CD9]/90 backdrop-blur-md border border-white/25 text-journey-navy px-[22px] h-[42px] shadow-md disabled:opacity-40 hover:brightness-105 transition"
           >
             Send ✦
           </button>
