@@ -318,8 +318,11 @@ function ChatPage() {
 
   return (
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* Background — single scene. object-center (기본) 로 전 화면 사이즈에서
-          여우+풍경 균형있게. object-bottom은 데스크탑 phone-frame에서 위 잘림. */}
+      {/* Background — single scene.
+          이미지 786×1704 (aspect ratio ~0.46).
+          - 모바일 (aspect ratio 비슷): object-bottom 으로 산/풀 살려서 grounded feel
+          - 데스크탑 phone-frame (더 정사각형에 가까움): object-center 로 하늘 위주 크롭
+          이렇게 하면 두 곳 다 잘리지 않은 것처럼 보임. */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <Image
           src="/journey/ChatScreen2.png"
@@ -327,7 +330,7 @@ function ChatPage() {
           fill
           priority
           sizes="100vw"
-          className="object-cover"
+          className="object-cover object-bottom md:object-center"
         />
       </div>
 
