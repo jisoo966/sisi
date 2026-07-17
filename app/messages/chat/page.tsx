@@ -318,7 +318,8 @@ function ChatPage() {
 
   return (
     <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* Background — single scene (openingscreen 없어져서 crossfade 불필요) */}
+      {/* Background — single scene. object-center (기본) 로 전 화면 사이즈에서
+          여우+풍경 균형있게. object-bottom은 데스크탑 phone-frame에서 위 잘림. */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <Image
           src="/journey/ChatScreen2.png"
@@ -326,7 +327,7 @@ function ChatPage() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-bottom"
+          className="object-cover"
         />
       </div>
 
