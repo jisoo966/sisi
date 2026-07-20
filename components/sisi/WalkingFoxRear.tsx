@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useId } from "react";
 
 /**
@@ -33,17 +32,9 @@ export function WalkingFoxRear({
   const filterId = `fox-shadow-navy-${rawId.replace(/:/g, "")}`;
 
   return (
-    <motion.div
+    <div
       className={`relative pointer-events-none ${className}`}
       style={{ width: size, height: size }}
-      animate={{
-        y: [0, -2, 0],
-      }}
-      transition={{
-        duration: 5,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
     >
       {/* SVG filter: journey-navy #1F2A44 */}
       <svg
@@ -101,6 +92,6 @@ export function WalkingFoxRear({
           }
         }}
       />
-    </motion.div>
+    </div>
   );
 }

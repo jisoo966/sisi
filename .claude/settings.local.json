@@ -71,7 +71,9 @@
       "Bash(wait)",
       "Bash(echo \"started, pid $!\")",
       "mcp__plugin_supabase_supabase__search_docs",
-      "Bash(awk '{print $5, $9}')"
+      "Bash(awk '{print $5, $9}')",
+      "Read(//Users/jisoo/Library/Caches/ms-playwright/**)",
+      "Read(//Users/jisoo/**)"
     ]
   }
 }

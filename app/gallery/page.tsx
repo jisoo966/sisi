@@ -322,24 +322,27 @@ function TimelineEntry({
       onClick={onClick}
       className="flex items-start gap-[12px] w-full text-left p-[10px] rounded-[14px] bg-white/60 hover:bg-white active:scale-98 transition"
     >
-      {/* Thumbnail — 작은 square */}
-      <div className="shrink-0 w-[64px] h-[64px] rounded-[8px] overflow-hidden bg-journey-cream relative">
-        {postcard.image.startsWith("data:") ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={postcard.image}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <Image
-            src={postcard.image}
-            alt=""
-            fill
-            sizes="64px"
-            className="object-cover"
-          />
-        )}
+      {/* Polaroid-style thumbnail — 흰 프레임 + 아래 여백 + subtle shadow.
+          작은 폴라로이드 카드처럼 보이게. */}
+      <div className="shrink-0 bg-white rounded-[6px] p-[4px] pb-[10px] shadow-sm rotate-[-1.5deg]">
+        <div className="w-[56px] h-[56px] rounded-[3px] overflow-hidden bg-journey-cream relative">
+          {postcard.image.startsWith("data:") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={postcard.image}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Image
+              src={postcard.image}
+              alt=""
+              fill
+              sizes="56px"
+              className="object-cover"
+            />
+          )}
+        </div>
       </div>
 
       {/* Time + text snippet */}
