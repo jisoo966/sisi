@@ -54,6 +54,28 @@ export function JourneyScene({
     };
   }, [mounted, speed]);
 
+  // 안전장치 — 이 비디오는 순수 배경이라 절대 멈춰있으면 안 됨.
+  // iOS Safari가 어떤 이유로든(백그라운드 복귀, low power mode 등) 재생을
+  // 멈추면 큰 재생 버튼 오버레이가 뜸 — 감지되는 즉시 다시 재생 시도.
+  useEffect(() => {
+    if (!mounted || !videoRef.current) return;
+    const v = videoRef.current;
+    const resume = () => {
+      v.play().catch(() => {
+        // 재생 실패 — poster 이미지가 그대로 보여서 최소한 깨지진 않음
+      });
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") resume();
+    };
+    v.addEventListener("pause", resume);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      v.removeEventListener("pause", resume);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [mounted]);
+
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#F5F4EC]">
       {/* Background — video가 메인. Poster는 SSR + load 전 fallback */}
@@ -66,7 +88,14 @@ export function JourneyScene({
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover"
+          disablePictureInPicture
+          disableRemotePlayback
+          // pointer-events-none — 순수 배경 영상이라 탭 되면 안 됨.
+          // iOS Safari는 <video>를 직접 탭하면 재생/일시정지 토글하는데,
+          // 이 위에 다른 UI 버튼들(z-index 높은)이 떠 있어서 탭이 그
+          // 버튼을 못 맞추고 비디오로 새면 갑자기 멈추고 큰 재생 버튼
+          // 오버레이가 뜨는 문제가 있었음.
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
       ) : (
         /* SSR fallback — 정지 이미지로 첫 paint */
