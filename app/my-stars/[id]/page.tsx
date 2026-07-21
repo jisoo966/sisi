@@ -322,16 +322,14 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
             </motion.div>
           ) : null}
 
-          {/* "I've arrived" (SECONDARY) — white translucent filled.
-              디자인 시스템: primary=purple, secondary=white, 둘 다 filled + dark text.
-              ✦ 도 dark text 색으로 통일 (흰 배경에 warm gold는 어색). */}
+          {/* "I think I've arrived" — 조용한 secondary text link.
+              도착은 무거운 액션이라 primary 버튼처럼 크지 않게. 실수 클릭 방지. */}
           {!isFulfilled && !showAddSign && (
             <button
               onClick={() => setRitualOpen(true)}
-              className="font-sentient text-[15px] w-full rounded-full mt-[10px] py-[14px] bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy hover:bg-white/60 active:scale-98 transition flex items-center justify-center gap-2"
+              className="font-sentient italic text-[13px] w-full mt-[14px] py-[10px] text-white/55 hover:text-white/80 underline-offset-4 hover:underline transition"
             >
-              <span className="text-[14px]">✦</span>
-              I&apos;ve arrived
+              I think I&apos;ve arrived
             </button>
           )}
         </div>

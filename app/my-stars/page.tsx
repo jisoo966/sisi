@@ -733,7 +733,7 @@ function WishModal({
             disabled={!canSubmit}
             className="font-sentient text-[15px] rounded-full bg-[#B19CD9]/90 backdrop-blur-md border border-white/25 text-journey-navy px-[22px] h-[42px] shadow-md disabled:opacity-40 hover:brightness-105 transition"
           >
-            Send ✦
+            send to sky ✦
           </button>
         </div>
       </motion.div>

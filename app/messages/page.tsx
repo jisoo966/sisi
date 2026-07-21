@@ -115,7 +115,7 @@ export default function MessagesDashboardPage() {
             href="/messages/chat"
             className="font-sentient block w-full text-center rounded-[28px] bg-journey-purple/85 backdrop-blur-md border border-white/40 text-journey-navy text-[16px] h-[56px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition-all"
           >
-            Talk to sísí ✦
+            talk to sísí ✦
           </Link>
         </motion.div>
 

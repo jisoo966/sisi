@@ -81,7 +81,7 @@ export default function GalleryPage() {
           <EmptyState
             text="No postcards yet"
             subtext="Capture a moment on your journey"
-            cta="+ new memory"
+            cta="+ keep a moment"
             href="/moment"
           />
         )}
@@ -238,12 +238,12 @@ function PostcardsGrid({
         ))}
       </div>
 
-      {/* + new memory CTA */}
+      {/* + keep a moment CTA */}
       <Link
         href="/moment"
         className="font-sentient block w-full text-center rounded-[24px] bg-journey-purple/80 backdrop-blur-md text-journey-navy text-[16px] h-[54px] flex items-center justify-center shadow-md hover:brightness-105 active:scale-98 transition"
       >
-        + new memory
+        + keep a moment
       </Link>
     </>
   );
@@ -293,12 +293,12 @@ function PostcardsTimeline({
         </div>
       ))}
 
-      {/* + new memory CTA (bottom) */}
+      {/* + keep a moment CTA (bottom) */}
       <Link
         href="/moment"
         className="font-sentient block w-full text-center rounded-[24px] bg-journey-purple/80 backdrop-blur-md text-journey-navy text-[16px] h-[54px] flex items-center justify-center shadow-md hover:brightness-105 active:scale-98 transition mt-[8px]"
       >
-        + new memory
+        + keep a moment
       </Link>
     </div>
   );
@@ -322,9 +322,8 @@ function TimelineEntry({
       onClick={onClick}
       className="flex items-start gap-[12px] w-full text-left p-[10px] rounded-[14px] bg-white/60 hover:bg-white active:scale-98 transition"
     >
-      {/* Polaroid-style thumbnail — 흰 프레임 + 아래 여백 + subtle shadow.
-          작은 폴라로이드 카드처럼 보이게. */}
-      <div className="shrink-0 bg-white rounded-[6px] p-[4px] pb-[10px] shadow-sm rotate-[-1.5deg]">
+      {/* Polaroid-style thumbnail — 흰 프레임 + tiny stamp ✦ + rotate으로 postcard 감성 */}
+      <div className="shrink-0 relative bg-white rounded-[6px] p-[4px] pb-[10px] shadow-sm rotate-[-1.5deg]">
         <div className="w-[56px] h-[56px] rounded-[3px] overflow-hidden bg-journey-cream relative">
           {postcard.image.startsWith("data:") ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -342,6 +341,22 @@ function TimelineEntry({
               className="object-cover"
             />
           )}
+          {/* Tiny stamp mark — top-right of photo (postcard identity) */}
+          <div className="absolute top-[2px] right-[2px]">
+            <svg width="10" height="10" viewBox="0 0 100 100">
+              <defs>
+                <radialGradient id={`thumb-star-${postcard.id}`} cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="rgb(255,248,225)" />
+                  <stop offset="45%" stopColor="rgb(255,236,189)" />
+                  <stop offset="100%" stopColor="rgb(251,198,106)" />
+                </radialGradient>
+              </defs>
+              <path
+                d="M50 12 L60 42 L90 42 L66 60 L76 90 L50 72 L24 90 L34 60 L10 42 L40 42 Z"
+                fill={`url(#thumb-star-${postcard.id})`}
+              />
+            </svg>
+          </div>
         </div>
       </div>
 
