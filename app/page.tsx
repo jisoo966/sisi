@@ -43,17 +43,22 @@ export default function SplashPage() {
 
         <div className="flex-1" />
 
-        {/* Tagline — Sentient Light 20px, letter-spacing -3% (font-sentient class 내장) */}
-        <motion.p
+        {/* Tagline — main + subtitle으로 기능 hint 살짝. */}
+        <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.4, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="font-sentient text-[20px] leading-normal text-journey-navy text-center pb-[80px]"
+          className="text-center pb-[80px]"
         >
-          A journey with your
-          <br />
-          inner companion
-        </motion.p>
+          <p className="font-sentient text-[20px] leading-normal text-journey-navy">
+            A journey with your
+            <br />
+            inner companion
+          </p>
+          <p className="font-sentient italic text-[13px] text-journey-navy/70 mt-[10px] tracking-wide">
+            keep moments · follow your stars
+          </p>
+        </motion.div>
 
         {/* Subtle tap hint — 잔잔한 호흡 (opacity 0.55 ↔ 0.95).
             Lowercase로 sísí voice 유지. */}

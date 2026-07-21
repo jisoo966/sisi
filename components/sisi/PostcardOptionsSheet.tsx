@@ -171,7 +171,7 @@ export function PostcardOptionsSheet({
                   />
                   <OptionCard
                     icon={<SparkIcon />}
-                    title="keep this journey scene"
+                    title="keep this scene"
                     subtitle="today's walk with sísí"
                     onClick={() => {
                       handleClose();

@@ -79,8 +79,8 @@ export default function GalleryPage() {
         {/* Content view — timeline (default, 저널) OR grid (시각적 브라우징) */}
         {loaded && postcards.length === 0 && (
           <EmptyState
-            text="No postcards yet"
-            subtext="Capture a moment on your journey"
+            text="your postcards will gather here"
+            subtext="as you walk."
             cta="+ keep a moment"
             href="/moment"
           />

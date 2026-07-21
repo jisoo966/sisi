@@ -58,7 +58,7 @@ export default function MessagesDashboardPage() {
           </h1>
         </header>
         <p className="font-sentient text-[13px] text-journey-navy/60 italic mb-[36px]">
-          your companion is here
+          a quiet space to talk with sísí
         </p>
 
         {/* Fox illustration */}
@@ -231,9 +231,9 @@ function GuestRecentPlaceholder() {
       className="mt-[24px] p-[20px] rounded-[16px] bg-white/50 border border-journey-navy/8 text-center"
     >
       <p className="font-sentient italic text-[13px] text-journey-navy/70 leading-relaxed mb-[10px]">
-        log in to keep your conversations
+        save your conversations
         <br />
-        with sísí.
+        when you&apos;re ready.
       </p>
       <Link
         href="/login"

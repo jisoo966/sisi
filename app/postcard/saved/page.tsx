@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  *   - Figma: dark starry background + postcard card
  *   - "Your moment is saved" heading
  *   - Share button (top-right, Web Share API)
- *   - View Postcard / Back to Journey 두 CTA
+ *   - view postcard / back to journey 두 CTA
  */
 export default function PostcardSavedPage() {
   const [postcard, setPostcard] = useState<Postcard | null>(null);
@@ -119,7 +119,7 @@ export default function PostcardSavedPage() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="font-sentient text-[22px] text-white/95 text-center leading-tight shrink-0"
         >
-          Your moment is saved
+          your moment is safely kept.
         </motion.h1>
 
         <motion.p
@@ -128,7 +128,7 @@ export default function PostcardSavedPage() {
           transition={{ duration: 0.6, delay: 0.35 }}
           className="font-sentient italic text-[12px] text-white/60 text-center mt-1 mb-[16px] shrink-0"
         >
-          It&apos;s always here when you need it.
+          it&apos;s here whenever you need it.
         </motion.p>
 
         {/* Postcard card — 더 크게 (여백 너무 커서 upgrade) */}
@@ -197,13 +197,13 @@ export default function PostcardSavedPage() {
           href="/gallery"
           className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/85 backdrop-blur-md border border-white/30 text-journey-navy text-[16px] h-[52px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition"
         >
-          View Postcard
+          view postcard
         </Link>
         <Link
           href="/journey"
           className="font-sentient block w-full text-center rounded-[30px] bg-white/15 backdrop-blur-md border border-white/25 text-white text-[16px] h-[52px] flex items-center justify-center hover:bg-white/25 transition"
         >
-          Back to Journey
+          back to journey
         </Link>
       </motion.div>
     </main>

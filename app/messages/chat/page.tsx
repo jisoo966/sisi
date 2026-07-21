@@ -477,8 +477,29 @@ function ChatPage() {
               </Link>
             </motion.div>
           ) : (
-            // Glass morphic input pill — 시스템 통일 (nav/버튼 스타일)
-            <div className="flex items-center gap-2 h-[56px] rounded-[28px] bg-white/40 backdrop-blur-md border border-white/50 px-5 shadow-sm">
+            <>
+              {/* Prompt chips — 첫 진입 (Sísí greeting만 있고 유저 메시지 없을 때) */}
+              {messages.length === 1 && messages[0]?.greeting && !streaming && (
+                <div className="flex flex-wrap gap-[6px] mb-[10px] justify-center">
+                  {["What felt soft?", "What surprised you?", "What stayed on your mind?"].map(
+                    (chip) => (
+                      <button
+                        key={chip}
+                        onClick={() => {
+                          setDraftInput(chip);
+                          setTimeout(() => inputRef.current?.focus(), 100);
+                        }}
+                        className="font-sentient italic text-[12px] text-journey-navy/75 rounded-full bg-white/50 backdrop-blur-md border border-white/50 px-[14px] h-[32px] hover:bg-white/70 active:scale-98 transition"
+                      >
+                        {chip}
+                      </button>
+                    ),
+                  )}
+                </div>
+              )}
+
+              {/* Glass morphic input pill — 시스템 통일 (nav/버튼 스타일) */}
+              <div className="flex items-center gap-2 h-[56px] rounded-[28px] bg-white/40 backdrop-blur-md border border-white/50 px-5 shadow-sm">
               <input
                 ref={inputRef}
                 type="text"
@@ -515,6 +536,7 @@ function ChatPage() {
                 </svg>
               </button>
             </div>
+            </>
           )}
         </footer>
       </div>

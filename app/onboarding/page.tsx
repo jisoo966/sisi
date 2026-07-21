@@ -163,7 +163,7 @@ export default function OnboardingPage() {
             disabled={!name.trim() || saving}
             className="font-sentient text-[16px] rounded-[24px] bg-[#B19CD9] text-journey-navy h-[56px] w-full shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-40 transition"
           >
-            {saving ? "..." : "continue"}
+            {saving ? "..." : name.trim() ? "continue ✦" : "continue"}
           </button>
         </motion.div>
       </div>

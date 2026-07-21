@@ -140,6 +140,7 @@ export default function JourneyPage() {
   const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
   const [hasNudge, setHasNudge] = useState(false); // bell dot badge
+  const [showFabTip, setShowFabTip] = useState(false); // 첫 유저 FAB tooltip
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
   const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
 
@@ -153,6 +154,20 @@ export default function JourneyPage() {
       const seen = localStorage.getItem("sisi:guest-nudge-seen") === "true";
       setHasNudge(seen);
     })();
+  }, []);
+
+  // FAB tooltip — 첫 방문만. 사용자가 FAB 눌러 sheet 열면 자동 사라짐.
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("sisi:fab-tip-seen") === "true";
+      if (!seen) {
+        // 1.5초 후 부드럽게 나타남 (진입 시 갑작스러움 방지)
+        const t = setTimeout(() => setShowFabTip(true), 1500);
+        return () => clearTimeout(t);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
   const greeting = getGreeting();
   const dateStr = formatDate();
@@ -307,10 +322,36 @@ export default function JourneyPage() {
         <div className="flex-1" />
       </div>
 
-      {/* Camera FAB — 3-way sheet 열음 (take photo / gallery / keep this walk).
-          카메라 아이콘이 universally recognized → 유저가 즉시 이해. */}
+      {/* Camera FAB — 3-way sheet 열음. 첫 유저는 tooltip으로 "keep a moment" 안내. */}
+      {showFabTip && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="fixed bottom-[105px] right-[85px] z-30 pointer-events-none"
+        >
+          <div className="font-sentient italic text-[12px] text-journey-navy bg-white/80 backdrop-blur-md border border-white/60 rounded-full px-[12px] py-[6px] shadow-sm whitespace-nowrap">
+            keep a moment
+          </div>
+          {/* Small arrow pointing to FAB */}
+          <div
+            className="absolute -right-[3px] top-1/2 -translate-y-1/2 w-[8px] h-[8px] bg-white/80 backdrop-blur-md border-r border-t border-white/60 rotate-45"
+          />
+        </motion.div>
+      )}
       <button
-        onClick={() => setPostcardSheetOpen(true)}
+        onClick={() => {
+          setPostcardSheetOpen(true);
+          if (showFabTip) {
+            setShowFabTip(false);
+            try {
+              localStorage.setItem("sisi:fab-tip-seen", "true");
+            } catch {
+              // ignore
+            }
+          }
+        }}
         aria-label="Capture a moment"
         className="fixed bottom-[95px] right-[24px] z-30 flex h-[51px] w-[51px] items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-journey-navy shadow-lg hover:bg-white/60 active:scale-95 transition"
       >
