@@ -782,7 +782,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`font-sentient text-[13px] rounded-full h-[34px] w-full transition ${
+      className={`font-sentient text-[13px] rounded-full h-[34px] w-full flex items-center justify-center leading-none transition ${
         active
           ? "bg-[#B19CD9]/85 text-journey-navy shadow-sm"
           : "text-white/75 hover:text-white/95"

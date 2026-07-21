@@ -131,7 +131,7 @@ export default function PostcardSavedPage() {
           It&apos;s always here when you need it.
         </motion.p>
 
-        {/* Postcard card — 작게 유지해서 CTA와 넉넉한 gap. */}
+        {/* Postcard card — 더 크게 (여백 너무 커서 upgrade) */}
         <motion.div
           initial={{ opacity: 0, y: 30, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -142,7 +142,7 @@ export default function PostcardSavedPage() {
             damping: 20,
             stiffness: 200,
           }}
-          className="relative w-full max-w-[170px] flex-shrink min-h-0"
+          className="relative w-full max-w-[220px] flex-shrink min-h-0"
         >
           <div className="bg-[#f7f2e3] rounded-[14px] p-[10px] pb-[14px] shadow-2xl">
             <div className="relative rounded-[8px] overflow-hidden aspect-[3/4] bg-journey-cream">
@@ -151,7 +151,7 @@ export default function PostcardSavedPage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={postcard.image} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <Image src={postcard.image} alt="" fill sizes="170px" className="object-cover" />
+                  <Image src={postcard.image} alt="" fill sizes="220px" className="object-cover" />
                 )
               ) : (
                 <div className="w-full h-full bg-journey-cream" />
