@@ -1,5 +1,5 @@
-const CACHE_NAME = "sisi-v1";
-const STATIC_ASSETS = ["/", "/app", "/offline.html"];
+const CACHE_NAME = "sisi-v2";
+const STATIC_ASSETS = ["/", "/journey", "/offline.html"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -73,7 +73,7 @@ self.addEventListener("push", (event) => {
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       vibrate: [100, 50, 100],
-      data: { url: "/app" },
+      data: { url: "/journey" },
     })
   );
 });
@@ -81,6 +81,6 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow(event.notification.data?.url ?? "/app")
+    clients.openWindow(event.notification.data?.url ?? "/journey")
   );
 });

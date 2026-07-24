@@ -39,16 +39,48 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "sísí",
+    startupImage: [
+      // iPhone 14 Pro Max / 15 Plus / 16 Plus — 1290x2796
+      {
+        url: "/icons/splash-1290x2796.png",
+        media: "(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)",
+      },
+      // iPhone 14 Pro / 15 / 15 Pro / 16 — 1179x2556
+      {
+        url: "/icons/splash-1179x2556.png",
+        media: "(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)",
+      },
+      // iPhone 12 / 13 / 14 — 1170x2532
+      {
+        url: "/icons/splash-1170x2532.png",
+        media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)",
+      },
+      // iPhone SE (2/3) — 750x1334
+      {
+        url: "/icons/splash-750x1334.png",
+        media: "(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)",
+      },
+    ],
   },
   openGraph: {
     title: "sísí",
-    description: "what is meant for you is on its way.",
+    description: "a quiet walk with your inner companion.",
     siteName: "sísí",
+    images: ["/icons/icon-512.png"],
   },
   icons: {
-    icon: "/icons/icon-192.png",
-    apple: "/icons/icon-192.png",
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f2e3" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c2340" },
+  ],
 };
 
 export default function RootLayout({

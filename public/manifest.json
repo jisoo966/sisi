@@ -1,24 +1,43 @@
 {
   "name": "sísí",
   "short_name": "sísí",
-  "description": "manifest with sísí. what is meant for you is on its way.",
-  "start_url": "/app",
+  "description": "a quiet walk with your inner companion.",
+  "start_url": "/journey",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#F5EFE6",
-  "theme_color": "#3D2E25",
+  "background_color": "#f7f2e3",
+  "theme_color": "#1c2340",
   "orientation": "portrait",
   "icons": [
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [],
