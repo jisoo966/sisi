@@ -106,9 +106,9 @@ export function JourneyScene({
       )}
 
       {/* Soft cream vignette — UI element들이 *환경에 자연스럽게 녹아들도록*.
-          상단·하단 살짝 어둡게 = depth + UI 가독성 */}
+          상단은 status bar 영역까지 노란 하늘이 edge-to-edge로 보이도록 최소화. */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-[120px] bg-gradient-to-b from-[#F5F4EC]/30 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-[40px] bg-gradient-to-b from-[#F5F4EC]/10 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-[180px] bg-gradient-to-t from-[#F5F4EC]/20 to-transparent" />
       </div>
     </div>

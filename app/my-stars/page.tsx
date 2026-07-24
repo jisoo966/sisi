@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/sisi/BottomNav";
+import { usePageBg } from "@/lib/usePageBg";
 import {
   loadStars,
   saveStar,
@@ -59,6 +60,9 @@ type Tab = "following" | "constellation";
  *   6. 두 번째 이후 별 추가 → receiving 건너뛰고 바로 wish modal
  */
 export default function MyStarsPage() {
+  // 밤하늘 톤 — safe area 위쪽도 navy로 자연스럽게
+  usePageBg("#1a1737");
+
   const [phase, setPhase] = useState<Phase>("default");
   const [tab, setTab] = useState<Tab>("following");
   const [stars, setStars] = useState<Star[]>([]);

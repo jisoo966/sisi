@@ -73,7 +73,9 @@
       "mcp__plugin_supabase_supabase__search_docs",
       "Bash(awk '{print $5, $9}')",
       "Read(//Users/jisoo/Library/Caches/ms-playwright/**)",
-      "Read(//Users/jisoo/**)"
+      "Read(//Users/jisoo/**)",
+      "Bash(cat app/app/page.tsx)",
+      "Bash(ls app/app/)"
     ]
   }
 }

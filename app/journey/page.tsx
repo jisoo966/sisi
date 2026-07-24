@@ -11,6 +11,7 @@ import { PostcardOptionsSheet } from "@/components/sisi/PostcardOptionsSheet";
 import { GuestLoginNudge } from "@/components/sisi/GuestLoginNudge";
 import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 import { useVideoLuminance } from "@/lib/useVideoLuminance";
+import { usePageBg } from "@/lib/usePageBg";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 import { loadStars, type Star } from "@/lib/myStars";
@@ -130,6 +131,9 @@ function formatDate(): string {
  * 결과: *진짜 게임 세계*를 걷고 있는 명상 경험.
  */
 export default function JourneyPage() {
+  // safe area top (iOS status bar 뒤)이 노란 하늘 톤으로 이어지도록
+  usePageBg("#F5E9C8");
+
   // 배경 video 밝기 감지 — dark scene(밤/starry)이면 텍스트 흰색으로
   const bgMode = useVideoLuminance();
   const isDark = bgMode === "dark";

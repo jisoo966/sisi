@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { usePageBg } from "@/lib/usePageBg";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export const dynamic = "force-dynamic";
  *   /my-stars가 firstTime 감지해서 자동으로 첫 별 만드는 애니메이션 시작
  */
 export default function OnboardingPage() {
+  // 밤하늘 gradient 톤 — safe area까지 dark navy로
+  usePageBg("#1a1737");
+
   const router = useRouter();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
