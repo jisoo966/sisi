@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>sísí · world prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #f5e9c8;
+      --cream-warm: #f7f2e3;
+      --navy: #1c2340;
+      --star-gold: #f6c86e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--cream);
+      color: var(--navy);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: "Fraunces", Georgia, serif;
+      position: fixed;
+      inset: 0;
+    }
+
+    /* ─── World stage ─── */
+    .world {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    /* Background — subtle Ken Burns pan gives "walking" without scroll cuts */
+    .scene {
+      position: absolute;
+      inset: -3% -5%;
+      background-image: url("/journey/ChatScreen2.png");
+      background-size: cover;
+      background-position: center bottom;
+      animation: kenBurns 40s ease-in-out infinite alternate;
+      transition: animation-play-state 0.6s ease;
+      will-change: transform;
+    }
+    .paused .scene {
+      animation-play-state: paused;
+    }
+    @keyframes kenBurns {
+      0%   { transform: scale(1.0)  translate(0, 0); }
+      100% { transform: scale(1.06) translate(-2%, -1%); }
+    }
+
+    /* Warm atmospheric wash top + bottom to soften seams */
+    .wash-top, .wash-bottom {
+      position: absolute; left: 0; right: 0;
+      pointer-events: none;
+    }
+    .wash-top {
+      top: 0; height: 30%;
+      background: linear-gradient(to bottom, rgba(245,233,200,0.25), transparent);
+    }
+    .wash-bottom {
+      bottom: 0; height: 30%;
+      background: linear-gradient(to top, rgba(28,35,64,0.1), transparent);
+    }
+
+    /* ─── The star ─── */
+    .star {
+      position: absolute;
+      top: 12%;
+      right: 22%;
+      width: 34px; height: 34px;
+      opacity: 0.85;
+      animation: starPulse 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes starPulse {
+      0%, 100% { opacity: 0.65; transform: scale(0.95); }
+      50%      { opacity: 1.0;  transform: scale(1.08); }
+    }
+
+    /* ─── The fox ─── */
+    .fox-wrap {
+      position: absolute;
+      bottom: 22%;
+      left: 50%;
+      width: 200px;
+      transform: translateX(-50%);
+      animation: foxWalkBob 1.6s ease-in-out infinite;
+      will-change: transform;
+      z-index: 5;
+      transition: bottom 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .paused .fox-wrap {
+      animation-play-state: paused;
+      bottom: 20%;
+    }
+    @keyframes foxWalkBob {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(-3px); }
+    }
+    .fox-img {
+      width: 100%;
+      display: block;
+      transition: opacity 0.6s ease;
+    }
+    .fox-walk { opacity: 1; }
+    .fox-sit  { position: absolute; inset: 0; opacity: 0; }
+    .paused .fox-walk { opacity: 0; }
+    .paused .fox-sit  { opacity: 1; }
+
+    /* Fox soft shadow — grounds it */
+    .fox-shadow {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 130px;
+      height: 22px;
+      background: radial-gradient(ellipse at center, rgba(28,35,64,0.28), transparent 70%);
+      filter: blur(4px);
+      pointer-events: none;
+    }
+
+    /* ─── Text overlays ─── */
+    .hint {
+      position: absolute;
+      top: 12vh;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: "Caveat", cursive;
+      font-size: 22px;
+      color: var(--navy);
+      opacity: 0;
+      letter-spacing: 0.02em;
+      animation: hintFade 3s ease-out 1.2s forwards;
+      pointer-events: none;
+      text-align: center;
+    }
+    .paused .hint { opacity: 0; }
+    @keyframes hintFade {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+      40%  { opacity: 0.7; transform: translateX(-50%) translateY(0); }
+      70%  { opacity: 0.7; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0.35; transform: translateX(-50%) translateY(0); }
+    }
+
+    .prompt {
+      position: absolute;
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      font-family: "Caveat", cursive;
+      font-size: 28px;
+      color: var(--navy);
+      opacity: 0;
+      transition: opacity 0.8s ease 0.4s, transform 0.8s cubic-bezier(0.22,1,0.36,1) 0.4s;
+      pointer-events: none;
+      text-align: center;
+      z-index: 10;
+      max-width: 80vw;
+    }
+    .prompt-sub {
+      display: block;
+      margin-top: 6px;
+      font-family: "Fraunces", serif;
+      font-size: 12px;
+      font-style: italic;
+      opacity: 0.55;
+      letter-spacing: 0.05em;
+    }
+    .paused .prompt {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ─── Debug / hint footer ─── */
+    .footer {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: "Fraunces", serif;
+      font-size: 10px;
+      font-style: italic;
+      letter-spacing: 0.12em;
+      color: rgba(28,35,64,0.35);
+      pointer-events: none;
+      text-transform: lowercase;
+    }
+
+    /* Firefly particles — subtle life */
+    .firefly {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(246, 200, 110, 0.7);
+      box-shadow: 0 0 8px rgba(246, 200, 110, 0.6);
+      pointer-events: none;
+    }
+    .firefly.f1 { top: 45%; left: 20%; animation: drift1 18s ease-in-out infinite; }
+    .firefly.f2 { top: 55%; left: 75%; animation: drift2 22s ease-in-out infinite; }
+    .firefly.f3 { top: 60%; left: 35%; animation: drift3 26s ease-in-out infinite; }
+    @keyframes drift1 {
+      0%, 100% { transform: translate(0, 0); opacity: 0; }
+      20% { opacity: 0.8; }
+      50% { transform: translate(30px, -20px); opacity: 0.6; }
+      80% { opacity: 0.4; }
+    }
+    @keyframes drift2 {
+      0%, 100% { transform: translate(0, 0); opacity: 0.2; }
+      50% { transform: translate(-40px, 15px); opacity: 0.7; }
+    }
+    @keyframes drift3 {
+      0%, 100% { transform: translate(0, 0); opacity: 0; }
+      30% { opacity: 0.6; }
+      60% { transform: translate(25px, 25px); opacity: 0.4; }
+    }
+  </style>
+</head>
+<body>
+  <div class="world" id="world">
+    <!-- background scene with subtle Ken Burns -->
+    <div class="scene"></div>
+    <div class="wash-top"></div>
+    <div class="wash-bottom"></div>
+
+    <!-- fireflies (life without noise) -->
+    <div class="firefly f1"></div>
+    <div class="firefly f2"></div>
+    <div class="firefly f3"></div>
+
+    <!-- the star (여우가 걷는 방향의 상징) -->
+    <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <radialGradient id="starGlow" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#fff8e1"/>
+          <stop offset="45%" stop-color="#ffecbd"/>
+          <stop offset="100%" stop-color="#f6c86e"/>
+        </radialGradient>
+      </defs>
+      <path d="M50 8 L59 40 L92 40 L66 60 L76 92 L50 72 L24 92 L34 60 L8 40 L41 40 Z"
+            fill="url(#starGlow)"/>
+    </svg>
+
+    <!-- the fox -->
+    <div class="fox-wrap" id="foxWrap">
+      <div class="fox-shadow"></div>
+      <img class="fox-img fox-walk" id="foxWalk" src="/fox/walking-rear.webp" alt="Sísí walking">
+      <img class="fox-img fox-sit"  id="foxSit"  src="/fox/foxsitting.png"    alt="Sísí sitting">
+    </div>
+
+    <!-- ambient hint on first load -->
+    <p class="hint" id="hint">여우가 앞으로 걷고 있어</p>
+
+    <!-- appears when world pauses -->
+    <p class="prompt" id="prompt">
+      너, 오늘 어땠어?
+      <span class="prompt-sub">tap anywhere to keep walking</span>
+    </p>
+
+    <p class="footer">sísí world · prototype</p>
+  </div>
+
+  <script>
+    const world = document.getElementById("world");
+    const foxWrap = document.getElementById("foxWrap");
+    let paused = false;
+
+    function pauseWorld() {
+      if (paused) return;
+      paused = true;
+      world.classList.add("paused");
+    }
+    function resumeWorld() {
+      if (!paused) return;
+      paused = false;
+      world.classList.remove("paused");
+    }
+
+    // Tap fox → world slows, fox sits, prompt appears
+    foxWrap.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (paused) resumeWorld();
+      else       pauseWorld();
+    });
+
+    // Tap elsewhere while paused → resume walking
+    world.addEventListener("click", () => {
+      if (paused) resumeWorld();
+    });
+  </script>
+</body>
+</html>

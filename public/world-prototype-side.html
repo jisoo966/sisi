@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>sísí · world</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1c2340;
+      --cream: #f5e9c8;
+      --star: #f6c86e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #a5c9e8;         /* matches sky at top of bg image */
+      color: var(--navy);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: "Fraunces", Georgia, serif;
+      position: fixed; inset: 0;
+    }
+
+    /* ─── Scrolling background — two copies side by side loop endlessly ─── */
+    .bg-scroll {
+      position: absolute; inset: 0;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .bg-lane {
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%;
+      width: max-content;               /* fits two full-height images side by side */
+      display: flex;
+      animation: bgDrift 80s linear infinite;
+      will-change: transform;
+    }
+    .bg-lane img {
+      height: 100%;
+      width: auto;
+      display: block;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+    @keyframes bgDrift {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }   /* first image fully off, second is now at 0 */
+    }
+    .paused .bg-lane { animation-play-state: paused; }
+
+    /* ─── The star ─── */
+    .star {
+      position: absolute;
+      top: 12vh;
+      left: 62%;
+      width: 34px; height: 34px;
+      opacity: 0.9;
+      animation: starPulse 5s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 0 12px rgba(246, 200, 110, 0.5));
+    }
+    @keyframes starPulse {
+      0%, 100% { opacity: 0.6; transform: scale(0.95); }
+      50%      { opacity: 1.0; transform: scale(1.08); }
+    }
+
+    /* ─── The fox — walk-in-place video with alpha ─── */
+    .fox-wrap {
+      position: absolute;
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40vw;
+      max-width: 260px;
+      min-width: 180px;
+      z-index: 10;
+      cursor: pointer;
+      /* gentle vertical breathing when world is paused */
+      transition: bottom 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .paused .fox-wrap { bottom: 11%; }
+    .fox-video {
+      width: 100%;
+      display: block;
+      pointer-events: none;
+    }
+    .fox-fallback {
+      width: 100%;
+      display: block;
+      pointer-events: none;
+    }
+    /* Soft ground contact shadow (helps fox feel grounded on any bg) */
+    .fox-shadow {
+      position: absolute;
+      bottom: 6%;
+      left: 8%;
+      right: 8%;
+      height: 14px;
+      background: radial-gradient(ellipse at center,
+                    rgba(28,35,64,0.28) 0%,
+                    rgba(28,35,64,0.14) 40%,
+                    transparent 75%);
+      filter: blur(4px);
+      pointer-events: none;
+      z-index: 9;
+    }
+
+    /* ─── Text overlays ─── */
+    .hint {
+      position: absolute;
+      top: 8vh;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: "Caveat", cursive;
+      font-size: 22px;
+      color: var(--navy);
+      letter-spacing: 0.02em;
+      opacity: 0;
+      pointer-events: none;
+      text-align: center;
+      z-index: 20;
+      animation: hintFade 5s ease-out 1.4s forwards;
+      text-shadow: 0 1px 8px rgba(255,255,255,0.4);
+    }
+    @keyframes hintFade {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+      25%  { opacity: 0.85; transform: translateX(-50%) translateY(0); }
+      75%  { opacity: 0.85; }
+      100% { opacity: 0.35; }
+    }
+    .paused .hint { opacity: 0; }
+
+    .prompt {
+      position: absolute;
+      bottom: 26%;
+      left: 50%;
+      transform: translateX(-50%) translateY(6px);
+      font-family: "Caveat", cursive;
+      font-size: 30px;
+      color: var(--navy);
+      opacity: 0;
+      transition: opacity 0.6s ease 0.3s, transform 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s;
+      pointer-events: none;
+      text-align: center;
+      z-index: 20;
+      max-width: 80vw;
+      text-shadow: 0 1px 10px rgba(255,255,255,0.5);
+    }
+    .prompt-sub {
+      display: block;
+      margin-top: 6px;
+      font-family: "Fraunces", serif;
+      font-size: 11px;
+      font-style: italic;
+      opacity: 0.55;
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .paused .prompt {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: "Fraunces", serif;
+      font-size: 10px;
+      font-style: italic;
+      letter-spacing: 0.12em;
+      color: rgba(28,35,64,0.4);
+      pointer-events: none;
+      z-index: 20;
+      text-transform: lowercase;
+    }
+  </style>
+</head>
+<body>
+  <div id="world">
+    <!-- SCROLLING BACKGROUND — two copies side by side for endless drift -->
+    <div class="bg-scroll">
+      <div class="bg-lane">
+        <img src="/V2/Background/meadow-day.png" alt="">
+        <img src="/V2/Background/meadow-day.png" alt="">
+      </div>
+    </div>
+
+    <!-- The star (여우가 향하는 것) -->
+    <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <radialGradient id="s" cx="50%" cy="50%">
+          <stop offset="0%" stop-color="#fff8e1"/>
+          <stop offset="45%" stop-color="#ffecbd"/>
+          <stop offset="100%" stop-color="#f6c86e"/>
+        </radialGradient>
+      </defs>
+      <path d="M50 8 L59 40 L92 40 L66 60 L76 92 L50 72 L24 92 L34 60 L8 40 L41 40 Z"
+            fill="url(#s)"/>
+    </svg>
+
+    <!-- The fox — walking in place with alpha -->
+    <div class="fox-wrap" id="foxWrap">
+      <div class="fox-shadow"></div>
+      <video
+        class="fox-video"
+        id="foxVideo"
+        autoplay loop muted playsinline
+        disablepictureinpicture
+        preload="auto"
+      >
+        <source src="/V2/fox-walk/fox-walk.webm" type="video/webm">
+        <!-- Safari (older) falls back to animated WebP img -->
+      </video>
+      <!-- Fallback for browsers that can't play alpha WebM (e.g., older Safari) -->
+      <noscript>
+        <img class="fox-fallback" src="/V2/fox-walk/fox-walk.webp" alt="Sísí walking">
+      </noscript>
+    </div>
+
+    <!-- Ambient hint on load -->
+    <p class="hint">여우와 함께 걷고 있어</p>
+
+    <!-- Prompt when world is paused -->
+    <p class="prompt">
+      너, 오늘 어땠어?
+      <span class="prompt-sub">tap anywhere to keep walking</span>
+    </p>
+
+    <p class="footer">sísí world · prototype</p>
+  </div>
+
+  <script>
+    const world = document.getElementById("world");
+    const foxWrap = document.getElementById("foxWrap");
+    const foxVideo = document.getElementById("foxVideo");
+    let paused = false;
+
+    function pause() {
+      if (paused) return;
+      paused = true;
+      world.classList.add("paused");
+      foxVideo.pause();
+    }
+    function resume() {
+      if (!paused) return;
+      paused = false;
+      world.classList.remove("paused");
+      foxVideo.play().catch(() => {});
+    }
+
+    // Tap fox = pause / resume
+    foxWrap.addEventListener("click", (e) => {
+      e.stopPropagation();
+      paused ? resume() : pause();
+    });
+    // Tap anywhere else while paused = resume
+    world.addEventListener("click", () => {
+      if (paused) resume();
+    });
+
+    // Fallback: if <video> can't autoplay or WebM alpha isn't supported,
+    // swap in the animated WebP silently.
+    foxVideo.addEventListener("error", () => {
+      const img = document.createElement("img");
+      img.className = "fox-fallback";
+      img.src = "/V2/fox-walk/fox-walk.webp";
+      img.alt = "Sísí walking";
+      foxVideo.replaceWith(img);
+    });
+    // iOS Safari sometimes silently refuses to play WebM alpha — detect and swap
+    foxVideo.addEventListener("loadedmetadata", () => {
+      if (foxVideo.videoWidth === 0) {
+        foxVideo.dispatchEvent(new Event("error"));
+      }
+    });
+  </script>
+</body>
+</html>
