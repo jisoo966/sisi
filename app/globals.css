@@ -44,11 +44,12 @@
 
   /* World anchors — shared across every environment (meadow, night, sunset...)
    * IMPORTANT: --walking-baseline must match the y% (from bottom) where the
-   * MainMeadow asset's grass horizon sits. Current asset (main-meadow.png):
-   * grass horizon at 26% from bottom → baseline 26%. If a new environment
-   * asset shifts the horizon, retune this variable ONLY (no code change). */
+   * Walking Ground asset's grass line sits. Current asset (journey-walking-ground.png):
+   * the ground layer is shifted (not scaled) so its dense grass line lands
+   * exactly on this baseline; the rest of the asset sits below the viewport.
+   * 26% keeps the visible meadow at ~29–30% of the screen (70%+ open sky). */
   --horizon: 55%;             /* y% of sky/land seam */
-  --walking-baseline: 26%;    /* bottom% where the cat's feet stand */
+  --walking-baseline: 26%;    /* bottom% where the cat's feet stand (grass line ≈ 74% from top) */
   --sky-zone: 12%;            /* top% where stars/clouds live */
 
   /* Cat size — tuned to sit prominently at ~28-32% of viewport width so the
@@ -61,7 +62,7 @@
 
   /* Companion horizontal anchor — 38% viewport width (off-center-left) for
    * cinematic parallax composition (more world ahead of the cat than behind). */
-  --companion-x: 38%;
+  --companion-x: 37%;
 
   /* Stage padding + safe top for header */
   --stage-padding: clamp(16px, 5vw, 24px);
@@ -132,6 +133,33 @@
   width: auto;
   transform: translate(-50%, calc(100dvh - var(--sky-height)));
 }
+/* Fixed sky — never moves (no horizontal drift, no look-up translate). */
+.journey-sky-fixed {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+/* The vertical look-up sky is hidden while walking so it never covers the
+ * fixed sky; it fades in as the look-up begins and fades out only after the
+ * camera has come back down. */
+.journey-sky-group {
+  opacity: 0;
+  transition:
+    transform var(--look-up-duration) var(--look-up-easing),
+    opacity 250ms ease calc(var(--look-up-duration) - 250ms);
+}
+.journey-stage-v2.phase-star-view .journey-sky-group {
+  opacity: 1;
+  transition:
+    transform var(--look-up-duration) var(--look-up-easing),
+    opacity 250ms ease 0ms;
+}
 .journey-landscape-group {
   inset: 0;
   transform: translate3d(0, var(--landscape-translate-walking), 0);
@@ -157,7 +185,7 @@
 /* Journey v2 stage — real mobile viewport */
 .journey-stage-v2 {
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 100dvh;
   min-height: 100svh;
   overflow: hidden;

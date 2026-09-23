@@ -1,76 +1,95 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { worldClock } from "@/lib/worldMotion";
 
 /**
- * WalkingCat — animated fox with alpha, walking in place.
+ * WalkingCat — the companion. Horizontally anchored (0px/s); the world moves.
  *
- * Positioning:
- *   - Horizontal: anchored at 38% of the viewport width
- *     (--companion-x). This is off-center-left so the companion has
- *     more empty world ahead of it — cinematic composition.
- *   - Vertical: feet on --walking-baseline
- *   - Additional 2–3px vertical bob synchronized with a walk cycle
- *     (~1s period). Bob amplitude is subtle and eases toward 0 when
- *     the world is paused.
+ * Walk cycle: fox-walk-cycle900.webp — the original walk frames re-timed to
+ * ~900ms per full cycle (2 steps ≈ 450ms each). Pixels are unchanged. (The
+ * older fox-walk.webp is kept on disk; it blended frames without clearing,
+ * which left faint ghost legs.)
  *
- * Asset choice — Animated WebP as primary:
- *   macOS/iOS Safari do NOT reliably play WebM VP9 with alpha (video loads
- *   but often shows only frame 0). Animated WebP with alpha works in every
- *   modern browser like a GIF: no autoplay policy, no codec check, always
- *   animates.
- *
- * The webp is supplied with real transparency. This component does not
- * modify, recolor, or add a background to it. The bob is applied via a
- * transform on a wrapper — the pixels are untouched.
+ * Driven by the shared world clock:
+ *   start — the ground begins easing in; the walk cycle starts ~150ms later
+ *   stop  — the ground eases out; once it has mostly slowed, the fox
+ *           finishes its current step, then settles into the idle pose
+ *   bob   — 2–3px lift synchronized to each step; amplitude drifts slightly
+ *           so it never reads as a robotic bounce; fades with the speed
+ *   reduced motion — always idle
  */
+
+const WALK_SRC = "/V2/fox-walk/fox-walk-cycle900.webp";
+const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.png";
+const CYCLE_MS = 900;
+const STEP_MS = CYCLE_MS / 2;
+const START_DELAY_MS = 150;
+/** The fox keeps stepping until the ground has slowed below this factor. */
+const STOP_AT_FACTOR = 0.3;
 
 type Props = {
   onTap?: () => void;
+  /** @deprecated walking state now comes from the shared world clock */
   paused?: boolean;
 };
 
-export function WalkingCat({ onTap, paused = false }: Props) {
-  const [showStill, setShowStill] = useState(false);
+export function WalkingCat({ onTap }: Props) {
+  const [walking, setWalking] = useState(false);
+  const walkingRef = useRef(false);
   const bobRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const bobEnvRef = useRef(1); // envelope 0..1 that fades bob during pause
-  const bobEnvTargetRef = useRef(1);
 
   useEffect(() => {
-    setShowStill(paused);
-    bobEnvTargetRef.current = paused ? 0 : 1;
-  }, [paused]);
+    let walkRequestedAt = -1;
+    let walkStartedAt = 0;
+    let stopAt = -1;
+    let env = 0;
 
-  // Vertical walking bob — 2-3px sinusoidal, ~1s period, synced with the
-  // walk cycle. Applied on a wrapper; the fox img itself stays untouched.
-  useEffect(() => {
-    let lastTime = performance.now();
-    const start = lastTime;
+    return worldClock().subscribe((f) => {
+      const now = f.now;
 
-    const tick = (now: number) => {
-      const dt = Math.min((now - lastTime) / 1000, 0.1);
-      lastTime = now;
+      if (f.walking && !f.reducedMotion) {
+        stopAt = -1;
+        if (!walkingRef.current) {
+          if (walkRequestedAt < 0) walkRequestedAt = now;
+          if (now - walkRequestedAt >= START_DELAY_MS) {
+            walkingRef.current = true;
+            walkStartedAt = now;
+            setWalking(true);
+          }
+        }
+      } else {
+        walkRequestedAt = -1;
+        if (walkingRef.current) {
+          if (f.reducedMotion) {
+            walkingRef.current = false;
+            setWalking(false);
+          } else if (stopAt < 0) {
+            if (f.factor < STOP_AT_FACTOR) {
+              // finish the current step, then idle
+              const t = now - walkStartedAt;
+              stopAt = walkStartedAt + Math.ceil(t / STEP_MS) * STEP_MS;
+            }
+          } else if (now >= stopAt) {
+            walkingRef.current = false;
+            stopAt = -1;
+            setWalking(false);
+          }
+        }
+      }
 
-      // Ease envelope toward target so the bob fades softly on pause
-      const delta = bobEnvTargetRef.current - bobEnvRef.current;
-      bobEnvRef.current += delta * Math.min(dt * 6, 1);
-
-      // 2 bobs per walk cycle (foot-plant on each side).
-      // Amplitude 2.5px, period 1.0s. sin(2π · f · t) with f = 2.
-      const t = (now - start) / 1000;
-      const amp = 2.5 * bobEnvRef.current;
-      const y = amp * Math.sin(2 * Math.PI * 2 * t);
-
+      // Step-synced bob (lift only, so paws never sink below the path).
+      const target = walkingRef.current ? Math.min(1, f.factor / 0.6) : 0;
+      env += (target - env) * Math.min(f.dt * 6, 1);
+      const t = now - walkStartedAt;
+      const amp = 2.5 + 0.5 * Math.sin(now / 2300); // 2–3px, slowly varying
+      const y = -amp * env * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / STEP_MS));
       const el = bobRef.current;
-      if (el) el.style.transform = `translate3d(0, ${y}px, 0)`;
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
+      if (el) {
+        el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+        el.style.willChange = env > 0.01 ? "transform" : "auto";
+      }
+    });
   }, []);
 
   return (
@@ -84,32 +103,24 @@ export function WalkingCat({ onTap, paused = false }: Props) {
       <div ref={bobRef} className="bob-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={
-            showStill
-              ? "/V2/fox-walk/fox-walk-preview.png"
-              : "/V2/fox-walk/fox-walk.webp"
-          }
+          src={walking ? WALK_SRC : IDLE_SRC}
           alt=""
           className="cat-media"
           draggable={false}
         />
       </div>
-      {/* Preload the still so the pause swap is instantaneous */}
+      {/* Preload both so the swap is instantaneous */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/V2/fox-walk/fox-walk-preview.png"
-        alt=""
-        aria-hidden
-        style={{ display: "none" }}
-      />
+      <img src={walking ? IDLE_SRC : WALK_SRC} alt="" aria-hidden style={{ display: "none" }} />
 
       <style jsx>{`
         .walking-cat {
           position: absolute;
-          /* Anchor at 38% viewport width (off-center-left) — cinematic
-             composition with more world ahead of the cat. */
-          left: var(--companion-x, 38%);
-          bottom: var(--walking-baseline);
+          left: var(--companion-x, 37%);
+          /* The fox art has 26px of empty alpha under the paws
+             (26 / 648 of its width ≈ 4.0%) — pull it down by that much so
+             the paws sit exactly on the walking baseline. */
+          bottom: calc(var(--walking-baseline) - var(--cat-width) * 0.0401);
           transform: translateX(-50%);
           width: var(--cat-width);
           height: auto;
@@ -123,7 +134,6 @@ export function WalkingCat({ onTap, paused = false }: Props) {
         .bob-wrap {
           width: 100%;
           height: auto;
-          will-change: transform;
         }
         .cat-media {
           width: 100%;

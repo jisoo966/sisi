@@ -1,182 +1,137 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { BASE_GROUND_SPEED, worldClock } from "@/lib/worldMotion";
 
 /**
- * ParallaxLayer — a single horizontal parallax band.
+ * ParallaxLayer — one continuous horizontal band (ground, path, vegetation).
  *
- * Renders TWO copies of the same transparent PNG side-by-side and translates
- * them right → left. When the first copy has fully left the viewport it is
- * recycled behind the second, giving an endless drift with no visible reset.
+ * Position is DERIVED from the shared world clock, not accumulated per layer:
  *
- * Movement model:
- *   pixelsPerSecond = baseSpeed × ratio × breathing(time)
- * where breathing is a subtle sinusoidal variation (±speedVariation) so the
- * scene never feels like a constant mechanical treadmill.
+ *   travelled = groundDistance × (speed / BASE_GROUND_SPEED)
+ *   x         = −(travelled mod tileWidth)
  *
- * Pause is eased (exponential decay toward target) — matches the smooth
- * "cat stops before we look up" behavior of the earlier LandscapeTrack.
+ * So two layers with the same speed (walking ground + walking path) always
+ * use the exact same source value — they can never drift apart.
  *
- * The supplied PNGs contain real transparency. This component NEVER
- * modifies, recolors, or adds a background to them. Just <img> tags with
- * height:100%, width:auto, aspect preserved.
+ * Enough copies are rendered to cover the stage plus one tile. The modulo
+ * wrap only ever happens when the left-most copy is completely outside the
+ * viewport, so nothing jumps or appears inside the view. Copies overlap by
+ * `seamOverlap` px to hide sub-pixel seams.
+ *
+ * The PNG is never modified: <img> at height:100%, width:auto.
  */
 
 type Props = {
-  /** PNG source path. Must have real alpha channel. */
   src: string;
-  /**
-   * Speed multiplier relative to baseSpeed.
-   *   0.08  slow clouds
-   *   0.25  midground vegetation
-   *   0.50  main meadow
-   *   1.15  foreground trees
-   */
-  ratio: number;
-  /** Base pixels/second at ratio=1 (default 40, meditative pace) */
-  baseSpeed?: number;
-  /** Pause the layer (still eases to a stop, not a hard freeze) */
-  paused?: boolean;
-  /** Deceleration factor for pause/resume (higher = faster) */
-  decay?: number;
-  /** Sinusoidal speed variation amplitude (0..1). 0.06 = ±6% breathing */
-  speedVariation?: number;
-  /** CSS z-index for stack ordering */
+  /** Pixels per second while walking (at speed multiplier 1). */
+  speed: number;
   zIndex?: number;
-  /**
-   * Vertical position of the image. "bottom" is default (grounds it on the
-   * baseline). "top" for clouds. "cover" fills the whole area.
-   */
   align?: "bottom" | "top" | "cover";
-  /**
-   * Height of the layer as a fraction of the parent (0..1). Default: 1 (full
-   * viewport). Set smaller so tall assets don't dominate — e.g. 0.65 for
-   * foreground trees means the image renders at 65% viewport height so tree
-   * canopies don't reach the top of the sky.
-   */
+  /** Layer height as a fraction of the stage (image keeps its aspect). */
   heightPct?: number;
-  /** Optional aria label for debugging */
+  /** CSS `bottom` override (align="bottom" only). */
+  bottom?: string;
+  opacity?: number;
+  filter?: string;
+  maskImage?: string;
+  /** Px each copy overlaps the next (1–2 hides sub-pixel seams). */
+  seamOverlap?: number;
   ariaLabel?: string;
 };
 
 export function ParallaxLayer({
   src,
-  ratio,
-  baseSpeed = 40,
-  paused = false,
-  decay = 5,
-  speedVariation = 0.06,
+  speed,
   zIndex = 1,
   align = "bottom",
   heightPct = 1,
+  bottom,
+  opacity,
+  filter,
+  maskImage,
+  seamOverlap = 1,
   ariaLabel,
 }: Props) {
-  const laneRef = useRef<HTMLDivElement>(null);
-  const offsetRef = useRef(0);
-  const speedFactorRef = useRef(1);
-  const targetSpeedRef = useRef(1);
-  const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    targetSpeedRef.current = paused ? 0 : 1;
-  }, [paused]);
-
-  useEffect(() => {
-    let lastTime = performance.now();
-    startTimeRef.current = lastTime;
-
-    const tick = (now: number) => {
-      const dt = Math.min((now - lastTime) / 1000, 0.1);
-      lastTime = now;
-
-      // Ease speed factor toward target (walking ↔ paused)
-      const delta = targetSpeedRef.current - speedFactorRef.current;
-      speedFactorRef.current += delta * Math.min(dt * decay, 1);
-      if (Math.abs(delta) < 0.001) {
-        speedFactorRef.current = targetSpeedRef.current;
-      }
-
-      // Breathing variation — soft ±speedVariation modulation, period ~18s
-      const elapsed = (now - (startTimeRef.current ?? now)) / 1000;
-      const breathing = 1 + speedVariation * Math.sin(elapsed * 0.35);
-
-      // Advance offset (negative = shift left)
-      const effectiveSpeed =
-        baseSpeed * ratio * speedFactorRef.current * breathing;
-      offsetRef.current -= effectiveSpeed * dt;
-
-      // Recycle: first copy fully off viewport → move to end, adjust offset
-      const lane = laneRef.current;
-      if (lane) {
-        const first = lane.firstElementChild as HTMLImageElement | null;
-        if (first && first.complete && first.offsetWidth > 0) {
-          const w = first.offsetWidth;
-          if (-offsetRef.current >= w) {
-            offsetRef.current += w;
-            lane.appendChild(first);
-          }
-        }
-        lane.style.transform = `translate3d(${offsetRef.current}px, 0, 0)`;
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [baseSpeed, ratio, decay, speedVariation]);
-
-  // Reduced-motion: freeze
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => {
-      if (mq.matches) targetSpeedRef.current = 0;
-      else targetSpeedRef.current = paused ? 0 : 1;
-    };
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, [paused]);
-
-  // If the src fails to load, silently hide the whole layer so we never
-  // show a broken-image icon. The rest of the scene keeps working.
   const containerRef = useRef<HTMLDivElement>(null);
+  const laneRef = useRef<HTMLDivElement>(null);
+  const tileRef = useRef(0);
+  const [copies, setCopies] = useState(2);
+
+  // Measure tile width + needed copies (on load and on resize).
+  useEffect(() => {
+    const measure = () => {
+      const lane = laneRef.current;
+      const box = containerRef.current;
+      const first = lane?.firstElementChild as HTMLImageElement | null;
+      if (!lane || !box || !first || !first.complete || first.offsetWidth === 0) return;
+      const tile = first.offsetWidth - seamOverlap;
+      tileRef.current = tile;
+      const need = Math.max(2, Math.ceil(box.offsetWidth / tile) + 1);
+      setCopies((c) => (c === need ? c : need));
+    };
+    const lane = laneRef.current;
+    const imgs = lane ? Array.from(lane.querySelectorAll("img")) : [];
+    imgs.forEach((im) => im.addEventListener("load", measure));
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    measure();
+    return () => {
+      imgs.forEach((im) => im.removeEventListener("load", measure));
+      ro.disconnect();
+    };
+  }, [src, seamOverlap, copies]);
+
+  // Drive the transform from the shared clock.
+  useEffect(() => {
+    let animating = false;
+    return worldClock().subscribe((f) => {
+      const lane = laneRef.current;
+      const tile = tileRef.current;
+      if (!lane || tile <= 0) return;
+      const travelled = f.groundDistance * (speed / BASE_GROUND_SPEED);
+      const x = -(travelled % tile);
+      lane.style.transform = `translate3d(${x}px,0,0)`;
+      const moving = f.groundDelta > 0;
+      if (moving !== animating) {
+        animating = moving;
+        lane.style.willChange = moving ? "transform" : "auto";
+      }
+    });
+  }, [speed]);
+
   const onImgError = () => {
     if (containerRef.current) containerRef.current.style.display = "none";
   };
-
-  const heightStyle =
-    heightPct >= 1 ? "100%" : `${Math.max(0, heightPct * 100)}%`;
 
   return (
     <div
       ref={containerRef}
       className={`parallax-layer align-${align}`}
-      style={{ zIndex, height: heightStyle }}
+      style={{
+        zIndex,
+        height: heightPct >= 1 ? "100%" : `${Math.max(0, heightPct * 100)}%`,
+        ...(bottom !== undefined && align === "bottom" ? { bottom } : {}),
+        ...(opacity !== undefined ? { opacity } : {}),
+        ...(filter ? { filter } : {}),
+        ...(maskImage ? { maskImage, WebkitMaskImage: maskImage } : {}),
+      }}
       aria-label={ariaLabel}
       aria-hidden={!ariaLabel}
     >
       <div className="parallax-lane" ref={laneRef}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt=""
-          className="parallax-img"
-          draggable={false}
-          onError={onImgError}
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt=""
-          className="parallax-img"
-          draggable={false}
-          onError={onImgError}
-        />
+        {Array.from({ length: copies }).map((_, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={i}
+            src={src}
+            alt=""
+            className="parallax-img"
+            draggable={false}
+            onError={onImgError}
+            style={{ marginRight: `-${seamOverlap}px` }}
+          />
+        ))}
       </div>
 
       <style jsx>{`
@@ -187,10 +142,6 @@ export function ParallaxLayer({
           overflow: hidden;
           pointer-events: none;
         }
-        /* Align keeps the image anchored to a baseline; content that has
-           empty space in its alpha channel above/below stays where painted.
-           Height comes from inline style (heightPct prop) — these rules
-           only pin the anchor edge. */
         .align-bottom { bottom: 0; }
         .align-top    { top: 0; }
         .align-cover  { top: 0; bottom: 0; }
@@ -200,20 +151,10 @@ export function ParallaxLayer({
           height: 100%;
           width: max-content;
           display: flex;
-          will-change: transform;
         }
-        .align-bottom .parallax-lane {
-          bottom: 0;
-          top: auto;
-          align-items: flex-end;
-        }
-        .align-top .parallax-lane {
-          top: 0;
-          align-items: flex-start;
-        }
-        .align-cover .parallax-lane {
-          top: 0;
-        }
+        .align-bottom .parallax-lane { bottom: 0; align-items: flex-end; }
+        .align-top .parallax-lane { top: 0; align-items: flex-start; }
+        .align-cover .parallax-lane { top: 0; }
         .parallax-img {
           height: 100%;
           width: auto;
@@ -221,8 +162,6 @@ export function ParallaxLayer({
           display: block;
           user-select: none;
           -webkit-user-drag: none;
-          /* No filter, no color-adjust — asset stays untouched */
-          margin-right: -1px; /* subpixel seam guard */
         }
       `}</style>
     </div>

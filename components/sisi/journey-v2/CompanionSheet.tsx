@@ -200,8 +200,35 @@ export function CompanionSheet({ open, onClose }: Props) {
                 </svg>
               </button>
             </form>
+          </motion.aside>
 
-            <style jsx>{`
+          <style jsx>{`
+            :global(.companion-backdrop) {
+              position: fixed;
+              inset: 0;
+              background: rgba(28, 35, 64, 0.28);
+              backdrop-filter: blur(1px);
+              -webkit-backdrop-filter: blur(1px);
+              z-index: 30;
+              border: 0;
+              padding: 0;
+            }
+            :global(.companion-sheet) {
+              position: fixed;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              height: 58dvh;
+              max-height: 620px;
+              border-top-left-radius: 24px;
+              border-top-right-radius: 24px;
+              background: #f7f2e3;
+              box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+              z-index: 31;
+              display: flex;
+              flex-direction: column;
+            }
+
               .handle {
                 margin: 8px auto 6px;
                 width: 42px;
@@ -280,35 +307,6 @@ export function CompanionSheet({ open, onClose }: Props) {
               .send-btn:hover:enabled { filter: brightness(1.06); }
               .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
               .send-btn svg { width: 16px; height: 16px; }
-            `}</style>
-          </motion.aside>
-
-          <style jsx>{`
-            .companion-backdrop {
-              position: fixed;
-              inset: 0;
-              background: rgba(28, 35, 64, 0.28);
-              backdrop-filter: blur(1px);
-              -webkit-backdrop-filter: blur(1px);
-              z-index: 30;
-              border: 0;
-              padding: 0;
-            }
-            .companion-sheet {
-              position: fixed;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              height: 58dvh;
-              max-height: 620px;
-              border-top-left-radius: 24px;
-              border-top-right-radius: 24px;
-              background: #f7f2e3;
-              box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
-              z-index: 31;
-              display: flex;
-              flex-direction: column;
-            }
           `}</style>
         </>
       )}

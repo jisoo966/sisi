@@ -66,9 +66,13 @@ export function SkyStarV2({ star, phase, onTap }: Props) {
         scale: isStarView ? 2.0 : 1,
       }}
       transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+      // framer-motion writes its own `transform` (for scale), which would
+      // wipe a CSS translate — so the centering offset lives here instead.
       style={{
         width: "var(--star-walking-size)",
         height: "var(--star-walking-size)",
+        x: "-50%",
+        y: "-50%",
       }}
     >
       <span className="halo halo-outer" aria-hidden />
@@ -99,7 +103,7 @@ export function SkyStarV2({ star, phase, onTap }: Props) {
       </svg>
 
       <style jsx>{`
-        .sky-star-btn {
+        :global(.sky-star-btn) {
           position: absolute;
           transform: translate(-50%, -50%);
           transform-origin: center;

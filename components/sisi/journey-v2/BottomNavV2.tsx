@@ -54,7 +54,7 @@ export function BottomNavV2({ theme = "light" }: { theme?: Theme }) {
         );
       })}
 
-      <style jsx>{`
+      <style jsx global>{`
         .journey-nav {
           position: absolute;
           left: max(var(--stage-padding), var(--safe-left));

@@ -85,7 +85,7 @@ export function StarView({ star, onBack }: Props) {
       </button>
 
       <style jsx>{`
-        .star-view {
+        :global(.star-view) {
           position: absolute;
           inset: 0;
           display: flex;

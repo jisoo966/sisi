@@ -103,7 +103,7 @@ export function JourneyHeader({
       </div>
 
       <style jsx>{`
-        .journey-header {
+        :global(.journey-header) {
           position: absolute;
           top: var(--header-top);
           left: max(var(--stage-padding), var(--safe-left));
@@ -115,7 +115,7 @@ export function JourneyHeader({
           z-index: 12;
           color: var(--journey-navy);
         }
-        .journey-header.is-dark { color: rgba(255, 255, 255, 0.95); }
+        :global(.journey-header.is-dark) { color: rgba(255, 255, 255, 0.95); }
 
         .left-col {
           min-width: 0;
@@ -130,7 +130,7 @@ export function JourneyHeader({
           opacity: 0.7;
           letter-spacing: 0.01em;
         }
-        .journey-header.is-dark .date-line { opacity: 0.85; }
+        :global(.journey-header.is-dark) .date-line { opacity: 0.85; }
 
         .greeting-line {
           font-family: var(--font-fraunces), Georgia, serif;

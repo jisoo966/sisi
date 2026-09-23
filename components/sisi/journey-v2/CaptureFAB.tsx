@@ -44,7 +44,7 @@ export function CaptureFAB({ onClick }: Props) {
         <circle cx="12" cy="12.5" r="3.6" />
       </svg>
 
-      <style jsx>{`
+      <style jsx global>{`
         .capture-fab {
           position: absolute;
           bottom: var(--fab-bottom);

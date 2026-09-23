@@ -9,6 +9,9 @@ import {
 } from "@/components/sisi/journey-v2/JourneyStage";
 import { ParallaxLayer } from "@/components/sisi/journey-v2/ParallaxLayer";
 import { ForegroundOccluder } from "@/components/sisi/journey-v2/ForegroundOccluder";
+import { ForegroundClusters } from "@/components/sisi/journey-v2/ForegroundClusters";
+import { CloudDrift } from "@/components/sisi/journey-v2/CloudDrift";
+import { LAYER_SPEED, worldClock } from "@/lib/worldMotion";
 // LEGACY — kept on disk for future use / recoverability:
 //   LandscapeTrack, PanoramaBackground — earlier single-layer scrollers.
 // import { LandscapeTrack } from "@/components/sisi/journey-v2/LandscapeTrack";
@@ -41,41 +44,91 @@ import { loadStars, type Star } from "@/lib/myStars";
 // See git history + JourneyScene.tsx / WalkingFoxRear.tsx / BottomNav.tsx.
 
 /**
- * Layered parallax scene sources — Journey world.
+ * Layered parallax scene — Journey world.
  *
  * Every asset is a transparent PNG shipped by the artist with real alpha.
- * We never recolor, flatten, or add a background to them. Slower ratios read
- * as "far away"; faster ratios read as "close to camera".
+ * We never recolor, regenerate or merge them. Depth comes only from layout,
+ * scale, opacity, layering, speed (and a CSS atmosphere filter on distant
+ * layers). Target composition: ~70% open sky, ~30% landscape.
  *
- * Layer stack (bottom → top):
- *   Sky            → SkyTrack (separate sky-group, vertical look-up asset)
- *   SlowClouds     ratio 0.08  (very slow drift, upper sky region)
- *   MidgroundVeg   ratio 0.25  (distant blue bushes / small trees)
- *   MainMeadow     ratio 0.50  (grass horizon with wildflowers)
- *   Companion      stationary at --companion-x (38% viewport width) + bob
- *   ForegroundTree ratio 1.15  (fast-scrolling trees, briefly occlude cat)
- *   Interface      → UILayer
+ * Motion: one shared world clock (lib/worldMotion.ts), time-based px/s,
+ * BASE_GROUND_SPEED = 32. Layer stack (back → front), each a SEPARATE asset:
+ *   Fixed Sky          0 px/s     journey-sky-fixed.png, position:fixed
+ *   Small clouds       1.5–2      single clouds, high, sparse
+ *   Large clouds       2.5–3.5    2–3 visible max, long empty stretches
+ *   Far silhouettes    7          tree-2 / tree-4, faint (62%), bluish
+ *   Midground veg      13.5       behind the companion, lighter/softer
+ *   Walking ground     32         dense meadow, mostly BELOW the path
+ *   Walking path       32         SAME source value as the ground (locked)
+ *   Companion          0          --companion-x (37%), paws on the path centre
+ *   Foreground grass   42–48      single clumps every 4–9s of walking
+ *   Foreground tree    50–58      tree-1, every 12–22s of walking
+ *   Interface          → UILayer
  */
 const PARALLAX_LAYERS = {
-  slowClouds: "/V2/parallax/slow-clouds.png",
-  midgroundVegetation: "/V2/parallax/midground-vegetation.png",
-  mainMeadow: "/V2/parallax/main-meadow.png",
+  skyFixed: "/V2/parallax/journey-sky-fixed.png",
+  midgroundVegetation: "/V2/parallax/journey-midground-vegetation.png",
+  walkingGround: "/V2/parallax/journey-walking-ground.png",
+  walkingPath: "/V2/parallax/journey-walking-path.png",
 };
 
+/** Single clouds cut (pixels untouched) from slow-clouds.png. */
+const CLOUDS = [1, 2, 3, 4, 5, 6].map((n) => ({
+  src: `/V2/parallax/clouds/cloud-${n}.png`,
+}));
+
 /**
- * Individual tree PNGs — used by the ForegroundOccluder to spawn one at a
- * time at random intervals (cinematic "we just walked past a tree" beats),
- * not a continuous strip. Each asset is a single tall transparent tree.
- *
- * tree-3-night.png (dark navy glow variant) is reserved for the celestial /
- * night phase — its baked-in ambient darkness reads correctly against the
- * star sky but would look muddy on the daytime blue.
+ * Foreground grass clumps cut (pixels untouched) from
+ * journey-foreground-grass.png. `tall` clumps are the rare ones allowed to
+ * reach the companion's lower body; the rest only cover the paws.
  */
-const FOREGROUND_TREE_SOURCES = [
-  "/V2/parallax/trees/tree-1.png",
+const FOREGROUND_GRASS_CLUSTERS = [
+  { src: "/V2/parallax/foreground-grass/cluster-1.png" },
+  { src: "/V2/parallax/foreground-grass/cluster-2.png" },
+  { src: "/V2/parallax/foreground-grass/cluster-3.png", tall: true },
+  { src: "/V2/parallax/foreground-grass/cluster-4.png" },
+  { src: "/V2/parallax/foreground-grass/cluster-5.png", tall: true },
+  { src: "/V2/parallax/foreground-grass/cluster-6.png" },
+];
+
+/**
+ * Trees — each tree has exactly ONE depth role (never the companion's plane):
+ *   midground (behind, small, faint)  → tree-2, tree-4
+ *   foreground (in front, big, dark) → tree-1
+ * tree-3-night.png is reserved for the celestial / night phase.
+ */
+const MIDGROUND_TREE_SOURCES = [
   "/V2/parallax/trees/tree-2.png",
   "/V2/parallax/trees/tree-4.png",
 ];
+const FOREGROUND_TREE_SOURCES = ["/V2/parallax/trees/tree-1.png"];
+
+/**
+ * Walking path (journey-walking-path.png, 2048×768, transparent).
+ * Rendered at 40% of the stage height, natural aspect (never stretched).
+ * Its band runs from row 355 to 464; the band's vertical CENTER (row 409.5)
+ * is 46.68% above the image bottom → shifting by 0.4668 × 40% = 18.67% puts
+ * the centre of the path exactly on --walking-baseline (where the paws are).
+ * Band is ~5.7% of the stage tall: ±2.84% around the baseline.
+ */
+const PATH_HEIGHT_PCT = 0.4;
+const PATH_BOTTOM = "calc(var(--walking-baseline) - 18.67%)";
+
+/**
+ * Dense meadow (walking ground) sits BELOW the path: its grass line
+ * (26.95% above its bottom edge) goes 1% under the baseline, so its grass
+ * tips tuck behind the path's lower edge and most of the meadow is below.
+ */
+const GROUND_BOTTOM = "calc(var(--walking-baseline) - 1% - 26.95%)";
+
+/**
+ * Foreground tree placement: tree-1's canopy spans the top ~75% of the
+ * image and its trunk the bottom ~22%. At 66% stage height with its base at
+ * 22%, the companion's body lines up with the TRUNK, so a passing tree
+ * covers only ~10–25% of the companion, briefly.
+ */
+const FG_TREE_HEIGHT_PCT = 0.66;
+const FG_TREE_BASE = "22%";
 
 /** 시간대별 인사 */
 function getGreeting(): string {
@@ -106,7 +159,7 @@ function formatDate(): string {
  *         <SkyJourney>                   250dvh tall vertical sky asset
  *       <landscape-group>                translates down in star-view
  *         <PanoramaBackground paused>    wide illustrated environment, drifts
- *         <WalkingCat paused>            fox video with alpha, feet on baseline
+ *         <WalkingCat>                   companion, driven by the world clock
  *       <SkyStarV2 phase onTap>          moves upper-right ↔ center
  *     <UILayer>                          fixed above world, does not move
  *       <JourneyHeader>                  greeting + bell + menu (walking only)
@@ -123,7 +176,7 @@ export default function JourneyPage() {
 
   // Match the safe area above the panorama with the current phase's sky tone.
   // Walking phase = day cream/butter; star-view = celestial black.
-  usePageBg(isWalking ? "#F5E9C8" : "#0d1620");
+  usePageBg(isWalking ? "#4384e3" : "#0d1620");
 
   // Auth-derived name (Supabase profile or guest localStorage).
   const [name, setName] = useState<string>("");
@@ -138,6 +191,13 @@ export default function JourneyPage() {
   // World "paused" derives from ANY of: not walking phase, or chat sheet open.
   // Cat + landscape freeze together in either case.
   const worldPaused = !isWalking || chatOpen;
+
+  // Drive the shared world clock: ease in on arrival (0 → 32px/s over 1.2s),
+  // ease out when the chat opens or the camera looks up at the star.
+  useEffect(() => {
+    worldClock().setWalking(!worldPaused);
+  }, [worldPaused]);
+  useEffect(() => () => worldClock().reset(), []);
 
   // Date/greeting — mount only to avoid SSR/client timezone hydration flash.
   const [greeting, setGreeting] = useState<string>("");
@@ -201,87 +261,106 @@ export default function JourneyPage() {
     <JourneyStage phaseClass={stageClass}>
       {/* ── WORLD LAYER — sky + landscape groups (moved by phase class) ── */}
       <WorldLayer>
-        {/* Sky group — three sliced webps stacked as one continuous artwork.
-            Height derives from the stacked slices; group translates as a
-            single unit driven by phase-star-view CSS in globals.css. */}
+        {/* 1. FIXED SKY — position:fixed, covers the viewport, never moves
+            (not horizontally, not during the look-up). */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={PARALLAX_LAYERS.skyFixed}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="journey-sky-fixed"
+        />
+
+        {/* Vertical sky for the Star look-up only. Invisible while walking;
+            fades in as the camera starts looking up (see globals.css). */}
         <div className="journey-sky-group">
           <SkyTrack />
         </div>
 
-        {/* Landscape group — drops off-screen bottom when entering star-view.
-            The horizontal LandscapeTrack lives INSIDE this vertical group so
-            the two transforms compose (group translateY + track translateX). */}
+        {/* Landscape group — drops off-screen bottom when entering star-view. */}
         <div className="journey-landscape-group">
-          {/* ── LAYER STACK (bottom → top) ──────────────────────
-           *  1. Sky            — handled by SkyTrack (sky-group above)
-           *  2. SlowClouds     ratio 0.08
-           *  3. MidgroundVeg   ratio 0.25
-           *  4. MainMeadow     ratio 0.50
-           *  5. Companion      anchored at 38% viewport width + walking bob
-           *  6. ForegroundTree ratio 1.15  (sparse clusters → occasional occlusion)
-           *  7. Interface      handled by UILayer
-           * All layers pause together via `worldPaused`. */}
+          {/* 2–3. Clouds — small distant (1.5–2px/s) + larger (2.5–3.5px/s) */}
+          <CloudDrift clouds={CLOUDS} zIndex={1} />
 
-          {/* 2. Slow clouds — top of sky, barely moves */}
-          <ParallaxLayer
-            src={PARALLAX_LAYERS.slowClouds}
-            ratio={0.08}
-            paused={worldPaused}
-            zIndex={1}
-            align="top"
-            heightPct={0.45}   /* only upper sky region */
-            speedVariation={0.10}
+          {/* 4. Far silhouettes — faint, bluish trees at 7px/s */}
+          <ForegroundOccluder
+            sources={MIDGROUND_TREE_SOURCES}
+            speedMin={LAYER_SPEED.farVegetation - 0.6}
+            speedMax={LAYER_SPEED.farVegetation + 0.6}
+            intervalMin={14}
+            intervalMax={30}
+            initialDelay={4}
+            heightPct={0.22}
+            groundBase="calc(var(--walking-baseline) + 2%)"
+            opacity={0.62}
+            filter="saturate(0.7) brightness(1.2) contrast(0.8)"
+            zIndex={2}
           />
 
-          {/* 3. Midground vegetation — distant blue bushes near horizon */}
+          {/* 5. Midground vegetation — 13.5px/s, behind the companion,
+              lighter and softer than the main ground. */}
           <ParallaxLayer
             src={PARALLAX_LAYERS.midgroundVegetation}
-            ratio={0.25}
-            paused={worldPaused}
+            speed={LAYER_SPEED.midgroundVegetation}
             zIndex={2}
             align="bottom"
-            heightPct={0.32}   /* only lower-middle band */
+            heightPct={0.18}
+            bottom="calc(var(--walking-baseline) - 1.5%)"
+            opacity={0.8}
+            filter="saturate(0.75) brightness(1.15) contrast(0.85)"
           />
 
-          {/* 4. Main meadow — grass horizon + sky (opaque base of the world) */}
+          {/* 6. Walking ground — 32px/s, natural aspect, mostly below the
+              path; its grass tips tuck behind the path's lower edge. */}
           <ParallaxLayer
-            src={PARALLAX_LAYERS.mainMeadow}
-            ratio={0.50}
-            paused={worldPaused}
+            src={PARALLAX_LAYERS.walkingGround}
+            speed={LAYER_SPEED.walkingGround}
             zIndex={3}
             align="bottom"
-            heightPct={1}      /* fills viewport */
+            heightPct={1}
+            bottom={GROUND_BOTTOM}
+            seamOverlap={2}
           />
 
-          {/* 5. Companion — stationary at --companion-x + walking bob */}
-          <WalkingCat
-            paused={worldPaused}
-            onTap={isWalking ? () => setChatOpen(true) : undefined}
+          {/* 7. Walking path — exactly 32px/s. Ground and path both derive
+              their transform from the same shared groundDistance value. */}
+          <ParallaxLayer
+            src={PARALLAX_LAYERS.walkingPath}
+            speed={LAYER_SPEED.walkingPath}
+            zIndex={4}
+            align="bottom"
+            heightPct={PATH_HEIGHT_PCT}
+            bottom={PATH_BOTTOM}
+            seamOverlap={2}
           />
 
-          {/* Occasional trees — planted BEHIND the cat, rooted at the same
-              grass horizon the cat walks on (--walking-baseline) so their
-              trunks emerge from the ground rather than growing up from the
-              bottom of the screen.
-              Depth:
-                ratio 0.35  → clearly slower than the main meadow (0.50),
-                so trees read as "farther back than the cat".
-                zIndex 2    → renders BEHIND cat (z 5) and behind the main
-                meadow silhouette (z 3); above sky + midground vegetation.
-              Sizing:
-                heightPct 0.45 → tree canopy above the cat but not looming.
-                                  Feels like a normal tree we walk past, not a
-                                  wall of foliage in front of the camera. */}
+          {/* 8. Companion — 0px/s, paws on the path centre */}
+          <WalkingCat onTap={isWalking ? () => setChatOpen(true) : undefined} />
+
+          {/* 9. Foreground grass — 42–48px/s, one clump every 4–9s */}
+          <ForegroundClusters
+            clusters={FOREGROUND_GRASS_CLUSTERS}
+            speedMin={LAYER_SPEED.foregroundGrass[0]}
+            speedMax={LAYER_SPEED.foregroundGrass[1]}
+            intervalMin={4}
+            intervalMax={9}
+            zIndex={7}
+          />
+
+          {/* 10. Foreground tree — 50–58px/s, every 12–22s of walking.
+              Enters whole from the right, exits whole on the left. */}
           <ForegroundOccluder
             sources={FOREGROUND_TREE_SOURCES}
-            ratio={0.35}
-            paused={worldPaused}
-            intervalMin={14}
-            intervalMax={26}
-            initialDelayMs={5000}
-            heightPct={0.45}
-            groundBase="var(--walking-baseline)"
-            zIndex={2}
+            speedMin={LAYER_SPEED.foregroundTree[0]}
+            speedMax={LAYER_SPEED.foregroundTree[1]}
+            intervalMin={12}
+            intervalMax={22}
+            initialDelay={9}
+            heightPct={FG_TREE_HEIGHT_PCT}
+            groundBase={FG_TREE_BASE}
+            filter="brightness(0.78) contrast(1.15)"
+            zIndex={8}
           />
         </div>
 
