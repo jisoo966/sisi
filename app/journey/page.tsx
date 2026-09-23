@@ -503,7 +503,9 @@ export default function JourneyPage() {
             Meadow: Stars ascends. Star World: Journey descends. */}
         <div className={`journey-walk-ui${busy ? " is-hidden" : ""}`}>
           <BottomNavV2
-            theme={env === "night" ? "dark" : "light"}
+            // Cream stones in both worlds — the dark variant disappeared
+            // against the cloud bank at the bottom of the Star World.
+            theme="light"
             activeTab={isStarView ? "stars" : "journey"}
             onStarsSelect={isWalking ? goToStars : () => {}}
             onJourneySelect={isStarView ? backToMeadow : () => {}}

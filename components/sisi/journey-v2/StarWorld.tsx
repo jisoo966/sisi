@@ -238,6 +238,12 @@ export function StarWorld({
     wheelTimer.current = setTimeout(() => settleTo(nearestStop(scroll.current)), 160);
   };
 
+  // A quiet hint under the Current Star until the user taps a star once.
+  const [hinted, setHinted] = useState(false);
+  useEffect(() => {
+    if (selectedId) setHinted(true);
+  }, [selectedId]);
+
   // Press feedback per star.
   const [pressedId, setPressedId] = useState<string | null>(null);
 
@@ -261,6 +267,15 @@ export function StarWorld({
           <svg className="sw-path" width={size.w} height={placed[placed.length - 1].y + size.h} aria-hidden>
             <path d={pathD} />
           </svg>
+        )}
+        {placed[0] && (
+          <p
+            className={`sw-hint${revealed && !hinted && !hasSelection ? " is-shown" : ""}`}
+            style={{ left: placed[0].x, top: placed[0].y + 58 }}
+            aria-hidden
+          >
+            tap your star
+          </p>
         )}
         {placed.map((p, i) => {
           const isSel = p.star.id === selectedId;
@@ -351,6 +366,29 @@ export function StarWorld({
         .sw-root.is-revealed .sw-path {
           opacity: 0.22;
           transition-delay: 1400ms;
+        }
+        .sw-hint {
+          position: absolute;
+          transform: translateX(-50%);
+          margin: 0;
+          white-space: nowrap;
+          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-style: italic;
+          font-size: 14px;
+          letter-spacing: 0.04em;
+          color: rgba(246, 236, 214, 0.75);
+          opacity: 0;
+          transition: opacity 600ms ease;
+          pointer-events: none;
+        }
+        .sw-hint.is-shown {
+          opacity: 1;
+          transition-delay: 1800ms;
+          animation: swHintBreathe 3.2s ease-in-out 2.4s infinite;
+        }
+        @keyframes swHintBreathe {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.55; }
         }
         .sw-star {
           position: absolute;
