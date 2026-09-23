@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -15,12 +15,27 @@ export const dynamic = "force-dynamic";
  *   - Sentient Light 폰트
  *   - journey palette (cream / navy / purple)
  */
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // 매직링크 실패 시 confirm route가 ?error= 붙여서 login으로 되돌림.
+  // 유저가 무슨 일 있었는지 이해할 수 있도록 명확히 표시.
+  useEffect(() => {
+    const err = searchParams.get("error");
+    if (!err) return;
+    if (err === "link_expired") {
+      setError("that link expired. request a fresh one below.");
+    } else if (err === "wrong_browser") {
+      setError("open the link in the same browser you started in.");
+    } else {
+      setError(`sign-in failed (${err}). try again below.`);
+    }
+  }, [searchParams]);
 
   /** 게스트 모드 — 이메일 없이 시작. Cookie 로 미들웨어 통과.
    *  새 게스트 세션 = 이전 이름/온보딩 상태 리셋 → 항상 fresh 시작.
@@ -53,20 +68,14 @@ export default function LoginPage() {
     setError("");
 
     const supabase = createClient();
-    // Supabase's Redirect URLs allowlist is configured for the apex domain
-    // (hellosisi.co) — www.hellosisi.co isn't in it, and Vercel serves the
-    // app at www (apex redirects to www). Without this normalization,
-    // emailRedirectTo silently fails Supabase's allowlist check and the
-    // magic link never reaches /auth/confirm with a code — the session
-    // exchange never happens and the user just gets bounced back to login.
-    const redirectOrigin = window.location.origin.replace(
-      /^https:\/\/www\./,
-      "https://"
-    );
+    // 유저가 지금 있는 도메인 그대로 redirect — 쿠키 domain 안 맞아서 세션 소실되는 문제 방지.
+    // ⚠️ Supabase Dashboard → Auth → URL Configuration에 아래 URL 두 개 다 추가되어 있어야 함:
+    //     https://hellosisi.co/auth/confirm
+    //     https://www.hellosisi.co/auth/confirm
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
-        emailRedirectTo: `${redirectOrigin}/auth/confirm`,
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
       },
     });
 
@@ -236,6 +245,11 @@ export default function LoginPage() {
                   <br />
                   it will find you.
                 </p>
+                <p className="mt-6 font-sentient italic text-[12px] text-journey-navy/55 leading-relaxed">
+                  open the link in the same browser you started in.
+                  <br />
+                  (if it opens inside your mail app, tap the compass icon to open in safari.)
+                </p>
                 <button
                   onClick={() => {
                     setSubmitted(false);
@@ -251,5 +265,14 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  // useSearchParams는 Suspense boundary 필수
+  return (
+    <Suspense fallback={<main className="min-h-svh w-full bg-journey-cream" />}>
+      <LoginInner />
+    </Suspense>
   );
 }

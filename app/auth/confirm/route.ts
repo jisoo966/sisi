@@ -20,17 +20,29 @@ export async function GET(request: NextRequest) {
 
   // Session 교환
   let sessionOk = false;
+  let exchangeError: string | null = null;
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     sessionOk = !error;
+    if (error) exchangeError = error.message;
   } else if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     sessionOk = !error;
+    if (error) exchangeError = error.message;
+  } else {
+    exchangeError = "no code or token in link";
   }
 
   if (!sessionOk) {
+    // 정확한 에러 이유를 로그인 페이지에 넘겨서 유저가 뭐가 잘못됐는지 알 수 있게.
+    console.error("[auth/confirm] session exchange failed:", exchangeError);
+    const errorCode = exchangeError?.toLowerCase().includes("expired")
+      ? "link_expired"
+      : exchangeError?.toLowerCase().includes("used")
+        ? "link_used"
+        : "link_expired";
     return NextResponse.redirect(
-      new URL("/login?error=link_expired", request.url),
+      new URL(`/login?error=${errorCode}`, request.url),
     );
   }
 

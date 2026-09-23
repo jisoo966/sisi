@@ -85,9 +85,10 @@ export default function MomentPage() {
           height: result.height,
         }),
       );
-      // Flash 살짝 유지하면서 라우팅 (부드럽게)
+      // Flash 살짝 유지하면서 라우팅 (부드럽게).
+      // replace로 → 뒤로가기 시 /moment(여우 화면) 다시 안 보임.
       await new Promise((r) => setTimeout(r, 200));
-      router.push("/moment/write");
+      router.replace("/moment/write");
     } catch (err) {
       console.error("Screenshot failed", err);
       setFlashing(false);

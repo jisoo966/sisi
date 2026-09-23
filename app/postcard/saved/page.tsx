@@ -114,33 +114,31 @@ export default function PostcardSavedPage() {
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
           className="font-sentient text-[22px] text-white/95 text-center leading-tight shrink-0"
         >
           your moment is safely kept.
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.35 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
           className="font-sentient italic text-[12px] text-white/60 text-center mt-1 mb-[16px] shrink-0"
         >
           it&apos;s here whenever you need it.
         </motion.p>
 
-        {/* Postcard card — 더 크게 (여백 너무 커서 upgrade) */}
+        {/* Postcard card — spring 대신 gentle tween. 카드가 튕기지 않고 부드럽게 등장. */}
         <motion.div
-          initial={{ opacity: 0, y: 30, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{
-            duration: 0.8,
-            delay: 0.5,
-            type: "spring",
-            damping: 20,
-            stiffness: 200,
+            duration: 0.5,
+            delay: 0.35,
+            ease: [0.22, 1, 0.36, 1],
           }}
           className="relative w-full max-w-[220px] flex-shrink min-h-0"
         >
@@ -157,11 +155,11 @@ export default function PostcardSavedPage() {
                 <div className="w-full h-full bg-journey-cream" />
               )}
 
-              {/* Stamp */}
+              {/* Stamp — spring 대신 gentle rotate만 */}
               <motion.div
-                initial={{ rotate: 15, scale: 0.7, opacity: 0 }}
+                initial={{ rotate: 8, scale: 0.9, opacity: 0 }}
                 animate={{ rotate: -8, scale: 1, opacity: 1 }}
-                transition={{ delay: 0.9, duration: 0.5, type: "spring", damping: 12, stiffness: 180 }}
+                transition={{ delay: 0.6, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute top-[8px] right-[8px] z-10"
               >
                 <MiniStamp />
@@ -173,7 +171,7 @@ export default function PostcardSavedPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.1, duration: 0.4 }}
+                transition={{ delay: 0.75, duration: 0.4 }}
                 className="flex items-center justify-between mt-[8px] px-[6px]"
               >
                 <p className="font-sentient text-[10px] text-journey-navy/60 tracking-wider">
@@ -188,9 +186,9 @@ export default function PostcardSavedPage() {
 
       {/* BOTTOM — 고정 CTA 영역. pt를 크게 줘서 카드와 gap 확보. */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.2 }}
+        transition={{ duration: 0.4, delay: 0.85 }}
         className="shrink-0 relative z-20 px-[24px] pt-[32px] pb-[36px] flex flex-col gap-3"
       >
         <Link

@@ -75,7 +75,14 @@
       "Read(//Users/jisoo/Library/Caches/ms-playwright/**)",
       "Read(//Users/jisoo/**)",
       "Bash(cat app/app/page.tsx)",
-      "Bash(ls app/app/)"
+      "Bash(ls app/app/)",
+      "Bash(open public/world-prototype.html)",
+      "Bash(open public/world-prototype-side.html)",
+      "Bash(nslookup tgxrbqzuxltvybqgfrog.supabase.co)",
+      "Bash(ping -c 2 8.8.8.8)",
+      "Bash(nslookup google.com)",
+      "mcp__plugin_supabase_supabase__get_project",
+      "mcp__plugin_supabase_supabase__restore_project"
     ]
   }
 }

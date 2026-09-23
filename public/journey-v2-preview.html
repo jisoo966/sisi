@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Journey v2 · Responsive Preview</title>
+  <style>
+    :root {
+      --bg: #f4efe4;
+      --text: #1c2340;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro", system-ui, sans-serif; }
+    header {
+      padding: 20px 24px 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    h1 { font-size: 20px; margin: 0; font-weight: 500; }
+    .subtitle { font-size: 13px; opacity: 0.6; font-style: italic; }
+    .controls { margin-left: auto; font-size: 13px; opacity: 0.7; }
+    label { margin-right: 12px; cursor: pointer; }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 24px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .device {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .device-label {
+      font-size: 11px;
+      font-family: ui-monospace, "SF Mono", monospace;
+      opacity: 0.7;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .device-label .model { font-weight: 500; opacity: 1; }
+    .frame-wrap {
+      border-radius: 34px;
+      overflow: hidden;
+      box-shadow: 0 6px 30px rgba(0,0,0,0.12), 0 0 0 6px #1c2340;
+      background: #000;
+      transition: transform 0.15s ease;
+    }
+    .frame-wrap:hover { transform: translateY(-2px); }
+    iframe {
+      border: 0;
+      display: block;
+      background: #f4efe4;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Journey v2 · Responsive Preview</h1>
+    <span class="subtitle">6 target viewports + landscape gate</span>
+    <div class="controls">
+      Base URL: <input id="baseUrl" value="http://localhost:3000" style="width:200px;padding:2px 6px;font-family:inherit;">
+      <button id="reload" style="margin-left:6px;">Reload all</button>
+    </div>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const DEVICES = [
+      { model: "iPhone SE (1st)",     w: 320, h: 568 },
+      { model: "iPhone SE (2/3)",     w: 375, h: 667 },
+      { model: "iPhone 12/13/14",     w: 390, h: 844 },
+      { model: "iPhone 15/16",        w: 393, h: 852 },
+      { model: "iPhone 15/16 Plus",   w: 430, h: 932 },
+      { model: "Android (Pixel)",     w: 360, h: 800 },
+      { model: "Landscape (iPhone)",  w: 812, h: 375 },
+    ];
+
+    const grid = document.getElementById("grid");
+    const baseUrlInput = document.getElementById("baseUrl");
+
+    function render() {
+      const base = baseUrlInput.value.replace(/\/$/, "");
+      grid.innerHTML = "";
+      DEVICES.forEach((d) => {
+        const wrap = document.createElement("div");
+        wrap.className = "device";
+        wrap.innerHTML = `
+          <div class="frame-wrap" style="width:${d.w}px;height:${d.h}px;">
+            <iframe src="${base}/journey" width="${d.w}" height="${d.h}"></iframe>
+          </div>
+          <div class="device-label">
+            <span class="model">${d.model}</span><br>${d.w}×${d.h}
+          </div>
+        `;
+        grid.appendChild(wrap);
+      });
+    }
+
+    document.getElementById("reload").onclick = render;
+    baseUrlInput.onchange = render;
+    render();
+  </script>
+</body>
+</html>

@@ -66,9 +66,10 @@ export default function WritePostcardPage() {
         height: pending.height,
         takenAt: new Date().toISOString(),
       });
-      // Cleanup pending state
+      // Cleanup pending state.
+      // replace로 → 뒤로가기 시 write 페이지 다시 안 보임.
       sessionStorage.removeItem(PENDING_KEY);
-      router.push("/postcard/saved");
+      router.replace("/postcard/saved");
     } catch (err) {
       console.error("save postcard failed:", err);
       const msg = String(err);
@@ -118,11 +119,11 @@ export default function WritePostcardPage() {
 
       {/* Content — scrollable */}
       <div className="flex-1 overflow-y-auto px-[24px] pt-[16px] pb-[24px]">
-        {/* Polaroid preview */}
+        {/* Polaroid preview — scale 제거해서 튕김 방지, y translate만 */}
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full max-w-[280px] mx-auto"
         >
           <div className="bg-white rounded-[12px] p-[10px] pb-[14px] shadow-xl">

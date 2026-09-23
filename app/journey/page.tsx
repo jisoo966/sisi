@@ -1,104 +1,81 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { WalkingFoxRear } from "@/components/sisi/WalkingFoxRear";
-import { JourneyScene } from "@/components/sisi/JourneyScene";
-import { BottomNav } from "@/components/sisi/BottomNav";
+import { AnimatePresence } from "framer-motion";
+import {
+  JourneyStage,
+  WorldLayer,
+  UILayer,
+} from "@/components/sisi/journey-v2/JourneyStage";
+import { ParallaxLayer } from "@/components/sisi/journey-v2/ParallaxLayer";
+import { ForegroundOccluder } from "@/components/sisi/journey-v2/ForegroundOccluder";
+// LEGACY — kept on disk for future use / recoverability:
+//   LandscapeTrack, PanoramaBackground — earlier single-layer scrollers.
+// import { LandscapeTrack } from "@/components/sisi/journey-v2/LandscapeTrack";
+// import { PanoramaBackground } from "@/components/sisi/journey-v2/PanoramaBackground";
+import { WalkingCat } from "@/components/sisi/journey-v2/WalkingCat";
+import { SkyStarV2 } from "@/components/sisi/journey-v2/SkyStarV2";
+import { SkyTrack } from "@/components/sisi/journey-v2/SkyTrack";
+// LEGACY — SkyJourney (gradient-based placeholder sky) preserved for revert.
+// import { SkyJourney } from "@/components/sisi/journey-v2/SkyJourney";
+import { StarView } from "@/components/sisi/journey-v2/StarView";
+import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
+import { CaptureFAB } from "@/components/sisi/journey-v2/CaptureFAB";
+import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
+import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
+import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
+
 import { MenuSheet } from "@/components/sisi/MenuSheet";
 import { PostcardOptionsSheet } from "@/components/sisi/PostcardOptionsSheet";
 import { GuestLoginNudge } from "@/components/sisi/GuestLoginNudge";
 import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
-import { useVideoLuminance } from "@/lib/useVideoLuminance";
+
 import { usePageBg } from "@/lib/usePageBg";
+import { useJourneyPhase } from "@/lib/useJourneyPhase";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 import { loadStars, type Star } from "@/lib/myStars";
 
-/**
- * SkyStar — 하늘에 떠 있는 하나의 별.
- * 유저 최근 wish를 시적으로 표현. 탭 시 /my-stars 이동.
- * 글자 없음 = 상징만. 순수한 연결감.
- */
-function SkyStar({ star }: { star: Star }) {
-  // 별 위치 (하늘 상단, 살짝 오른쪽) — position 데이터 활용 가능하나 여기선 고정.
-  // 인사말 텍스트 바로 아래에 붙어있던 것 → 여백 확보하되 살짝 위로 (22~30%).
-  const top = 22 + (Math.abs(star.x) % 8); // 22~30%
-  const left = 45 + (star.y % 20); // 45~65%
-  const size = 28;
+// LEGACY — Journey v1 (video world + path-following fox + BottomNav).
+// Preserved intentionally so the old world can be restored if v2 needs revert.
+// See git history + JourneyScene.tsx / WalkingFoxRear.tsx / BottomNav.tsx.
 
-  return (
-    <Link
-      href="/my-stars"
-      // 인사말을 감싸는 header wrapper가 z-10 + h-screen이라 투명한 영역까지
-      // 클릭을 가로채고 있었음 — 그보다 높은 z로 올려서 실제로 탭되게 함.
-      className="absolute z-20 -translate-x-1/2 -translate-y-1/2 group"
-      style={{ top: `${top}%`, left: `${left}%` }}
-      aria-label="Your star in the sky"
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{
-          opacity: [0.85, 1, 0.85],
-          scale: [1, 1.05, 1],
-        }}
-        transition={{
-          opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-          scale: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-        }}
-        className="relative flex items-center justify-center"
-        style={{ width: size * 2.5, height: size * 2.5 }}
-      >
-        {/* Middle glow */}
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: size * 1.6,
-            height: size * 1.6,
-            background:
-              "radial-gradient(circle, rgba(238,137,79,0.5) 0%, rgba(238,137,79,0.2) 50%, transparent 90%)",
-            filter: "blur(4px)",
-            zIndex: 2,
-          }}
-        />
-        {/* Inner halo */}
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: size,
-            height: size,
-            background:
-              "radial-gradient(circle, rgba(255,181,112,1) 0%, rgba(255,181,112,0.35) 55%, transparent 100%)",
-            filter: "blur(3.5px)",
-            zIndex: 3,
-          }}
-        />
-        {/* Star SVG */}
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 100 100"
-          className="relative"
-          style={{ zIndex: 4 }}
-        >
-          <defs>
-            <radialGradient id={`journey-star-${star.id}`} cx="50%" cy="50%">
-              <stop offset="0%" stopColor="rgb(255,248,225)" />
-              <stop offset="35%" stopColor="rgb(255,236,189)" />
-              <stop offset="100%" stopColor="rgb(251,198,106)" />
-            </radialGradient>
-          </defs>
-          <path
-            d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
-            fill={`url(#journey-star-${star.id})`}
-          />
-          <circle cx="50" cy="50" r="7" fill="rgb(255,248,225)" opacity="0.85" />
-        </svg>
-      </motion.div>
-    </Link>
-  );
-}
+/**
+ * Layered parallax scene sources — Journey world.
+ *
+ * Every asset is a transparent PNG shipped by the artist with real alpha.
+ * We never recolor, flatten, or add a background to them. Slower ratios read
+ * as "far away"; faster ratios read as "close to camera".
+ *
+ * Layer stack (bottom → top):
+ *   Sky            → SkyTrack (separate sky-group, vertical look-up asset)
+ *   SlowClouds     ratio 0.08  (very slow drift, upper sky region)
+ *   MidgroundVeg   ratio 0.25  (distant blue bushes / small trees)
+ *   MainMeadow     ratio 0.50  (grass horizon with wildflowers)
+ *   Companion      stationary at --companion-x (38% viewport width) + bob
+ *   ForegroundTree ratio 1.15  (fast-scrolling trees, briefly occlude cat)
+ *   Interface      → UILayer
+ */
+const PARALLAX_LAYERS = {
+  slowClouds: "/V2/parallax/slow-clouds.png",
+  midgroundVegetation: "/V2/parallax/midground-vegetation.png",
+  mainMeadow: "/V2/parallax/main-meadow.png",
+};
+
+/**
+ * Individual tree PNGs — used by the ForegroundOccluder to spawn one at a
+ * time at random intervals (cinematic "we just walked past a tree" beats),
+ * not a continuous strip. Each asset is a single tall transparent tree.
+ *
+ * tree-3-night.png (dark navy glow variant) is reserved for the celestial /
+ * night phase — its baked-in ambient darkness reads correctly against the
+ * star sky but would look muddy on the daytime blue.
+ */
+const FOREGROUND_TREE_SOURCES = [
+  "/V2/parallax/trees/tree-1.png",
+  "/V2/parallax/trees/tree-2.png",
+  "/V2/parallax/trees/tree-4.png",
+];
 
 /** 시간대별 인사 */
 function getGreeting(): string {
@@ -120,77 +97,82 @@ function formatDate(): string {
 }
 
 /**
- * Journey Home — *Sky Children of Light* 느낌의 endless walking world.
+ * JourneyPage v2 — one persistent world with a cinematic look-up transition.
  *
- * 핵심:
- *   1. Background = *Midjourney tracking shot video* (world-day.mp4)
- *      → 카메라가 *실제로 앞으로 흐름*, 분위기 전부 베이크됨
- *   2. Fox = walking webp + *cast shadow* → 무게감, 3D feel
- *   3. JourneyMusic = Desert Bloom Loop ambient
+ * Layer architecture:
+ *   <JourneyStage phaseClass>            responsive viewport root + phase class
+ *     <WorldLayer>                       everything that moves
+ *       <sky-group>                      translates up/down between phases
+ *         <SkyJourney>                   250dvh tall vertical sky asset
+ *       <landscape-group>                translates down in star-view
+ *         <PanoramaBackground paused>    wide illustrated environment, drifts
+ *         <WalkingCat paused>            fox video with alpha, feet on baseline
+ *       <SkyStarV2 phase onTap>          moves upper-right ↔ center
+ *     <UILayer>                          fixed above world, does not move
+ *       <JourneyHeader>                  greeting + bell + menu (walking only)
+ *       <CaptureFAB>                     camera (walking only)
+ *       <StarView>                       celestial content (star-view only)
  *
- * 결과: *진짜 게임 세계*를 걷고 있는 명상 경험.
+ * All positions and timings live in globals.css (--sky-height, --*-translate-*,
+ * --look-up-duration). Tune globally without touching component code.
  */
 export default function JourneyPage() {
-  // safe area top (iOS status bar 뒤)이 노란 하늘 톤으로 이어지도록
-  usePageBg("#F5E9C8");
+  // Journey world state machine (walking ↔ star-view).
+  const { phase, isWalking, isStarView, enterStarView, backToWalking, stageClass } =
+    useJourneyPhase();
 
-  // 배경 video 밝기 감지 — dark scene(밤/starry)이면 텍스트 흰색으로
-  const bgMode = useVideoLuminance();
-  const isDark = bgMode === "dark";
+  // Match the safe area above the panorama with the current phase's sky tone.
+  // Walking phase = day cream/butter; star-view = celestial black.
+  usePageBg(isWalking ? "#F5E9C8" : "#0d1620");
 
-  // Profile에서 사용자 이름 가져옴 (없으면 fallback "you")
+  // Auth-derived name (Supabase profile or guest localStorage).
   const [name, setName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
-  const [hasNudge, setHasNudge] = useState(false); // bell dot badge
-  const [showFabTip, setShowFabTip] = useState(false); // 첫 유저 FAB tooltip
+  const [hasNudge, setHasNudge] = useState(false);
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
   const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
-  // Bell badge — 게스트 & nudge를 최소 한 번 봤으면 계속 badge (재열기 가능).
-  // 로그인 유저는 badge 없음.
+  // World "paused" derives from ANY of: not walking phase, or chat sheet open.
+  // Cat + landscape freeze together in either case.
+  const worldPaused = !isWalking || chatOpen;
+
+  // Date/greeting — mount only to avoid SSR/client timezone hydration flash.
+  const [greeting, setGreeting] = useState<string>("");
+  const [dateStr, setDateStr] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getGreeting());
+    setDateStr(formatDate());
+  }, []);
+
+  // Bell dot badge — reappears if the guest saw the nudge previously.
   useEffect(() => {
     (async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) return; // logged-in: no nudge
+      if (user) return;
       const seen = localStorage.getItem("sisi:guest-nudge-seen") === "true";
       setHasNudge(seen);
     })();
   }, []);
 
-  // FAB tooltip — 첫 방문만. 사용자가 FAB 눌러 sheet 열면 자동 사라짐.
-  useEffect(() => {
-    try {
-      const seen = localStorage.getItem("sisi:fab-tip-seen") === "true";
-      if (!seen) {
-        // 1.5초 후 부드럽게 나타남 (진입 시 갑작스러움 방지)
-        const t = setTimeout(() => setShowFabTip(true), 1500);
-        return () => clearTimeout(t);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-  const greeting = getGreeting();
-  const dateStr = formatDate();
-
-  // Angel message — 홈 열 때 오늘의 편지 확인 (24h 내 없으면 생성)
+  // Angel message — today's letter if unread.
   useEffect(() => {
     ensureTodaysMessage().then((msg) => {
-      // 안 읽은 것만 카드로 표시
       if (msg && !msg.read_at) setAngelMessage(msg);
     });
   }, []);
 
-  // 최근 별 하나 하늘에 — 여우가 걷는 방향의 상징 (탭 시 /my-stars)
+  // Featured star — most recent (walk-toward symbol in the sky).
   useEffect(() => {
     loadStars().then((stars) => {
-      if (stars.length > 0) setFeaturedStar(stars[0]); // 최근 별
+      if (stars.length > 0) setFeaturedStar(stars[0]);
     });
   }, []);
 
+  // Name from Supabase profile or guest storage.
   useEffect(() => {
     (async () => {
       try {
@@ -198,9 +180,7 @@ export default function JourneyPage() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-
         if (user) {
-          // 로그인 유저 — Supabase profile
           const { data: profile } = await supabase
             .from("profiles")
             .select("display_name")
@@ -208,196 +188,166 @@ export default function JourneyPage() {
             .maybeSingle();
           if (profile?.display_name) setName(profile.display_name);
         } else {
-          // 게스트 — localStorage 이름
           const guestName = localStorage.getItem("sisi:guest-name");
           if (guestName) setName(guestName);
         }
       } catch {
-        // fail silent — 이름 없어도 앱 동작
+        // fail silent — the app still works without a name.
       }
     })();
   }, []);
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
-      {/* Background video world — 48fps interpolated *smooth 명상 페이스* (0.5x = 24fps effective) */}
-      <JourneyScene />
+    <JourneyStage phaseClass={stageClass}>
+      {/* ── WORLD LAYER — sky + landscape groups (moved by phase class) ── */}
+      <WorldLayer>
+        {/* Sky group — three sliced webps stacked as one continuous artwork.
+            Height derives from the stacked slices; group translates as a
+            single unit driven by phase-star-view CSS in globals.css. */}
+        <div className="journey-sky-group">
+          <SkyTrack />
+        </div>
 
-      {/* ✦ 하늘의 별 — 여우가 향해 걷는 상징. 탭 시 /my-stars로. */}
-      {featuredStar && <SkyStar star={featuredStar} />}
+        {/* Landscape group — drops off-screen bottom when entering star-view.
+            The horizontal LandscapeTrack lives INSIDE this vertical group so
+            the two transforms compose (group translateY + track translateX). */}
+        <div className="journey-landscape-group">
+          {/* ── LAYER STACK (bottom → top) ──────────────────────
+           *  1. Sky            — handled by SkyTrack (sky-group above)
+           *  2. SlowClouds     ratio 0.08
+           *  3. MidgroundVeg   ratio 0.25
+           *  4. MainMeadow     ratio 0.50
+           *  5. Companion      anchored at 38% viewport width + walking bob
+           *  6. ForegroundTree ratio 1.15  (sparse clusters → occasional occlusion)
+           *  7. Interface      handled by UILayer
+           * All layers pause together via `worldPaused`. */}
 
-      {/* Fox + cast shadow — *유저가 매뉴얼 튜닝한 path following*.
-          /journey/tune 페이지에서 슬라이더로 조절해서 완성한 값들.
-          Video 20s native @ 0.5x = 40s wall clock loop. */}
-      <div className="absolute bottom-[210px] left-1/2 -translate-x-1/2 z-[5]">
-        <motion.div
-          className="relative"
-          animate={{
-            // 🎯 매뉴얼 튜닝 완료 — path 위에 정확히 매치
-            x: [
-              "-2vw", "-12.5vw", "-11vw", "-9vw", "6.5vw",
-              "1.5vw", "-6.5vw", "-6vw", "12.5vw", "28.5vw", "-2vw",
-            ],
-          }}
-          transition={{
-            duration: 40, // Video 20s @ 0.5x speed = 40s wall clock
-            // 🚶 각 구간 시간 = 거리에 비례해서 배분 → 여우가 일정한 속도로 걸음
-            // (기존: 모두 0.1씩 균등 → 짧은 구간은 멈춘 듯, 긴 구간은 뛰는 듯)
-            times: [0, 0.097, 0.111, 0.130, 0.273, 0.319, 0.394, 0.398, 0.570, 0.718, 1],
-            repeat: Infinity,
-            ease: "linear", // 각 구간 내에서도 일정한 속도 (easeInOut은 뚝뚝 끊기게 함)
-          }}
-        >
-          {/* Walking fox — shadow layer 내장 (같은 img 뒤집어서 발밑 cast) */}
-          <WalkingFoxRear size={180} />
-        </motion.div>
-      </div>
-
-      <div className="relative z-10 flex h-screen flex-col">
-        {/* Header — 배경 dark 감지시 텍스트 흰색으로 자동 전환 */}
-        <header className="flex items-start justify-between pt-[52px] px-[24px]">
-          <div className="transition-colors duration-500">
-            <p
-              className={`font-sentient text-[14px] leading-none mb-3 transition-colors duration-500 ${
-                isDark ? "text-white/80" : "text-journey-navy/70"
-              }`}
-            >
-              {dateStr}
-            </p>
-            <h1
-              className={`font-sentient text-[34px] leading-[1.15] transition-colors duration-500 ${
-                isDark ? "text-white" : "text-journey-navy/95"
-              }`}
-            >
-              {greeting},
-              <br />
-              {name || "you"}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2 mt-1">
-            {/* Notifications — 게스트 nudge를 봤으면 dot badge로 계속 접근 가능 */}
-            <button
-              onClick={() => setNudgeOpen(true)}
-              aria-label="Notifications"
-              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-              </svg>
-              {hasNudge && (
-                <span className="absolute top-[6px] right-[7px] h-[7px] w-[7px] rounded-full bg-[#B19CD9] border border-white" />
-              )}
-            </button>
-
-            {/* Menu (hamburger) — profile + settings + logout */}
-            <button
-              onClick={() => setMenuOpen(true)}
-              aria-label="Menu"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              >
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            </button>
-          </div>
-        </header>
-
-        <div className="flex-1" />
-      </div>
-
-      {/* Camera FAB — 3-way sheet 열음. 첫 유저는 tooltip으로 "keep a moment" 안내. */}
-      {showFabTip && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="fixed bottom-[105px] right-[85px] z-30 pointer-events-none"
-        >
-          <div className="font-sentient italic text-[12px] text-journey-navy bg-white/80 backdrop-blur-md border border-white/60 rounded-full px-[12px] py-[6px] shadow-sm whitespace-nowrap">
-            keep a moment
-          </div>
-          {/* Small arrow pointing to FAB */}
-          <div
-            className="absolute -right-[3px] top-1/2 -translate-y-1/2 w-[8px] h-[8px] bg-white/80 backdrop-blur-md border-r border-t border-white/60 rotate-45"
+          {/* 2. Slow clouds — top of sky, barely moves */}
+          <ParallaxLayer
+            src={PARALLAX_LAYERS.slowClouds}
+            ratio={0.08}
+            paused={worldPaused}
+            zIndex={1}
+            align="top"
+            heightPct={0.45}   /* only upper sky region */
+            speedVariation={0.10}
           />
-        </motion.div>
-      )}
-      <button
-        onClick={() => {
-          setPostcardSheetOpen(true);
-          if (showFabTip) {
-            setShowFabTip(false);
-            try {
-              localStorage.setItem("sisi:fab-tip-seen", "true");
-            } catch {
-              // ignore
-            }
-          }
-        }}
-        aria-label="Capture a moment"
-        className="fixed bottom-[95px] right-[24px] z-30 flex h-[51px] w-[51px] items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/50 text-journey-navy shadow-lg hover:bg-white/60 active:scale-95 transition"
-      >
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-          <circle cx="12" cy="13" r="4" />
-        </svg>
-      </button>
 
-      {/* Bottom nav — shared component */}
-      <BottomNav theme="light" />
+          {/* 3. Midground vegetation — distant blue bushes near horizon */}
+          <ParallaxLayer
+            src={PARALLAX_LAYERS.midgroundVegetation}
+            ratio={0.25}
+            paused={worldPaused}
+            zIndex={2}
+            align="bottom"
+            heightPct={0.32}   /* only lower-middle band */
+          />
 
-      {/* Menu sheet — profile · music · settings · logout */}
+          {/* 4. Main meadow — grass horizon + sky (opaque base of the world) */}
+          <ParallaxLayer
+            src={PARALLAX_LAYERS.mainMeadow}
+            ratio={0.50}
+            paused={worldPaused}
+            zIndex={3}
+            align="bottom"
+            heightPct={1}      /* fills viewport */
+          />
+
+          {/* 5. Companion — stationary at --companion-x + walking bob */}
+          <WalkingCat
+            paused={worldPaused}
+            onTap={isWalking ? () => setChatOpen(true) : undefined}
+          />
+
+          {/* Occasional trees — planted BEHIND the cat, rooted at the same
+              grass horizon the cat walks on (--walking-baseline) so their
+              trunks emerge from the ground rather than growing up from the
+              bottom of the screen.
+              Depth:
+                ratio 0.35  → clearly slower than the main meadow (0.50),
+                so trees read as "farther back than the cat".
+                zIndex 2    → renders BEHIND cat (z 5) and behind the main
+                meadow silhouette (z 3); above sky + midground vegetation.
+              Sizing:
+                heightPct 0.45 → tree canopy above the cat but not looming.
+                                  Feels like a normal tree we walk past, not a
+                                  wall of foliage in front of the camera. */}
+          <ForegroundOccluder
+            sources={FOREGROUND_TREE_SOURCES}
+            ratio={0.35}
+            paused={worldPaused}
+            intervalMin={14}
+            intervalMax={26}
+            initialDelayMs={5000}
+            heightPct={0.45}
+            groundBase="var(--walking-baseline)"
+            zIndex={2}
+          />
+        </div>
+
+        {/* Current star — anchored to viewport, not to a group. Its position
+            transitions between walking (upper-right) and star-view (center). */}
+        {featuredStar && (
+          <SkyStarV2
+            star={featuredStar}
+            phase={phase}
+            onTap={isWalking ? enterStarView : backToWalking}
+          />
+        )}
+      </WorldLayer>
+
+      {/* ── UI LAYER — stationary; children swap by phase ── */}
+      <UILayer>
+        {/* Header shown in walking. Fades out in star-view. */}
+        {isWalking && (
+          <JourneyHeader
+            dateStr={dateStr}
+            greeting={greeting}
+            name={name}
+            isDark={false}
+            hasNudge={hasNudge}
+            onBellClick={() => setNudgeOpen(true)}
+            onMenuClick={() => setMenuOpen(true)}
+          />
+        )}
+
+        {/* Capture only in walking phase */}
+        {isWalking && (
+          <CaptureFAB onClick={() => setPostcardSheetOpen(true)} />
+        )}
+
+        {/* Three-tab nav — only in walking phase (star-view is immersive) */}
+        {isWalking && <BottomNavV2 theme="light" />}
+
+        {/* Star view UI only in star-view phase */}
+        <AnimatePresence>
+          {isStarView && featuredStar && (
+            <StarView
+              key={featuredStar.id}
+              star={featuredStar}
+              onBack={backToWalking}
+            />
+          )}
+        </AnimatePresence>
+      </UILayer>
+
+      {/* Companion conversation — cat tap opens this. World pauses beneath. */}
+      <CompanionSheet open={chatOpen} onClose={() => setChatOpen(false)} />
+
+      {/* Contextual overlays — sheets, cards */}
       <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
-
-      {/* Postcard creation sheet — take photo / gallery / keep this walk */}
       <PostcardOptionsSheet
         open={postcardSheetOpen}
         onClose={() => setPostcardSheetOpen(false)}
       />
-
-      {/* Guest login nudge — bell 아이콘에서 접근 (dot badge). Dismiss해도 사라지지 않음. */}
-      <GuestLoginNudge
-        open={nudgeOpen}
-        onClose={() => setNudgeOpen(false)}
-      />
-
-      {/* Angel message — 오늘의 편지 (안 읽었을 때만) */}
+      <GuestLoginNudge open={nudgeOpen} onClose={() => setNudgeOpen(false)} />
       <AngelMessageCard
         message={angelMessage}
         onRead={() => setAngelMessage(null)}
       />
-    </main>
+
+      {/* Portrait-first: minimal landscape message via CSS-only @media. */}
+      <LandscapeGate />
+    </JourneyStage>
   );
 }
-

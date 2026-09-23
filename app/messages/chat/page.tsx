@@ -112,8 +112,34 @@ function ChatPage() {
   const [showNudge, setShowNudge] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // iOS Safari 키보드 감지 — visualViewport.height 로 키보드가 화면 얼마나 가리는지 계산.
+  // null이면 SSR/mount 전 → svh 폴백. mount 후엔 실제 visible height 사용.
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // iOS Safari 키보드 대응 — window.visualViewport 로 키보드 열림/닫힘 감지.
+  // 키보드 뜨면 visualViewport.height 가 줄어들어서 → 채팅 컨테이너도 같이 줄어들면
+  // 입력창이 키보드 위로 정확히 붙음. 안 하면 입력창이 키보드 밑에 가려짐.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const update = () => setViewportHeight(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  // 키보드 열리면 최신 메시지로 스크롤 (입력창 위 messages 안 잘리게)
+  useEffect(() => {
+    if (viewportHeight && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [viewportHeight]);
 
   const time = useClientTime();
 
@@ -334,7 +360,12 @@ function ChatPage() {
         />
       </div>
 
-      <div className="relative z-10 flex h-svh flex-col">
+      <div
+        className="relative z-10 flex flex-col"
+        // 키보드 열리면 visualViewport 높이로 fit → input이 키보드 위 딱 붙음.
+        // 안 그러면 h-svh 고정이라 input이 키보드 밑에 잘림.
+        style={{ height: viewportHeight ? `${viewportHeight}px` : "100svh" }}
+      >
         {/* TOP — back to dashboard. Nav 없음 (immersive). */}
         <header className="shrink-0 pt-[52px] px-[24px]">
           <button

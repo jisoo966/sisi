@@ -14,7 +14,11 @@ import { motion } from "framer-motion";
  */
 export default function SplashPage() {
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-journey-cream">
+    <main
+      className="relative min-h-svh w-full overflow-hidden bg-journey-cream"
+      // Fox 이미지 로드 전에도 sísí 톤 유지 (흰 flash 방지). CSS 로드 안 된 순간에도 유지되게 inline.
+      style={{ backgroundColor: "#F5E9C8" }}
+    >
       {/* Background scene */}
       <Image
         src="/journey/OnboardingScreen.png"
@@ -31,11 +35,12 @@ export default function SplashPage() {
         aria-label="Enter Sísí"
         className="relative z-10 flex h-svh flex-col items-center px-8 group"
       >
-        {/* Title — Figma: Sentient Light 여우 위 중앙 */}
+        {/* Title + Tagline — fade-in duration 대폭 단축(1.4→0.5s). 이전에는 텍스트가
+            여우 보인 뒤 한참 뒤에야 나타나서 "여우가 먼저 보임" 현상. */}
         <motion.h1
-          initial={{ opacity: 0, y: -8 }}
+          initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="font-sentient text-[42px] text-journey-navy mt-[100px]"
         >
           SiSi
@@ -43,11 +48,10 @@ export default function SplashPage() {
 
         <div className="flex-1" />
 
-        {/* Tagline — main + subtitle으로 기능 hint 살짝. */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.4, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="text-center pb-[80px]"
         >
           <p className="font-sentient text-[20px] leading-normal text-journey-navy">
