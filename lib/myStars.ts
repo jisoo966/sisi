@@ -24,6 +24,11 @@ export type Star = {
   createdAt: string; // ISO
   /** 도착 시각 — null이면 아직 Following, 있으면 Constellation에 속함 */
   fulfilledAt?: string | null;
+  /**
+   * "Let this Star rest" — leaves the Star path but stays in Moments.
+   * null/undefined = still walking toward it.
+   */
+  restedAt?: string | null;
 };
 
 export type Sign = {
@@ -65,6 +70,7 @@ type StarRow = {
   size: "sm" | "md" | "lg";
   created_at: string;
   fulfilled_at?: string | null;
+  rested_at?: string | null;
 };
 
 function dbToStar(row: StarRow): Star {
@@ -77,6 +83,7 @@ function dbToStar(row: StarRow): Star {
     size: row.size,
     createdAt: row.created_at,
     fulfilledAt: row.fulfilled_at ?? null,
+    restedAt: row.rested_at ?? null,
   };
 }
 
@@ -106,7 +113,8 @@ export async function loadStars(): Promise<Star[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("stars")
-      .select("id, wish, timeframe, x, y, size, created_at, fulfilled_at")
+      // "*" so this keeps working before/after the rested_at migration.
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -114,16 +122,92 @@ export async function loadStars(): Promise<Star[]> {
       console.error("loadStars error:", error);
       return [];
     }
-    return (data as StarRow[]).map(dbToStar);
+    return withLocalRest((data as StarRow[]).map(dbToStar));
   }
 
   // localStorage fallback (익명 사용자)
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(STARS_KEY) ?? "[]");
+    return withLocalRest(JSON.parse(localStorage.getItem(STARS_KEY) ?? "[]"));
   } catch {
     return [];
   }
+}
+
+// ─── Resting stars ─────────────────────────────
+// A resting star leaves the Star path but stays in Moments; it can return
+// to the sky at any time. Stored in stars.rested_at (migration
+// 002_star_rest.sql). Until that column exists — or for guests — the rest
+// state is kept in localStorage so the feature works either way.
+
+const RESTED_KEY = "sisi:rested-stars";
+
+function readLocalRest(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(RESTED_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+function writeLocalRest(map: Record<string, string>) {
+  try {
+    localStorage.setItem(RESTED_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+function withLocalRest(stars: Star[]): Star[] {
+  const local = readLocalRest();
+  return stars.map((s) => (s.restedAt || !local[s.id] ? s : { ...s, restedAt: local[s.id] }));
+}
+
+/** Let a star rest (leaves the Star path, stays in Moments). */
+export async function restStar(id: string): Promise<void> {
+  const now = new Date().toISOString();
+  const user = await getCurrentUser();
+  if (user) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("stars")
+      .update({ rested_at: now, updated_at: now })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (!error) {
+      const local = readLocalRest();
+      delete local[id];
+      writeLocalRest(local);
+      return;
+    }
+    console.warn("restStar: falling back to local rest state:", error.message);
+  }
+  writeLocalRest({ ...readLocalRest(), [id]: now });
+}
+
+/** Return a resting star to the sky. */
+export async function unrestStar(id: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (user) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("stars")
+      .update({ rested_at: null, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) console.warn("unrestStar (db):", error.message);
+  }
+  const local = readLocalRest();
+  delete local[id];
+  writeLocalRest(local);
+}
+
+/** Stars still on the path (walking toward them), newest first. */
+export function walkingStars(stars: Star[]): Star[] {
+  return stars.filter((s) => !s.restedAt);
+}
+/** Stars resting in Moments, newest first. */
+export function restingStars(stars: Star[]): Star[] {
+  return stars.filter((s) => !!s.restedAt);
 }
 
 /** 별 저장. */

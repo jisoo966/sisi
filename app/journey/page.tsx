@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import {
   JourneyStage,
@@ -20,10 +20,13 @@ import { WalkingCat } from "@/components/sisi/journey-v2/WalkingCat";
 import { SkyStarV2 } from "@/components/sisi/journey-v2/SkyStarV2";
 // SkyTrack (tall vertical sky) is no longer used by the ascent; kept on disk.
 // import { SkyTrack } from "@/components/sisi/journey-v2/SkyTrack";
-import { NightStar } from "@/components/sisi/journey-v2/NightStar";
+// NightStar (single star) superseded by StarWorld; kept on disk.
+import { StarWorld } from "@/components/sisi/journey-v2/StarWorld";
+import { StarMemoryCard } from "@/components/sisi/journey-v2/StarMemoryCard";
+import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 // LEGACY — SkyJourney (gradient-based placeholder sky) preserved for revert.
 // import { SkyJourney } from "@/components/sisi/journey-v2/SkyJourney";
-import { StarView } from "@/components/sisi/journey-v2/StarView";
+// StarView (auto-opening postcard) superseded by StarMemoryCard; kept on disk.
 import { StarTrail } from "@/components/sisi/journey-v2/StarTrail";
 import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
 import { CaptureFAB } from "@/components/sisi/journey-v2/CaptureFAB";
@@ -41,7 +44,7 @@ import { useJourneyPhase } from "@/lib/useJourneyPhase";
 import { useStarAscent } from "@/lib/useStarAscent";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
-import { loadStars, type Star } from "@/lib/myStars";
+import { loadStars, type Star, restStar, walkingStars } from "@/lib/myStars";
 
 // LEGACY — Journey v1 (video world + path-following fox + BottomNav).
 // Preserved intentionally so the old world can be restored if v2 needs revert.
@@ -184,7 +187,7 @@ function formatDate(): string {
  *
  * World (back → front), each a separate depth group moved by
  * lib/useStarAscent.ts during the Journey → Stars camera move:
- *   .jw-night         star world (night sky + NightStar)          0.15×
+ *   .jw-night         Star World (night sky + StarWorld path)      0.15×
  *   .jw-day           day sky texture, small clouds, SkyStarV2     0.15×
  *   .jw-clouds-rear   rear cloud bank                              0.70×
  *   .jw-hills         far silhouettes + midground vegetation       0.35×
@@ -192,7 +195,7 @@ function formatDate(): string {
  *   .jw-fore          foreground grass + trees                     1.15×
  *   StarTrail         fox → star light trail (screen space)
  *   .jw-clouds-front  front cloud bank                             1.25×
- * UI: header / camera / nav (fade out 300ms), StarView (postcard).
+ * UI: header / camera (meadow), nav (both worlds), StarMemoryCard (on tap).
  */
 export default function JourneyPage() {
   // Journey world state machine (walking ↔ star-view).
@@ -207,22 +210,61 @@ export default function JourneyPage() {
   const [nudgeOpen, setNudgeOpen] = useState(false);
   const [hasNudge, setHasNudge] = useState(false);
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
-  const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
+  const [allStars, setAllStars] = useState<Star[]>([]);
+  // Resting stars leave the path (they live on in Moments).
+  const pathStars = walkingStars(allStars);
+  const featuredStar: Star | null = pathStars[0] ?? null;
   const [chatOpen, setChatOpen] = useState(false);
   // Stars load async; until then (or if none exist) show a waiting star.
   const [starsLoaded, setStarsLoaded] = useState(false);
   const skyStar: Star | null = featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
   const isPlaceholderStar = !featuredStar;
+  /** Stars in the Star World, newest first (a waiting star if none yet). */
+  const worldStars: Star[] = pathStars.length > 0 ? pathStars : skyStar ? [skyStar] : [];
+
+  // The star whose memory card is open in the Star World.
+  const [openStar, setOpenStar] = useState<{ star: Star; at: { x: number; y: number } } | null>(null);
+  // "Let this star rest": the star drifting off the path, and a paper note.
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const letStarRest = (star: Star) => {
+    setOpenStar(null); // paper slides down, thread retracts (≈0.45s)
+    void restStar(star.id);
+    setTimeout(() => setLeavingId(star.id), 480);
+    setTimeout(() => {
+      const now = new Date().toISOString();
+      setAllStars((list) => list.map((s) => (s.id === star.id ? { ...s, restedAt: now } : s)));
+      setLeavingId(null);
+      setToast("your star is resting in moments.");
+    }, 480 + 1600);
+    setTimeout(() => setToast(null), 480 + 1600 + 3200);
+  };
+  const starEdited = (star: Star) => {
+    setAllStars((list) => list.map((s) => (s.id === star.id ? { ...s, wish: star.wish } : s)));
+    setOpenStar((o) => (o && o.star.id === star.id ? { ...o, star: { ...o.star, wish: star.wish } } : o));
+  };
 
   // Journey → Stars camera move (see lib/useStarAscent.ts). `busy` locks
   // input from the tap until the arrival (or the return) has settled.
-  const { busy, env, starRevealed } = useStarAscent(isStarView);
+  const { busy, env, starRevealed, landing } = useStarAscent(isStarView);
   const goToStars = () => {
     if (busy || !isWalking) return;
     enterStarView();
   };
+  // Journey tab in the Star World: close any open memory card first
+  // (paper slides down, line retracts), then descend.
+  const leavingRef = useRef(false);
   const backToMeadow = () => {
-    if (busy || !isStarView) return;
+    if (busy || !isStarView || leavingRef.current) return;
+    if (openStar) {
+      leavingRef.current = true;
+      setOpenStar(null);
+      setTimeout(() => {
+        leavingRef.current = false;
+        backToWalking();
+      }, 480);
+      return;
+    }
     backToWalking();
   };
 
@@ -269,9 +311,7 @@ export default function JourneyPage() {
   // Featured star — most recent (walk-toward symbol in the sky).
   useEffect(() => {
     loadStars()
-      .then((stars) => {
-        if (stars.length > 0) setFeaturedStar(stars[0]);
-      })
+      .then((stars) => setAllStars(stars))
       .finally(() => setStarsLoaded(true));
   }, []);
 
@@ -308,9 +348,16 @@ export default function JourneyPage() {
         {/* Star world (behind everything; revealed during full cloud cover).
             Distant-sky rate 0.15×. */}
         <div className="jw-group jw-night" aria-hidden={env !== "night"}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ASCENT_LAYERS.nightSky} alt="" draggable={false} className="jw-night-sky" />
-          <NightStar revealed={starRevealed} />
+          <StarWorld
+            stars={worldStars}
+            nightSkySrc={ASCENT_LAYERS.nightSky}
+            revealed={starRevealed}
+            active={isStarView && env === "night" && !busy}
+            selectedId={openStar?.star.id ?? null}
+            locked={openStar !== null || leavingId !== null}
+            onSelect={(star, at) => setOpenStar({ star, at })}
+            leavingId={leavingId}
+          />
         </div>
 
         {/* 1. Distant sky (day) — sky texture, small clouds, Current Star.
@@ -394,6 +441,7 @@ export default function JourneyPage() {
           <WalkingCat
             onTap={isWalking && !busy ? () => setChatOpen(true) : undefined}
             lookingUp={isStarView}
+            lookingAtYou={landing}
           />
         </div>
 
@@ -436,8 +484,8 @@ export default function JourneyPage() {
 
       {/* ── UI LAYER — stationary; children swap by phase ── */}
       <UILayer>
-        {/* Journey UI — stays mounted; fades out over 300ms (0.5–0.8s into
-            the ascent) and back in after the return lands. */}
+        {/* Meadow UI (header + camera) — stays mounted; fades out over
+            300ms (0.5–0.8s into the ascent), back in after the return lands. */}
         <div className={`journey-walk-ui${isWalking && !busy ? "" : " is-hidden"}`}>
           <JourneyHeader
             dateStr={dateStr}
@@ -449,20 +497,35 @@ export default function JourneyPage() {
             onMenuClick={() => setMenuOpen(true)}
           />
           <CaptureFAB onClick={() => setPostcardSheetOpen(true)} />
-          <BottomNavV2 theme="light" onStarsSelect={goToStars} />
         </div>
 
-        {/* Star view UI only in star-view phase */}
+        {/* Tabs — in both worlds; hidden while the camera travels.
+            Meadow: Stars ascends. Star World: Journey descends. */}
+        <div className={`journey-walk-ui${busy ? " is-hidden" : ""}`}>
+          <BottomNavV2
+            theme={env === "night" ? "dark" : "light"}
+            activeTab={isStarView ? "stars" : "journey"}
+            onStarsSelect={isWalking ? goToStars : () => {}}
+            onJourneySelect={isStarView ? backToMeadow : () => {}}
+          />
+        </div>
+
+        {/* A star's memory — only when the user taps a star. */}
         <AnimatePresence>
-          {isStarView && skyStar && (
-            <StarView
-              key={skyStar.id}
-              star={skyStar}
-              placeholder={isPlaceholderStar}
-              onBack={backToMeadow}
+          {openStar && isStarView && (
+            <StarMemoryCard
+              key={openStar.star.id}
+              star={openStar.star}
+              anchor={openStar.at}
+              placeholder={openStar.star.id === PLACEHOLDER_STAR.id}
+              onClose={() => setOpenStar(null)}
+              onRest={letStarRest}
+              onEdited={starEdited}
             />
           )}
         </AnimatePresence>
+
+        <PaperToast message={isStarView ? toast : null} />
       </UILayer>
 
       {/* Companion conversation — cat tap opens this. World pauses beneath. */}

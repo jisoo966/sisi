@@ -29,7 +29,8 @@ import { useEffect, useRef, useState } from "react";
  *   3.5–4.8s  long soft deceleration into the star world;
  *             star layers revealed aura → glow → mark
  *   +0.25s    settle → input unlocked
- * Return runs the same curve backwards (3.7s), then the walk resumes.
+ * Return: the same curve backwards, compressed to 3.0s (clouds → meadow),
+ * then the companion looks toward the user for 0.6s → walk resumes (3.6s).
  *
  * The curve is a cubic Hermite spline (continuous position AND velocity),
  * so speed changes are always gradual. Only transform + opacity are
@@ -64,8 +65,15 @@ export const ASCENT_MS = 4800;
 const SETTLE_MS = 250;
 /** Star layers begin to appear once the clouds have parted. */
 const REVEAL_AT_MS = 3500;
-/** Return: the enter curve played backwards (camera starts moving at once). */
-const RETURN_MS = ASCENT_MS - ENTER[0][0]; // 3700
+/**
+ * Return (~3.6s, quicker than the ascent): the enter curve played backwards
+ * and time-compressed (3.7s of camera → 3.0s), then a 0.6s beat where the
+ * companion looks toward the user before the walk resumes.
+ */
+const RETURN_CAMERA_MS = 3000;
+const RETURN_LOOK_MS = 600;
+export const RETURN_MS = RETURN_CAMERA_MS + RETURN_LOOK_MS;
+const RETURN_TIME_SCALE = (ASCENT_MS - ENTER[0][0]) / RETURN_CAMERA_MS;
 /** When the postcard may rise in (after the arrival settles). */
 export const STAR_CARD_DELAY_S = (ASCENT_MS + SETTLE_MS) / 1000;
 
@@ -130,6 +138,8 @@ export function useStarAscent(isStarView: boolean) {
   const [busy, setBusy] = useState(false);
   const [env, setEnv] = useState<AscentEnv>("day");
   const [starRevealed, setStarRevealed] = useState(false);
+  /** True for the short beat after landing when the fox looks at the user. */
+  const [landing, setLanding] = useState(false);
   const cRef = useRef(0);
 
   useEffect(() => {
@@ -161,7 +171,16 @@ export function useStarAscent(isStarView: boolean) {
     if (!isStarView) setStarRevealed(false);
 
     const finish = () => {
-      settleTimer = setTimeout(() => setBusy(false), SETTLE_MS);
+      if (!isStarView && !reduced) {
+        // Landed in the meadow: the companion looks toward the user briefly.
+        setLanding(true);
+        settleTimer = setTimeout(() => {
+          setLanding(false);
+          setBusy(false);
+        }, RETURN_LOOK_MS);
+      } else {
+        settleTimer = setTimeout(() => setBusy(false), SETTLE_MS);
+      }
     };
 
     if (reduced) {
@@ -204,8 +223,8 @@ export function useStarAscent(isStarView: boolean) {
         end = 1800;
       }
     } else if (from >= C_END - 0.001) {
-      cAt = (t) => hermite(ENTER, ASCENT_MS - t);
-      end = RETURN_MS;
+      cAt = (t) => hermite(ENTER, ASCENT_MS - t * RETURN_TIME_SCALE);
+      end = RETURN_CAMERA_MS;
     } else {
       cAt = (t) => from * (1 - smooth(t / 1800));
       end = 1800;
@@ -236,5 +255,5 @@ export function useStarAscent(isStarView: boolean) {
     };
   }, [isStarView]);
 
-  return { busy, env, starRevealed };
+  return { busy, env, starRevealed, landing };
 }

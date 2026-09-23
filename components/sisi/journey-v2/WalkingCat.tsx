@@ -28,6 +28,9 @@ const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.png";
  * used automatically; until then the idle pose is shown.
  */
 const LOOK_UP_SRC = "/V2/fox-walk/fox-look-up.png";
+/** Optional pose after returning from the Star World: a brief look toward
+ *  the user. Falls back to the idle pose until the PNG exists. */
+const LOOK_AT_YOU_SRC = "/V2/fox-walk/fox-look-at-you.png";
 const CYCLE_MS = 900;
 const STEP_MS = CYCLE_MS / 2;
 const START_DELAY_MS = 150;
@@ -38,21 +41,27 @@ type Props = {
   onTap?: () => void;
   /** Star moment — stop at the next step and look up. */
   lookingUp?: boolean;
+  /** Just landed back in the meadow — look toward the user for a beat. */
+  lookingAtYou?: boolean;
   /** @deprecated walking state now comes from the shared world clock */
   paused?: boolean;
 };
 
-export function WalkingCat({ onTap, lookingUp = false }: Props) {
+export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false }: Props) {
   const [walking, setWalking] = useState(false);
   const walkingRef = useRef(false);
   const lookingUpRef = useRef(lookingUp);
   lookingUpRef.current = lookingUp;
   const [hasLookUpPose, setHasLookUpPose] = useState(false);
+  const [hasLookAtYouPose, setHasLookAtYouPose] = useState(false);
 
   useEffect(() => {
-    const im = new Image();
-    im.onload = () => setHasLookUpPose(true);
-    im.src = LOOK_UP_SRC;
+    const a = new Image();
+    a.onload = () => setHasLookUpPose(true);
+    a.src = LOOK_UP_SRC;
+    const b = new Image();
+    b.onload = () => setHasLookAtYouPose(true);
+    b.src = LOOK_AT_YOU_SRC;
   }, []);
   const bobRef = useRef<HTMLDivElement>(null);
 
@@ -125,7 +134,15 @@ export function WalkingCat({ onTap, lookingUp = false }: Props) {
       <div ref={bobRef} className="bob-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={walking ? WALK_SRC : lookingUp && hasLookUpPose ? LOOK_UP_SRC : IDLE_SRC}
+          src={
+            walking
+              ? WALK_SRC
+              : lookingUp && hasLookUpPose
+                ? LOOK_UP_SRC
+                : lookingAtYou && hasLookAtYouPose
+                  ? LOOK_AT_YOU_SRC
+                  : IDLE_SRC
+          }
           alt=""
           className="cat-media"
           draggable={false}

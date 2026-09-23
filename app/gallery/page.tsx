@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/sisi/BottomNav";
 import { sharePostcard } from "@/lib/share";
 import { loadPostcards, type Postcard } from "@/lib/postcards";
+import { loadStars, restingStars, type Star } from "@/lib/myStars";
+import { RestingStars } from "@/components/sisi/RestingStars";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,14 @@ export default function GalleryPage() {
   const [loaded, setLoaded] = useState(false); // 로딩 전엔 empty state 안 보여줌
   const [selectedPostcard, setSelectedPostcard] = useState<Postcard | null>(null);
   const [view, setView] = useState<View>("timeline"); // Timeline default (저널링 감성)
+  // Stars that were let to rest live here (Moments), until they return to the sky.
+  const [resting, setResting] = useState<Star[]>([]);
+  const [section, setSection] = useState<"postcards" | "resting">("postcards");
+  const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadStars().then((stars) => setResting(restingStars(stars)));
+  }, []);
 
   useEffect(() => {
     loadPostcards().then((data) => {
@@ -76,6 +86,49 @@ export default function GalleryPage() {
             : "moments you've kept"}
         </p>
 
+        {/* Postcards · Resting stars (only when some stars are resting) */}
+        {resting.length > 0 && (
+          <div className="flex gap-2 mb-5" role="tablist">
+            {(
+              [
+                ["postcards", "postcards"],
+                ["resting", `resting stars · ${resting.length}`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={section === key}
+                onClick={() => setSection(key)}
+                className={`h-[32px] rounded-full px-4 font-sentient text-[14px] transition ${
+                  section === key
+                    ? "bg-journey-cobalt text-[#f7f2e3]"
+                    : "bg-white/60 text-journey-navy/70 border border-journey-navy/10"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {section === "resting" && resting.length > 0 && (
+          <RestingStars
+            stars={resting}
+            onReturned={(star) => {
+              setResting((list) => {
+                const next = list.filter((s) => s.id !== star.id);
+                if (next.length === 0) setSection("postcards");
+                return next;
+              });
+              setNote("your star is back in the sky.");
+              setTimeout(() => setNote(null), 3000);
+            }}
+          />
+        )}
+
+        {section === "postcards" && (<>
         {/* Content view — timeline (default, 저널) OR grid (시각적 브라우징) */}
         {loaded && postcards.length === 0 && (
           <EmptyState
@@ -94,7 +147,24 @@ export default function GalleryPage() {
         {loaded && postcards.length > 0 && view === "grid" && (
           <PostcardsGrid postcards={postcards} onSelect={setSelectedPostcard} />
         )}
+        </>)}
       </motion.div>
+
+      {/* Paper note after a star returns to the sky */}
+      <AnimatePresence>
+        {note && (
+          <motion.div
+            key="note"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="fixed inset-x-0 mx-auto w-fit bottom-[96px] z-30 rounded-[6px] bg-[#fbf6ea] px-5 py-3 font-sentient text-[15px] text-journey-navy shadow-[0_6px_20px_rgba(31,42,68,0.18)]"
+            role="status"
+          >
+            {note}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom nav — postcard 열리면 숨김 (전체 몰입) */}
       <motion.div

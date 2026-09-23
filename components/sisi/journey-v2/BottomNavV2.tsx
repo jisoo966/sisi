@@ -22,22 +22,33 @@ import { motion } from "framer-motion";
 type Theme = "light" | "dark";
 
 const TABS = [
-  { href: "/journey",  label: "Journey" },
-  { href: "/my-stars", label: "Stars" },
-  { href: "/gallery",  label: "Moments" },
-];
+  { key: "journey", href: "/journey",  label: "Journey" },
+  { key: "stars",   href: "/my-stars", label: "Stars" },
+  { key: "moments", href: "/gallery",  label: "Moments" },
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
 
 export function BottomNavV2({
   theme = "light",
+  activeTab,
   onStarsSelect,
+  onJourneySelect,
 }: {
   theme?: Theme;
-  /** On the Journey, "Stars" looks up at the current star instead of
-   *  navigating away (star brightens → camera tilts up). */
+  /** Override the active pill (the Journey page hosts both the meadow and
+   *  the Star World, so the pathname alone can't tell). */
+  activeTab?: TabKey;
+  /** In the meadow: Stars ascends to the Star World instead of navigating. */
   onStarsSelect?: () => void;
+  /** In the Star World: Journey descends back to the meadow. */
+  onJourneySelect?: () => void;
 }) {
   const pathname = usePathname();
   const isDark = theme === "dark";
+
+  const handlerFor = (key: TabKey) =>
+    key === "stars" ? onStarsSelect : key === "journey" ? onJourneySelect : undefined;
 
   return (
     <motion.nav
@@ -47,9 +58,11 @@ export function BottomNavV2({
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 26, delay: 0.15 }}
     >
-      {TABS.map(({ href, label }) => {
-        const active =
-          pathname === href || pathname?.startsWith(href + "/") || false;
+      {TABS.map(({ key, href, label }) => {
+        const active = activeTab
+          ? activeTab === key
+          : pathname === href || pathname?.startsWith(href + "/") || false;
+        const handler = handlerFor(key);
         return (
           <Link
             key={href}
@@ -57,7 +70,7 @@ export function BottomNavV2({
             aria-current={active ? "page" : undefined}
             className={`stone-pill ${active ? "is-active" : ""}`}
             onPointerDown={
-              href === "/my-stars" && onStarsSelect
+              handler
                 ? (e) => {
                     // Immediate ~90ms press response.
                     const el = e.currentTarget;
@@ -67,10 +80,10 @@ export function BottomNavV2({
                 : undefined
             }
             onClick={
-              href === "/my-stars" && onStarsSelect
+              handler
                 ? (e) => {
                     e.preventDefault();
-                    onStarsSelect();
+                    handler();
                   }
                 : undefined
             }

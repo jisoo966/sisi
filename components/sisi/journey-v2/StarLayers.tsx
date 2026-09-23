@@ -9,6 +9,7 @@
  * CSS glow effects — the painted PNGs carry the look.
  *
  * `selected`  swell to 1.18 over 500ms and brighten aura + glow.
+ * `focused`   Star World tap: the painted glow alone expands and brightens.
  * `staged`    layers start hidden and appear in order aura → glow → mark
  *             when `revealed` becomes true.
  *
@@ -18,15 +19,24 @@
 
 type Props = {
   selected?: boolean;
+  /** Star World: this star was tapped — only its painted glow expands. */
+  focused?: boolean;
   staged?: boolean;
   revealed?: boolean;
   alt?: string;
 };
 
-export function StarLayers({ selected = false, staged = false, revealed = true, alt = "" }: Props) {
+export function StarLayers({
+  selected = false,
+  focused = false,
+  staged = false,
+  revealed = true,
+  alt = "",
+}: Props) {
   const cls = [
     "sisi-star",
     selected ? "is-selected" : "",
+    focused ? "is-focused" : "",
     staged ? "is-staged" : "",
     staged && revealed ? "is-revealed" : "",
   ]
@@ -135,6 +145,19 @@ export function StarLayers({ selected = false, staged = false, revealed = true, 
         .sisi-star.is-staged.is-revealed .sisi-star__slot--aura { opacity: 0.72; transition-delay: 0ms; }
         .sisi-star.is-staged.is-revealed .sisi-star__slot--glow { opacity: 0.75; transition-delay: 350ms; }
         .sisi-star.is-staged.is-revealed .sisi-star__slot--mark { opacity: 1; transition-delay: 700ms; }
+
+        /* Focused (tapped in the Star World): expand only the painted glow. */
+        .sisi-star .sisi-star__slot--glow {
+          transition:
+            opacity 500ms ease,
+            transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .sisi-star.is-focused .sisi-star__slot--glow,
+        .sisi-star.is-staged.is-revealed.is-focused .sisi-star__slot--glow {
+          opacity: 1;
+          transform: scale(1.6);
+          transition-delay: 0ms;
+        }
 
         @media (prefers-reduced-motion: reduce) {
           .sisi-star__aura,
