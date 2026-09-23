@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true">
+  <defs>
+    <radialGradient id="aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#F6D89B" stop-opacity="0.58"/>
+      <stop offset="0.42" stop-color="#F2A06F" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#F2A06F" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="64" cy="64" r="51" fill="url(#aura)"/>
+</svg>

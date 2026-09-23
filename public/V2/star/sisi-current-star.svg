@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">SiSi Current Star</title>
+  <desc id="desc">A warm ivory eight-point star with a soft coral-gold glow.</desc>
+  <defs>
+    <radialGradient id="sisi-star-aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#F6D89B" stop-opacity="0.58"/>
+      <stop offset="0.42" stop-color="#F2A06F" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#F2A06F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sisi-star-core" cx="42%" cy="38%" r="68%">
+      <stop offset="0" stop-color="#FFFDF3"/>
+      <stop offset="0.58" stop-color="#FFF1C7"/>
+      <stop offset="1" stop-color="#F4CF79"/>
+    </radialGradient>
+    <filter id="sisi-star-soft-glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5.5"/>
+    </filter>
+  </defs>
+
+  <circle id="star-aura" cx="64" cy="64" r="51" fill="url(#sisi-star-aura)"/>
+  <circle id="star-glow" cx="64" cy="64" r="24" fill="#F6C875" opacity="0.38" filter="url(#sisi-star-soft-glow)"/>
+
+  <g id="star-mark">
+    <path
+      d="M64 10 L70.2 49.2 L92 36 L78.8 57.8 L118 64 L78.8 70.2 L92 92 L70.2 78.8 L64 118 L57.8 78.8 L36 92 L49.2 70.2 L10 64 L49.2 57.8 L36 36 L57.8 49.2 Z"
+      fill="url(#sisi-star-core)"
+    />
+    <circle cx="64" cy="64" r="7.5" fill="#FFFDF5" opacity="0.92"/>
+  </g>
+</svg>

@@ -22,6 +22,12 @@ import { worldClock } from "@/lib/worldMotion";
 
 const WALK_SRC = "/V2/fox-walk/fox-walk-cycle900.webp";
 const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.png";
+/**
+ * Optional pose for the star moment (storyboard frame 2): the fox sits and
+ * looks up toward the star. Drop a transparent PNG at this path and it is
+ * used automatically; until then the idle pose is shown.
+ */
+const LOOK_UP_SRC = "/V2/fox-walk/fox-look-up.png";
 const CYCLE_MS = 900;
 const STEP_MS = CYCLE_MS / 2;
 const START_DELAY_MS = 150;
@@ -30,13 +36,24 @@ const STOP_AT_FACTOR = 0.3;
 
 type Props = {
   onTap?: () => void;
+  /** Star moment — stop at the next step and look up. */
+  lookingUp?: boolean;
   /** @deprecated walking state now comes from the shared world clock */
   paused?: boolean;
 };
 
-export function WalkingCat({ onTap }: Props) {
+export function WalkingCat({ onTap, lookingUp = false }: Props) {
   const [walking, setWalking] = useState(false);
   const walkingRef = useRef(false);
+  const lookingUpRef = useRef(lookingUp);
+  lookingUpRef.current = lookingUp;
+  const [hasLookUpPose, setHasLookUpPose] = useState(false);
+
+  useEffect(() => {
+    const im = new Image();
+    im.onload = () => setHasLookUpPose(true);
+    im.src = LOOK_UP_SRC;
+  }, []);
   const bobRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,7 +82,8 @@ export function WalkingCat({ onTap }: Props) {
             walkingRef.current = false;
             setWalking(false);
           } else if (stopAt < 0) {
-            if (f.factor < STOP_AT_FACTOR) {
+            // Looking up at the star → stop right after the current step.
+            if (lookingUpRef.current || f.factor < STOP_AT_FACTOR) {
               // finish the current step, then idle
               const t = now - walkStartedAt;
               stopAt = walkStartedAt + Math.ceil(t / STEP_MS) * STEP_MS;
@@ -103,7 +121,7 @@ export function WalkingCat({ onTap }: Props) {
       <div ref={bobRef} className="bob-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={walking ? WALK_SRC : IDLE_SRC}
+          src={walking ? WALK_SRC : lookingUp && hasLookUpPose ? LOOK_UP_SRC : IDLE_SRC}
           alt=""
           className="cat-media"
           draggable={false}

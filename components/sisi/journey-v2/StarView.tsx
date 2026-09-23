@@ -4,31 +4,38 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { loadSignsForStar } from "@/lib/myStars";
+import { LOOK_UP_CARD_DELAY_S } from "@/lib/useLookUpTimeline";
 
 /**
- * StarView — the celestial UI that appears above the clouds.
+ * StarView — storyboard frame 6: above the clouds, under the star, a small
+ * torn-edge postcard of the journey toward it.
  *
- * Renders text and controls BELOW the centered star (star itself is drawn by
- * SkyStarV2). Fades in with a delay so it appears after the cinematic
- * upward transition mostly completes.
+ *   photo  — a miniature of the Journey world (the same sky / path / meadow
+ *            / fox artwork, just framed small; nothing redrawn)
+ *   text   — the wish, "walking toward this since …", number of moments
+ *   stamp  — a small star stamp, bottom-right
  *
- * Contents:
- *   - Star title (star.wish)
- *   - "walking toward this since {date}"
- *   - N moments (signs count)
- *   - View journey button (future: navigates to star's timeline)
- *   - Back gesture (chevron-down) → onBack()
+ * The card rises in only after the camera has arrived in the night sky
+ * (see lib/useLookUpTimeline.ts). The star itself is drawn
+ * by SkyStarV2. Tapping the card opens the star's journey (or, with no wish
+ * yet, the place to make one).
  */
 
 type Props = {
   star: Star;
   onBack: () => void;
+  /** No wish saved yet — the sky still holds a star, waiting for one. */
+  placeholder?: boolean;
 };
 
-export function StarView({ star, onBack }: Props) {
+/** The postcard rises in once the camera has arrived in the night sky. */
+const CARD_DELAY = LOOK_UP_CARD_DELAY_S;
+
+export function StarView({ star, onBack, placeholder = false }: Props) {
   const [signCount, setSignCount] = useState<number | null>(null);
 
   useEffect(() => {
+    if (placeholder) return;
     let cancelled = false;
     loadSignsForStar(star.id)
       .then((signs) => {
@@ -40,37 +47,73 @@ export function StarView({ star, onBack }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [star.id]);
+  }, [star.id, placeholder]);
 
-  const sinceLabel = formatSince(star.createdAt);
+  const href = placeholder ? "/my-stars" : `/my-stars/${star.id}`;
+  const title = placeholder ? "this star is waiting for your wish" : star.wish || "your star";
+  const sub = placeholder
+    ? "what is meant for you is on its way."
+    : `walking toward this since ${formatSince(star.createdAt)}`;
 
   return (
     <motion.div
       className="star-view"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5, delay: 0.95 }} /* wait for the sky transition */
+      exit={{ opacity: 0, transition: { duration: 0.25, delay: 0 } }}
+      transition={{ duration: 0.3, delay: CARD_DELAY - 0.3 }}
     >
-      <div className="star-content">
-        <p className="star-title">{star.wish || "your star"}</p>
-        <p className="star-since">walking toward this since {sinceLabel}</p>
-        {signCount !== null && signCount > 0 && (
-          <p className="star-count">
-            {signCount} moment{signCount === 1 ? "" : "s"}
-          </p>
-        )}
-        <button
-          type="button"
-          className="view-journey-btn"
-          onClick={() => {
-            // Future: navigate to star journey timeline. For now nav to detail.
-            window.location.href = `/my-stars/${star.id}`;
-          }}
-        >
-          view journey
-        </button>
-      </div>
+      <motion.button
+        type="button"
+        className="postcard-wrap"
+        onClick={() => {
+          window.location.href = href;
+        }}
+        aria-label={placeholder ? "make a wish" : "view journey"}
+        initial={{ opacity: 0, y: 36, rotate: -4 }}
+        animate={{ opacity: 1, y: 0, rotate: -1.5 }}
+        transition={{ duration: 0.8, delay: CARD_DELAY, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="postcard paper-bg">
+          <div className="photo" aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="p-sky" src="/V2/parallax/journey-sky-fixed.png" alt="" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="p-ground" src="/V2/parallax/journey-walking-ground.png" alt="" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="p-path" src="/V2/parallax/journey-walking-path.png" alt="" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="p-fox" src="/V2/fox-walk/fox-walk-preview.png" alt="" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="p-star" src="/assets/sisi-star-mark-painted.png" alt="" />
+          </div>
+
+          <p className="title">{title}</p>
+          <div className="rule" />
+          <p className="sub">{sub}</p>
+          <div className="rule" />
+          {!placeholder && signCount !== null && signCount > 0 && (
+            <p className="count">
+              {signCount} moment{signCount === 1 ? "" : "s"}
+            </p>
+          )}
+
+          <span className="stamp" aria-hidden>
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.1 5.7L12 16.4l-5.1 2.8 1.1-5.7-4.3-4 5.8-.7z" />
+            </svg>
+          </span>
+        </div>
+      </motion.button>
+
+      <motion.p
+        className="card-hint"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: CARD_DELAY + 0.5 }}
+      >
+        {placeholder ? "tap to make a wish" : "tap to view journey"}
+      </motion.p>
 
       <button
         type="button"
@@ -88,66 +131,132 @@ export function StarView({ star, onBack }: Props) {
         :global(.star-view) {
           position: absolute;
           inset: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-end;
-          padding: 0 var(--stage-padding);
           pointer-events: none;
           z-index: 8;
         }
-        .star-content {
+        :global(.postcard-wrap) {
           position: absolute;
-          top: calc(var(--star-view-top) + 12vh);
+          top: calc(var(--star-view-top) + 13vh);
           left: 50%;
-          transform: translateX(-50%);
-          text-align: center;
-          color: rgba(255, 255, 255, 0.92);
-          max-width: min(320px, 82vw);
-          pointer-events: auto;
-        }
-        .star-title {
-          font-family: var(--font-fraunces), Georgia, serif;
-          font-size: clamp(20px, 6vw, 26px);
-          letter-spacing: 0.01em;
-          line-height: 1.3;
-          margin: 0 0 10px 0;
-        }
-        .star-since {
-          font-family: var(--font-sentient), Georgia, serif;
-          font-weight: 300;
-          letter-spacing: -0.02em;
-          font-style: italic;
-          font-size: clamp(12px, 3.5vw, 14px);
-          color: rgba(255, 255, 255, 0.6);
-          margin: 0 0 4px 0;
-        }
-        .star-count {
-          font-family: var(--font-sentient), Georgia, serif;
-          font-weight: 300;
-          letter-spacing: -0.02em;
-          font-size: clamp(11px, 3.2vw, 13px);
-          color: rgba(255, 255, 255, 0.55);
-          margin: 0 0 26px 0;
-        }
-        .view-journey-btn {
-          font-family: var(--font-sentient), Georgia, serif;
-          font-weight: 300;
-          letter-spacing: 0.02em;
-          font-size: clamp(13px, 3.8vw, 15px);
-          color: rgba(255, 255, 255, 0.88);
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.28);
-          border-radius: 9999px;
-          padding: 10px 22px;
+          margin-left: calc(min(66vw, 264px) / -2);
+          width: min(66vw, 264px);
+          padding: 0;
+          border: 0;
+          background: transparent;
           cursor: pointer;
-          transition: background 0.2s ease, border-color 0.2s ease;
-          -webkit-backdrop-filter: blur(6px);
-          backdrop-filter: blur(6px);
+          pointer-events: auto;
+          filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35))
+            drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+          -webkit-tap-highlight-color: transparent;
         }
-        .view-journey-btn:hover {
-          background: rgba(255, 255, 255, 0.14);
-          border-color: rgba(255, 255, 255, 0.42);
+        .postcard {
+          position: relative;
+          padding: 14px 14px 18px;
+          text-align: left;
+          clip-path: ${TORN_EDGE};
+        }
+        .photo {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          overflow: hidden;
+          border-radius: 2px;
+          margin-bottom: 14px;
+          background: #4384e3;
+        }
+        .photo img {
+          position: absolute;
+          display: block;
+          max-width: none;
+          user-select: none;
+        }
+        .p-sky {
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        /* Miniature of the world: path centre at 30% from the bottom. */
+        .p-ground {
+          height: 150%;
+          width: auto;
+          left: -40%;
+          bottom: calc(30% - 1.5% - 40.4%);
+        }
+        .p-path {
+          height: 62%;
+          width: auto;
+          left: -60%;
+          bottom: calc(30% - 28.9%);
+        }
+        .p-fox {
+          width: 24%;
+          height: auto;
+          left: 26%;
+          bottom: calc(30% - 1%);
+        }
+        .p-star {
+          position: absolute;
+          width: 10%;
+          left: 70%;
+          top: 12%;
+          filter: drop-shadow(0 0 4px rgba(255, 236, 190, 0.9));
+        }
+        .title {
+          font-family: var(--font-fraunces), Georgia, serif;
+          font-size: clamp(15px, 4.4vw, 18px);
+          line-height: 1.3;
+          color: #2b2f45;
+          margin: 0 44px 6px 2px;
+        }
+        .sub {
+          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-style: italic;
+          font-size: clamp(12px, 3.4vw, 13.5px);
+          color: rgba(43, 47, 69, 0.62);
+          margin: 6px 44px 6px 2px;
+        }
+        .count {
+          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-size: 12px;
+          color: rgba(43, 47, 69, 0.55);
+          margin: 6px 0 0 2px;
+        }
+        .rule {
+          height: 1px;
+          background: rgba(43, 47, 69, 0.14);
+          margin-right: 44px;
+        }
+        .stamp {
+          position: absolute;
+          right: 14px;
+          bottom: 16px;
+          width: 34px;
+          height: 34px;
+          border: 1.5px dashed rgba(196, 132, 124, 0.85);
+          border-radius: 3px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transform: rotate(5deg);
+        }
+        .stamp svg {
+          width: 20px;
+          height: 20px;
+          fill: #d98673;
+        }
+        :global(.star-view) :global(.card-hint) {
+          position: absolute;
+          top: calc(var(--star-view-top) + 13vh + min(66vw, 264px) * 1.22 + 16px);
+          left: 0;
+          right: 0;
+          text-align: center;
+          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-style: italic;
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          color: rgba(255, 255, 255, 0.6);
+          margin: 0;
         }
         .back-btn {
           position: absolute;
@@ -161,30 +270,44 @@ export function StarView({ star, onBack }: Props) {
           padding: 8px 14px;
           background: transparent;
           border: 0;
-          color: rgba(255, 255, 255, 0.55);
+          color: rgba(255, 255, 255, 0.7);
           cursor: pointer;
           pointer-events: auto;
           transition: color 0.2s ease;
         }
         .back-btn:hover {
-          color: rgba(255, 255, 255, 0.85);
+          color: rgba(255, 255, 255, 0.95);
         }
         .back-btn svg {
           width: 22px;
           height: 22px;
-          transform: rotate(180deg); /* up-chevron */
         }
         .back-label {
-          font-family: var(--font-sentient), Georgia, serif;
-          font-weight: 300;
+          font-family: var(--font-eb-garamond), Georgia, serif;
           letter-spacing: 0.1em;
           text-transform: lowercase;
-          font-size: 10px;
+          font-size: 11px;
         }
       `}</style>
     </motion.div>
   );
 }
+
+/**
+ * Deterministic torn-paper edge as a clip-path polygon (small irregular
+ * bites along all four sides). Computed once at module load.
+ */
+const TORN_EDGE = (() => {
+  const pts: string[] = [];
+  const jag = (i: number, seed: number) =>
+    0.9 * Math.abs(Math.sin(i * 12.9898 + seed) * 43758.5453 % 1);
+  const N = 26;
+  for (let i = 0; i <= N; i++) pts.push(`${((i / N) * 100).toFixed(2)}% ${jag(i, 1).toFixed(2)}%`);
+  for (let i = 1; i <= N; i++) pts.push(`${(100 - jag(i, 2) * 1.2).toFixed(2)}% ${((i / N) * 100).toFixed(2)}%`);
+  for (let i = N - 1; i >= 0; i--) pts.push(`${((i / N) * 100).toFixed(2)}% ${(100 - jag(i, 3)).toFixed(2)}%`);
+  for (let i = N - 1; i >= 1; i--) pts.push(`${(jag(i, 4) * 1.2).toFixed(2)}% ${((i / N) * 100).toFixed(2)}%`);
+  return `polygon(${pts.join(", ")})`;
+})();
 
 function formatSince(iso: string): string {
   try {

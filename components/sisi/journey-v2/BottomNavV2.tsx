@@ -27,7 +27,15 @@ const TABS = [
   { href: "/gallery",  label: "Moments" },
 ];
 
-export function BottomNavV2({ theme = "light" }: { theme?: Theme }) {
+export function BottomNavV2({
+  theme = "light",
+  onStarsSelect,
+}: {
+  theme?: Theme;
+  /** On the Journey, "Stars" looks up at the current star instead of
+   *  navigating away (star brightens → camera tilts up). */
+  onStarsSelect?: () => void;
+}) {
   const pathname = usePathname();
   const isDark = theme === "dark";
 
@@ -48,6 +56,14 @@ export function BottomNavV2({ theme = "light" }: { theme?: Theme }) {
             href={href}
             aria-current={active ? "page" : undefined}
             className={`stone-pill ${active ? "is-active" : ""}`}
+            onClick={
+              href === "/my-stars" && onStarsSelect
+                ? (e) => {
+                    e.preventDefault();
+                    onStarsSelect();
+                  }
+                : undefined
+            }
           >
             {label}
           </Link>

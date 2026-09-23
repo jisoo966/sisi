@@ -99,41 +99,48 @@
    * Star-view: viewport shows the TOP of the sky asset (celestial slice)
    * The cloud band naturally sits between the two.
    */
-  --sky-height: 250dvh;
-  --landscape-translate-walking: 0px;
-  --landscape-translate-star: 100dvh;
+  --sky-height: 320dvh; /* tall enough that the clouds fill the screen mid-look-up */
 
-  /* Cinematic transition — magical but quick */
-  --look-up-duration: 1500ms;
-  --look-up-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Cinematic look-up (storyboard 1→6) is choreographed in
+   * lib/useLookUpTimeline.ts (fox looks up → clouds → night sky → postcard). */
 
   /* Star position anchors */
   --star-walking-top: 15%;
   --star-walking-left: 78%;
-  --star-view-top: 38%;
+  --star-view-top: 20%;
   --star-view-left: 50%;
   --star-walking-size: clamp(28px, 8vw, 40px);
   --star-view-size: clamp(60px, 18vw, 90px);
 }
 
-/* Sky + landscape groups — animated by phase class on parent */
+/* Sky + landscape groups — positioned by the look-up timeline
+ * (lib/useLookUpTimeline.ts writes --look-sky / --look-land / --look-sky-op
+ * on .journey-stage-v2 every frame). No CSS transitions here. */
 .journey-sky-group,
 .journey-landscape-group {
   position: absolute;
-  transition: transform var(--look-up-duration) var(--look-up-easing);
+}
+.journey-stage-v2.phase-star-view .journey-sky-group,
+.journey-stage-v2.phase-star-view .journey-landscape-group {
   will-change: transform;
 }
-/* Sky group: fixed --sky-height (default 220dvh) so the sky is guaranteed
- * taller than the viewport. Horizontally centered — sky-vertical scales by
- * height and its width overflows equally on both sides. */
+/* Vertical sky (sky-vertical.png): --sky-height tall, horizontally centered.
+ * --look-sky 0 = bottom slice (day blue, matches the fixed sky)
+ *            ~0.6 = inside the cloud band
+ *            1 = top slice (night sky with stars) */
 .journey-sky-group {
   top: 0;
   left: 50%;
   height: var(--sky-height);
   width: auto;
-  transform: translate(-50%, calc(100dvh - var(--sky-height)));
+  transform: translate(
+    -50%,
+    calc((100dvh - var(--sky-height)) * (1 - var(--look-sky, 0)))
+  );
+  opacity: var(--look-sky-op, 0);
 }
-/* Fixed sky — never moves (no horizontal drift, no look-up translate). */
+/* Fixed sky — never moves (no horizontal drift, no look-up translate).
+ * During the look-up the vertical sky simply covers it. */
 .journey-sky-fixed {
   position: fixed;
   inset: 0;
@@ -145,41 +152,9 @@
   pointer-events: none;
   user-select: none;
 }
-/* The vertical look-up sky is hidden while walking so it never covers the
- * fixed sky; it fades in as the look-up begins and fades out only after the
- * camera has come back down. */
-.journey-sky-group {
-  opacity: 0;
-  transition:
-    transform var(--look-up-duration) var(--look-up-easing),
-    opacity 250ms ease calc(var(--look-up-duration) - 250ms);
-}
-.journey-stage-v2.phase-star-view .journey-sky-group {
-  opacity: 1;
-  transition:
-    transform var(--look-up-duration) var(--look-up-easing),
-    opacity 250ms ease 0ms;
-}
 .journey-landscape-group {
   inset: 0;
-  transform: translate3d(0, var(--landscape-translate-walking), 0);
-}
-/* When Journey enters star-view phase, both groups translate together.
- * Sky-group needs to preserve the horizontal centering (-50%) while its
- * vertical translate slides from (100dvh - sky-height) → 0. */
-.journey-stage-v2.phase-star-view .journey-sky-group {
-  transform: translate(-50%, 0);
-}
-.journey-stage-v2.phase-star-view .journey-landscape-group {
-  transform: translate3d(0, var(--landscape-translate-star), 0);
-}
-
-/* Reduced-motion users skip the cinematic transition */
-@media (prefers-reduced-motion: reduce) {
-  .journey-sky-group,
-  .journey-landscape-group {
-    transition: transform 250ms ease-out;
-  }
+  transform: translate3d(0, calc(var(--look-land, 0) * 100dvh), 0);
 }
 
 /* Journey v2 stage — real mobile viewport */

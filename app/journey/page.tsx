@@ -22,6 +22,7 @@ import { SkyTrack } from "@/components/sisi/journey-v2/SkyTrack";
 // LEGACY — SkyJourney (gradient-based placeholder sky) preserved for revert.
 // import { SkyJourney } from "@/components/sisi/journey-v2/SkyJourney";
 import { StarView } from "@/components/sisi/journey-v2/StarView";
+import { StarTrail } from "@/components/sisi/journey-v2/StarTrail";
 import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
 import { CaptureFAB } from "@/components/sisi/journey-v2/CaptureFAB";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
@@ -35,6 +36,7 @@ import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 
 import { usePageBg } from "@/lib/usePageBg";
 import { useJourneyPhase } from "@/lib/useJourneyPhase";
+import { useLookUpTimeline } from "@/lib/useLookUpTimeline";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 import { loadStars, type Star } from "@/lib/myStars";
@@ -130,6 +132,17 @@ const GROUND_BOTTOM = "calc(var(--walking-baseline) - 1% - 26.95%)";
 const FG_TREE_HEIGHT_PCT = 0.66;
 const FG_TREE_BASE = "22%";
 
+/** Shown in the sky when the user has not made a wish yet. */
+const PLACEHOLDER_STAR: Star = {
+  id: "waiting",
+  wish: "",
+  timeframe: "someday",
+  x: 0,
+  y: 0,
+  size: "md",
+  createdAt: new Date(0).toISOString(),
+};
+
 /** 시간대별 인사 */
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -176,7 +189,8 @@ export default function JourneyPage() {
 
   // Match the safe area above the panorama with the current phase's sky tone.
   // Walking phase = day cream/butter; star-view = celestial black.
-  usePageBg(isWalking ? "#4384e3" : "#0d1620");
+  // Star-view = the deep night at the top of sky-vertical.png (#031527).
+  usePageBg(isWalking ? "#4384e3" : "#031527");
 
   // Auth-derived name (Supabase profile or guest localStorage).
   const [name, setName] = useState<string>("");
@@ -187,10 +201,17 @@ export default function JourneyPage() {
   const [angelMessage, setAngelMessage] = useState<AngelMessage | null>(null);
   const [featuredStar, setFeaturedStar] = useState<Star | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  // Stars load async; until then (or if none exist) show a waiting star.
+  const [starsLoaded, setStarsLoaded] = useState(false);
+  const skyStar: Star | null = featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
+  const isPlaceholderStar = !featuredStar;
 
   // World "paused" derives from ANY of: not walking phase, or chat sheet open.
   // Cat + landscape freeze together in either case.
   const worldPaused = !isWalking || chatOpen;
+
+  // Star look-up choreography (fox looks up → clouds → night → postcard).
+  useLookUpTimeline(isStarView);
 
   // Drive the shared world clock: ease in on arrival (0 → 32px/s over 1.2s),
   // ease out when the chat opens or the camera looks up at the star.
@@ -227,9 +248,11 @@ export default function JourneyPage() {
 
   // Featured star — most recent (walk-toward symbol in the sky).
   useEffect(() => {
-    loadStars().then((stars) => {
-      if (stars.length > 0) setFeaturedStar(stars[0]);
-    });
+    loadStars()
+      .then((stars) => {
+        if (stars.length > 0) setFeaturedStar(stars[0]);
+      })
+      .finally(() => setStarsLoaded(true));
   }, []);
 
   // Name from Supabase profile or guest storage.
@@ -336,7 +359,10 @@ export default function JourneyPage() {
           />
 
           {/* 8. Companion — 0px/s, paws on the path centre */}
-          <WalkingCat onTap={isWalking ? () => setChatOpen(true) : undefined} />
+          <WalkingCat
+            onTap={isWalking ? () => setChatOpen(true) : undefined}
+            lookingUp={isStarView}
+          />
 
           {/* 9. Foreground grass — 42–48px/s, one clump every 4–9s */}
           <ForegroundClusters
@@ -366,9 +392,15 @@ export default function JourneyPage() {
 
         {/* Current star — anchored to viewport, not to a group. Its position
             transitions between walking (upper-right) and star-view (center). */}
-        {featuredStar && (
+        {/* Storyboard frame 2 — trail of light from the fox to the star,
+            only at the start of the look-up. */}
+        {isStarView && <StarTrail />}
+
+        {/* A star is ALWAYS in the sky — with no saved wish yet it is a
+            quiet placeholder that invites one. */}
+        {skyStar && (
           <SkyStarV2
-            star={featuredStar}
+            star={skyStar}
             phase={phase}
             onTap={isWalking ? enterStarView : backToWalking}
           />
@@ -396,14 +428,15 @@ export default function JourneyPage() {
         )}
 
         {/* Three-tab nav — only in walking phase (star-view is immersive) */}
-        {isWalking && <BottomNavV2 theme="light" />}
+        {isWalking && <BottomNavV2 theme="light" onStarsSelect={enterStarView} />}
 
         {/* Star view UI only in star-view phase */}
         <AnimatePresence>
-          {isStarView && featuredStar && (
+          {isStarView && skyStar && (
             <StarView
-              key={featuredStar.id}
-              star={featuredStar}
+              key={skyStar.id}
+              star={skyStar}
+              placeholder={isPlaceholderStar}
               onBack={backToWalking}
             />
           )}

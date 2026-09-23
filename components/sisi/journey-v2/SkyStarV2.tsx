@@ -27,7 +27,6 @@ type Props = {
 
 export function SkyStarV2({ star, phase, onTap }: Props) {
   const isStarView = phase === "star-view";
-  const gradId = `sky-star-grad-${star.id}`;
 
   // One-time spawn sparkle — plays only the first time this specific star
   // is shown to the user (persisted per star id in localStorage). After that
@@ -63,20 +62,30 @@ export function SkyStarV2({ star, phase, onTap }: Props) {
       animate={{
         top: isStarView ? "var(--star-view-top)" : "var(--star-walking-top)",
         left: isStarView ? "var(--star-view-left)" : "var(--star-walking-left)",
-        scale: isStarView ? 2.0 : 1,
+        scale: isStarView ? 1.7 : 1,
+        // Hidden while the camera is inside the clouds (storyboard frame 4).
+        opacity: isStarView ? [1, 1, 0.08, 0.08, 1] : 1,
       }}
-      transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
+      // Synced with lib/useLookUpTimeline.ts: the star holds its place while
+      // the fox looks up and the clouds pass, then settles at top-centre as
+      // the night sky arrives (2.6s → 3.7s). Returning: ~1.9s together.
+      transition={
+        isStarView
+          ? {
+              default: { duration: 1.1, delay: 2.6, ease: [0.65, 0, 0.35, 1] },
+              opacity: { duration: 3.3, times: [0, 0.33, 0.45, 0.72, 1] },
+            }
+          : { duration: 1.9, ease: [0.65, 0, 0.35, 1] }
+      }
       // framer-motion writes its own `transform` (for scale), which would
       // wipe a CSS translate — so the centering offset lives here instead.
       style={{
-        width: "var(--star-walking-size)",
-        height: "var(--star-walking-size)",
+        width: 48,
+        height: 48,
         x: "-50%",
         y: "-50%",
       }}
     >
-      <span className="halo halo-outer" aria-hidden />
-      <span className="halo halo-inner" aria-hidden />
       {showSpawn && (
         <>
           <span className="spawn-flash" aria-hidden />
@@ -87,20 +96,16 @@ export function SkyStarV2({ star, phase, onTap }: Props) {
           <span className="sparkle sparkle-4" aria-hidden />
         </>
       )}
-      <svg viewBox="0 0 100 100" className="star-svg" aria-hidden>
-        <defs>
-          <radialGradient id={gradId} cx="50%" cy="50%">
-            <stop offset="0%" stopColor="rgb(255,248,225)" />
-            <stop offset="35%" stopColor="rgb(255,236,189)" />
-            <stop offset="100%" stopColor="rgb(251,198,106)" />
-          </radialGradient>
-        </defs>
-        <path
-          d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
-          fill={`url(#${gradId})`}
-        />
-        <circle cx="50" cy="50" r="7" fill="rgb(255,248,225)" opacity="0.85" />
-      </svg>
+      {/* Three hand-painted PNG layers on the same 1254×1254 canvas and
+          centre point, stacked uncropped: aura (bottom), glow, mark (top). */}
+      <div className={`sisi-star${isStarView ? " is-selected" : ""}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="sisi-star__aura" src="/assets/sisi-star-aura-painted.png" alt="" draggable={false} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="sisi-star__glow" src="/assets/sisi-star-glow-painted.png" alt="" draggable={false} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="sisi-star__mark" src="/assets/sisi-star-mark-painted.png" alt="Current Star" draggable={false} />
+      </div>
 
       <style jsx>{`
         :global(.sky-star-btn) {
@@ -118,46 +123,82 @@ export function SkyStarV2({ star, phase, onTap }: Props) {
           align-items: center;
           justify-content: center;
         }
-        .halo {
-          position: absolute;
-          border-radius: 9999px;
-          pointer-events: none;
-        }
-        .halo-outer {
-          width: 260%;
-          height: 260%;
-          background: radial-gradient(
-            circle,
-            rgba(238, 137, 79, 0.5) 0%,
-            rgba(238, 137, 79, 0.2) 50%,
-            transparent 90%
-          );
-          filter: blur(6px);
-          z-index: 1;
-          animation: haloPulse 4s ease-in-out infinite;
-        }
-        .halo-inner {
-          width: 160%;
-          height: 160%;
-          background: radial-gradient(
-            circle,
-            rgba(255, 181, 112, 1) 0%,
-            rgba(255, 181, 112, 0.35) 55%,
-            transparent 100%
-          );
-          filter: blur(4px);
-          z-index: 2;
-        }
-        @keyframes haloPulse {
-          0%, 100% { opacity: 0.85; transform: scale(1); }
-          50%      { opacity: 1;    transform: scale(1.08); }
-        }
-        .star-svg {
+        /* ── Current Star: painted aura + glow + mark, stacked ──
+           Same canvas, same centre, absolutely positioned on top of each
+           other. Only opacity/scale are animated (no CSS glow, no rotation). */
+        .sisi-star {
           position: relative;
+          width: 48px;
+          aspect-ratio: 1;
+          transform: scale(1);
+          transform-origin: center;
+          transition: transform 500ms cubic-bezier(0.33, 1, 0.68, 1);
+        }
+        .sisi-star > img {
+          position: absolute;
+          inset: 0;
           width: 100%;
           height: 100%;
-          z-index: 3;
           display: block;
+          pointer-events: none;
+          user-select: none;
+          -webkit-user-drag: none;
+          transform-origin: center;
+        }
+        /* Aura — faint, large, breathing slowly (scale 1.15 ↔ 1.25). */
+        .sisi-star__aura {
+          z-index: 1;
+          opacity: 0.34;
+          transform: scale(1.2);
+          animation: starAura 6.4s ease-in-out infinite;
+          transition: filter 500ms ease;
+        }
+        /* Glow — slightly smaller than the canvas, soft opacity drift. */
+        .sisi-star__glow {
+          z-index: 2;
+          opacity: 0.62;
+          transform: scale(0.94);
+          animation: starGlow 4.3s ease-in-out infinite;
+          transition: filter 500ms ease;
+        }
+        /* Mark — crisp, full opacity, a very small irregular twinkle. */
+        .sisi-star__mark {
+          z-index: 3;
+          opacity: 1;
+          transform: scale(1);
+          animation: starTwinkle 5.7s ease-in-out infinite;
+        }
+        @keyframes starAura {
+          0%, 100% { transform: scale(1.15); opacity: 0.3; }
+          50%      { transform: scale(1.25); opacity: 0.38; }
+        }
+        @keyframes starGlow {
+          0%, 100% { opacity: 0.56; }
+          45%      { opacity: 0.72; }
+          70%      { opacity: 0.64; }
+        }
+        /* Uneven beats so it reads as a twinkle, not a pulse. */
+        @keyframes starTwinkle {
+          0%, 100% { transform: scale(1);     opacity: 1; }
+          13%      { transform: scale(1.018); opacity: 1; }
+          21%      { transform: scale(0.992); opacity: 0.94; }
+          47%      { transform: scale(1);     opacity: 1; }
+          58%      { transform: scale(1.012); opacity: 0.97; }
+          81%      { transform: scale(0.996); opacity: 1; }
+        }
+        /* Selected (star tapped / Stars tab): swell to 1.18 over 500ms and
+           brighten the aura + glow, then the camera tilts up. */
+        .sisi-star.is-selected {
+          transform: scale(1.18);
+        }
+        .sisi-star.is-selected .sisi-star__aura,
+        .sisi-star.is-selected .sisi-star__glow {
+          filter: brightness(1.2);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sisi-star__aura,
+          .sisi-star__glow,
+          .sisi-star__mark { animation: none; }
         }
 
         /* ── One-time spawn animation ─────────────────────
