@@ -113,48 +113,119 @@
   --star-view-size: clamp(60px, 18vw, 90px);
 }
 
-/* Sky + landscape groups — positioned by the look-up timeline
- * (lib/useLookUpTimeline.ts writes --look-sky / --look-land / --look-sky-op
- * on .journey-stage-v2 every frame). No CSS transitions here. */
+/* Sky + landscape groups — moved by lib/useLookUpTimeline.ts, which writes
+ * transform/opacity directly on these two elements each frame (compositor
+ * only). The rules below are the resting "walking" state. */
 .journey-sky-group,
 .journey-landscape-group {
   position: absolute;
 }
+/* Promote both layers as soon as the star is tapped (~0.9s before the
+ * camera moves) so there's no layer-creation hitch when motion starts. */
 .journey-stage-v2.phase-star-view .journey-sky-group,
 .journey-stage-v2.phase-star-view .journey-landscape-group {
+  will-change: transform, opacity;
+}
+/* Composite the tall sky <img> directly so the GPU just scales its texture
+ * while it moves, instead of re-rasterizing a ~3-screen-tall upscaled image
+ * tile by tile during the fast part of the tilt. */
+.journey-stage-v2.phase-star-view .journey-sky-group img {
   will-change: transform;
 }
 /* Vertical sky (sky-vertical.png): --sky-height tall, horizontally centered.
- * --look-sky 0 = bottom slice (day blue, matches the fixed sky)
- *            ~0.6 = inside the cloud band
- *            1 = top slice (night sky with stars) */
+ * Walking: bottom slice (day blue) aligned to the viewport, invisible. */
 .journey-sky-group {
   top: 0;
   left: 50%;
   height: var(--sky-height);
   width: auto;
-  transform: translate(
-    -50%,
-    calc((100dvh - var(--sky-height)) * (1 - var(--look-sky, 0)))
-  );
-  opacity: var(--look-sky-op, 0);
+  transform: translate3d(-50%, calc(100dvh - var(--sky-height)), 0);
+  opacity: 0;
 }
-/* Fixed sky — never moves (no horizontal drift, no look-up translate).
- * During the look-up the vertical sky simply covers it. */
-.journey-sky-fixed {
-  position: fixed;
+/* ── Journey world depth groups (Journey → Stars camera move) ──
+ * Each group is moved by lib/useStarAscent.ts at its own parallax rate
+ * (transform + opacity only). At rest in the meadow they sit at 0. */
+.jw-group {
+  position: absolute;
   inset: 0;
+  pointer-events: none;
+  isolation: isolate;
+  transform: translate3d(0, 0, 0);
+}
+.jw-group > * { pointer-events: none; }
+.journey-stage-v2.phase-star-view .jw-group { will-change: transform, opacity; }
+
+/* Day sky texture — horizontally static; extends above the screen so the
+ * 0.15× drift during the ascent never uncovers an edge. */
+.journey-sky-fixed {
+  position: absolute;
+  left: 0;
+  top: -22%;
   width: 100%;
-  height: 100%;
+  height: 122%;
   object-fit: cover;
   display: block;
-  z-index: 0;
   pointer-events: none;
   user-select: none;
 }
+/* Star world — hidden until the environment switch under the clouds. */
+.jw-night {
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(0, calc(-0.3675 * 100dvh), 0);
+  background: #03070a;
+}
+.jw-night-sky {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 125%;
+  width: auto;
+  min-width: 100%;
+  max-width: none;
+  transform: translateX(-50%);
+  display: block;
+  user-select: none;
+}
+.jw-clouds-rear,
+.jw-clouds-front {
+  visibility: hidden;
+}
+.jw-cloud-bank {
+  position: absolute;
+  left: 50%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  display: block;
+  user-select: none;
+}
+/* Rear bank: rests just above the screen; ends framing the bottom ~30%. */
+.jw-cloud-bank--rear { top: -112%; height: 110%; }
+/* Front bank: its dense core covers the whole screen around c ≈ 1.4. */
+.jw-cloud-bank--front { top: -234%; height: 250%; }
+
+/* Journey UI (header, camera, nav): fades out over 300ms, 0.5s after the
+ * tap; fades back in after the return has landed. */
+.journey-walk-ui {
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+.journey-walk-ui.is-hidden {
+  opacity: 0;
+  transition: opacity 300ms ease 500ms;
+}
+.journey-walk-ui.is-hidden,
+.journey-walk-ui.is-hidden * {
+  pointer-events: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .journey-walk-ui,
+  .journey-walk-ui.is-hidden { transition: opacity 250ms ease; }
+}
 .journey-landscape-group {
   inset: 0;
-  transform: translate3d(0, calc(var(--look-land, 0) * 100dvh), 0);
+  transform: translate3d(0, 0, 0);
 }
 
 /* Journey v2 stage — real mobile viewport */

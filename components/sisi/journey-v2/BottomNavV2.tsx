@@ -56,6 +56,16 @@ export function BottomNavV2({
             href={href}
             aria-current={active ? "page" : undefined}
             className={`stone-pill ${active ? "is-active" : ""}`}
+            onPointerDown={
+              href === "/my-stars" && onStarsSelect
+                ? (e) => {
+                    // Immediate ~90ms press response.
+                    const el = e.currentTarget;
+                    el.classList.add("is-pressed");
+                    setTimeout(() => el.classList.remove("is-pressed"), 90);
+                  }
+                : undefined
+            }
             onClick={
               href === "/my-stars" && onStarsSelect
                 ? (e) => {
@@ -110,6 +120,10 @@ export function BottomNavV2({
         }
         .stone-pill:hover  { transform: translateY(-1px); }
         .stone-pill:active { transform: translateY(0); }
+        .stone-pill.is-pressed {
+          transform: scale(0.94);
+          transition-duration: 90ms;
+        }
         .stone-pill.is-active {
           color: var(--journey-navy);
           background: #ede4d1;

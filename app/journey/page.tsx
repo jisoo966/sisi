@@ -18,7 +18,9 @@ import { LAYER_SPEED, worldClock } from "@/lib/worldMotion";
 // import { PanoramaBackground } from "@/components/sisi/journey-v2/PanoramaBackground";
 import { WalkingCat } from "@/components/sisi/journey-v2/WalkingCat";
 import { SkyStarV2 } from "@/components/sisi/journey-v2/SkyStarV2";
-import { SkyTrack } from "@/components/sisi/journey-v2/SkyTrack";
+// SkyTrack (tall vertical sky) is no longer used by the ascent; kept on disk.
+// import { SkyTrack } from "@/components/sisi/journey-v2/SkyTrack";
+import { NightStar } from "@/components/sisi/journey-v2/NightStar";
 // LEGACY — SkyJourney (gradient-based placeholder sky) preserved for revert.
 // import { SkyJourney } from "@/components/sisi/journey-v2/SkyJourney";
 import { StarView } from "@/components/sisi/journey-v2/StarView";
@@ -36,7 +38,7 @@ import { AngelMessageCard } from "@/components/sisi/AngelMessageCard";
 
 import { usePageBg } from "@/lib/usePageBg";
 import { useJourneyPhase } from "@/lib/useJourneyPhase";
-import { useLookUpTimeline } from "@/lib/useLookUpTimeline";
+import { useStarAscent } from "@/lib/useStarAscent";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 import { loadStars, type Star } from "@/lib/myStars";
@@ -72,6 +74,21 @@ const PARALLAX_LAYERS = {
   midgroundVegetation: "/V2/parallax/journey-midground-vegetation.png",
   walkingGround: "/V2/parallax/journey-walking-ground.png",
   walkingPath: "/V2/parallax/journey-walking-path.png",
+};
+
+/**
+ * Journey → Stars camera move assets.
+ *   nightSky     — the star world (sky-star.webp, unchanged)
+ *   front/rear   — cloud banks cut from the existing painted cloud bands of
+ *                  sky-vertical.png and the tall "sky journey" cloud image:
+ *                  same pixels, sky colour keyed to transparency so the
+ *                  clouds can pass in front of other layers. Replace with
+ *                  artist-painted transparent banks at the same paths.
+ */
+const ASCENT_LAYERS = {
+  nightSky: "/V2/ascent/night-sky.webp",
+  frontClouds: "/V2/ascent/cloud-bank-front.png",
+  rearClouds: "/V2/ascent/cloud-bank-rear.png",
 };
 
 /** Single clouds cut (pixels untouched) from slow-clouds.png. */
@@ -163,34 +180,25 @@ function formatDate(): string {
 }
 
 /**
- * JourneyPage v2 — one persistent world with a cinematic look-up transition.
+ * JourneyPage v2 — one persistent world.
  *
- * Layer architecture:
- *   <JourneyStage phaseClass>            responsive viewport root + phase class
- *     <WorldLayer>                       everything that moves
- *       <sky-group>                      translates up/down between phases
- *         <SkyJourney>                   250dvh tall vertical sky asset
- *       <landscape-group>                translates down in star-view
- *         <PanoramaBackground paused>    wide illustrated environment, drifts
- *         <WalkingCat>                   companion, driven by the world clock
- *       <SkyStarV2 phase onTap>          moves upper-right ↔ center
- *     <UILayer>                          fixed above world, does not move
- *       <JourneyHeader>                  greeting + bell + menu (walking only)
- *       <CaptureFAB>                     camera (walking only)
- *       <StarView>                       celestial content (star-view only)
- *
- * All positions and timings live in globals.css (--sky-height, --*-translate-*,
- * --look-up-duration). Tune globally without touching component code.
+ * World (back → front), each a separate depth group moved by
+ * lib/useStarAscent.ts during the Journey → Stars camera move:
+ *   .jw-night         star world (night sky + NightStar)          0.15×
+ *   .jw-day           day sky texture, small clouds, SkyStarV2     0.15×
+ *   .jw-clouds-rear   rear cloud bank                              0.70×
+ *   .jw-hills         far silhouettes + midground vegetation       0.35×
+ *   .jw-meadow        ground + path (locked) + companion           0.75×
+ *   .jw-fore          foreground grass + trees                     1.15×
+ *   StarTrail         fox → star light trail (screen space)
+ *   .jw-clouds-front  front cloud bank                             1.25×
+ * UI: header / camera / nav (fade out 300ms), StarView (postcard).
  */
 export default function JourneyPage() {
   // Journey world state machine (walking ↔ star-view).
-  const { phase, isWalking, isStarView, enterStarView, backToWalking, stageClass } =
+  const { isWalking, isStarView, enterStarView, backToWalking, stageClass } =
     useJourneyPhase();
 
-  // Match the safe area above the panorama with the current phase's sky tone.
-  // Walking phase = day cream/butter; star-view = celestial black.
-  // Star-view = the deep night at the top of sky-vertical.png (#031527).
-  usePageBg(isWalking ? "#4384e3" : "#031527");
 
   // Auth-derived name (Supabase profile or guest localStorage).
   const [name, setName] = useState<string>("");
@@ -206,18 +214,30 @@ export default function JourneyPage() {
   const skyStar: Star | null = featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
   const isPlaceholderStar = !featuredStar;
 
-  // World "paused" derives from ANY of: not walking phase, or chat sheet open.
-  // Cat + landscape freeze together in either case.
-  const worldPaused = !isWalking || chatOpen;
+  // Journey → Stars camera move (see lib/useStarAscent.ts). `busy` locks
+  // input from the tap until the arrival (or the return) has settled.
+  const { busy, env, starRevealed } = useStarAscent(isStarView);
+  const goToStars = () => {
+    if (busy || !isWalking) return;
+    enterStarView();
+  };
+  const backToMeadow = () => {
+    if (busy || !isStarView) return;
+    backToWalking();
+  };
 
-  // Star look-up choreography (fox looks up → clouds → night → postcard).
-  useLookUpTimeline(isStarView);
+  // Safe-area tint follows the environment actually on screen.
+  usePageBg(env === "night" ? "#03070a" : "#4384e3");
 
-  // Drive the shared world clock: ease in on arrival (0 → 32px/s over 1.2s),
-  // ease out when the chat opens or the camera looks up at the star.
+  // The world walks only in the meadow, with no sheet open and no camera
+  // move in progress (after a return, walking resumes once we've landed).
+  const worldPaused = !isWalking || chatOpen || busy;
+
+  // Drive the shared world clock: ease in (0 → 32px/s over 1.2s); when the
+  // camera is about to look up, decelerate over 450ms.
   useEffect(() => {
-    worldClock().setWalking(!worldPaused);
-  }, [worldPaused]);
+    worldClock().setWalking(!worldPaused, isStarView ? 450 : undefined);
+  }, [worldPaused, isStarView]);
   useEffect(() => () => worldClock().reset(), []);
 
   // Date/greeting — mount only to avoid SSR/client timezone hydration flash.
@@ -282,31 +302,48 @@ export default function JourneyPage() {
 
   return (
     <JourneyStage phaseClass={stageClass}>
-      {/* ── WORLD LAYER — sky + landscape groups (moved by phase class) ── */}
+      {/* ── WORLD LAYER — separate depth groups; each moves at its own
+          parallax rate during the Journey → Stars camera move. ── */}
       <WorldLayer>
-        {/* 1. FIXED SKY — position:fixed, covers the viewport, never moves
-            (not horizontally, not during the look-up). */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={PARALLAX_LAYERS.skyFixed}
-          alt=""
-          aria-hidden
-          draggable={false}
-          className="journey-sky-fixed"
-        />
-
-        {/* Vertical sky for the Star look-up only. Invisible while walking;
-            fades in as the camera starts looking up (see globals.css). */}
-        <div className="journey-sky-group">
-          <SkyTrack />
+        {/* Star world (behind everything; revealed during full cloud cover).
+            Distant-sky rate 0.15×. */}
+        <div className="jw-group jw-night" aria-hidden={env !== "night"}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ASCENT_LAYERS.nightSky} alt="" draggable={false} className="jw-night-sky" />
+          <NightStar revealed={starRevealed} />
         </div>
 
-        {/* Landscape group — drops off-screen bottom when entering star-view. */}
-        <div className="journey-landscape-group">
-          {/* 2–3. Clouds — small distant (1.5–2px/s) + larger (2.5–3.5px/s) */}
+        {/* 1. Distant sky (day) — sky texture, small clouds, Current Star.
+            Horizontally static; 0.15× during the ascent. */}
+        <div className="jw-group jw-day">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={PARALLAX_LAYERS.skyFixed}
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="journey-sky-fixed"
+          />
           <CloudDrift clouds={CLOUDS} zIndex={1} />
+          {skyStar && (
+            <SkyStarV2
+              star={skyStar}
+              selected={isStarView}
+              disabled={busy || !isWalking}
+              onTap={goToStars}
+            />
+          )}
+        </div>
 
-          {/* 4. Far silhouettes — faint, bluish trees at 7px/s */}
+        {/* Rear clouds — 0.70×, above the far sky, behind the land. */}
+        <div className="jw-group jw-clouds-rear" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ASCENT_LAYERS.rearClouds} alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--rear" />
+        </div>
+
+        {/* 2. Distant hills — far silhouettes (7px/s) + midground vegetation
+            (13.5px/s). 0.35× during the ascent. */}
+        <div className="jw-group jw-hills">
           <ForegroundOccluder
             sources={MIDGROUND_TREE_SOURCES}
             speedMin={LAYER_SPEED.farVegetation - 0.6}
@@ -318,11 +355,8 @@ export default function JourneyPage() {
             groundBase="calc(var(--walking-baseline) + 2%)"
             opacity={0.62}
             filter="saturate(0.7) brightness(1.2) contrast(0.8)"
-            zIndex={2}
+            zIndex={1}
           />
-
-          {/* 5. Midground vegetation — 13.5px/s, behind the companion,
-              lighter and softer than the main ground. */}
           <ParallaxLayer
             src={PARALLAX_LAYERS.midgroundVegetation}
             speed={LAYER_SPEED.midgroundVegetation}
@@ -333,49 +367,47 @@ export default function JourneyPage() {
             opacity={0.8}
             filter="saturate(0.75) brightness(1.15) contrast(0.85)"
           />
+        </div>
 
-          {/* 6. Walking ground — 32px/s, natural aspect, mostly below the
-              path; its grass tips tuck behind the path's lower edge. */}
+        {/* 3. Meadow — ground + path (locked, 32px/s) + companion. 0.75×
+            during the ascent: the fox stays in the meadow and leaves
+            through the bottom of the screen. */}
+        <div className="jw-group jw-meadow">
           <ParallaxLayer
             src={PARALLAX_LAYERS.walkingGround}
             speed={LAYER_SPEED.walkingGround}
-            zIndex={3}
+            zIndex={1}
             align="bottom"
             heightPct={1}
             bottom={GROUND_BOTTOM}
             seamOverlap={2}
           />
-
-          {/* 7. Walking path — exactly 32px/s. Ground and path both derive
-              their transform from the same shared groundDistance value. */}
           <ParallaxLayer
             src={PARALLAX_LAYERS.walkingPath}
             speed={LAYER_SPEED.walkingPath}
-            zIndex={4}
+            zIndex={2}
             align="bottom"
             heightPct={PATH_HEIGHT_PCT}
             bottom={PATH_BOTTOM}
             seamOverlap={2}
           />
-
-          {/* 8. Companion — 0px/s, paws on the path centre */}
           <WalkingCat
-            onTap={isWalking ? () => setChatOpen(true) : undefined}
+            onTap={isWalking && !busy ? () => setChatOpen(true) : undefined}
             lookingUp={isStarView}
           />
+        </div>
 
-          {/* 9. Foreground grass — 42–48px/s, one clump every 4–9s */}
+        {/* 4. Foreground — grass clumps (42–48px/s) + trees (50–58px/s).
+            1.15× during the ascent. */}
+        <div className="jw-group jw-fore">
           <ForegroundClusters
             clusters={FOREGROUND_GRASS_CLUSTERS}
             speedMin={LAYER_SPEED.foregroundGrass[0]}
             speedMax={LAYER_SPEED.foregroundGrass[1]}
             intervalMin={4}
             intervalMax={9}
-            zIndex={7}
+            zIndex={1}
           />
-
-          {/* 10. Foreground tree — 50–58px/s, every 12–22s of walking.
-              Enters whole from the right, exits whole on the left. */}
           <ForegroundOccluder
             sources={FOREGROUND_TREE_SOURCES}
             speedMin={LAYER_SPEED.foregroundTree[0]}
@@ -386,31 +418,27 @@ export default function JourneyPage() {
             heightPct={FG_TREE_HEIGHT_PCT}
             groundBase={FG_TREE_BASE}
             filter="brightness(0.78) contrast(1.15)"
-            zIndex={8}
+            zIndex={2}
           />
         </div>
 
-        {/* Current star — anchored to viewport, not to a group. Its position
-            transitions between walking (upper-right) and star-view (center). */}
-        {/* Storyboard frame 2 — trail of light from the fox to the star,
-            only at the start of the look-up. */}
-        {isStarView && <StarTrail />}
+        {/* Trail of light from the fox to its star (0.45–1.1s, before the
+            camera moves). Screen-space. */}
+        {isStarView && busy && <StarTrail />}
 
-        {/* A star is ALWAYS in the sky — with no saved wish yet it is a
-            quiet placeholder that invites one. */}
-        {skyStar && (
-          <SkyStarV2
-            star={skyStar}
-            phase={phase}
-            onTap={isWalking ? enterStarView : backToWalking}
-          />
-        )}
+        {/* Front clouds — 1.25×, over everything in the world; they cover
+            ~99% of the screen while the environment switches beneath. */}
+        <div className="jw-group jw-clouds-front" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={ASCENT_LAYERS.frontClouds} alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--front" />
+        </div>
       </WorldLayer>
 
       {/* ── UI LAYER — stationary; children swap by phase ── */}
       <UILayer>
-        {/* Header shown in walking. Fades out in star-view. */}
-        {isWalking && (
+        {/* Journey UI — stays mounted; fades out over 300ms (0.5–0.8s into
+            the ascent) and back in after the return lands. */}
+        <div className={`journey-walk-ui${isWalking && !busy ? "" : " is-hidden"}`}>
           <JourneyHeader
             dateStr={dateStr}
             greeting={greeting}
@@ -420,15 +448,9 @@ export default function JourneyPage() {
             onBellClick={() => setNudgeOpen(true)}
             onMenuClick={() => setMenuOpen(true)}
           />
-        )}
-
-        {/* Capture only in walking phase */}
-        {isWalking && (
           <CaptureFAB onClick={() => setPostcardSheetOpen(true)} />
-        )}
-
-        {/* Three-tab nav — only in walking phase (star-view is immersive) */}
-        {isWalking && <BottomNavV2 theme="light" onStarsSelect={enterStarView} />}
+          <BottomNavV2 theme="light" onStarsSelect={goToStars} />
+        </div>
 
         {/* Star view UI only in star-view phase */}
         <AnimatePresence>
@@ -437,7 +459,7 @@ export default function JourneyPage() {
               key={skyStar.id}
               star={skyStar}
               placeholder={isPlaceholderStar}
-              onBack={backToWalking}
+              onBack={backToMeadow}
             />
           )}
         </AnimatePresence>

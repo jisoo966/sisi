@@ -125,8 +125,12 @@ class WorldClock {
     };
   }
 
-  /** Ask the world to walk / stop. Eases from the CURRENT speed. */
-  setWalking(walking: boolean) {
+  /**
+   * Ask the world to walk / stop. Eases from the CURRENT speed.
+   * `durationMs` overrides the default ease (e.g. 450ms deceleration when
+   * the camera is about to look up at the star).
+   */
+  setWalking(walking: boolean, durationMs?: number) {
     this.init();
     if (walking === this.walking) return;
     this.walking = walking;
@@ -134,8 +138,8 @@ class WorldClock {
     this.to = walking ? 1 : 0;
     this.tStart = performance.now();
     // Scale duration by remaining distance so a mid-way reversal stays soft.
-    const full = walking ? START_MS : STOP_MS;
-    this.dur = Math.max(250, full * Math.abs(this.to - this.from));
+    const full = durationMs ?? (walking ? START_MS : STOP_MS);
+    this.dur = Math.max(durationMs ? 120 : 250, full * Math.abs(this.to - this.from));
   }
 
   /** Back to a standstill (e.g. leaving the Journey page). */

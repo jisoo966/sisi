@@ -82,8 +82,12 @@ export function WalkingCat({ onTap, lookingUp = false }: Props) {
             walkingRef.current = false;
             setWalking(false);
           } else if (stopAt < 0) {
-            // Looking up at the star → stop right after the current step.
-            if (lookingUpRef.current || f.factor < STOP_AT_FACTOR) {
+            if (lookingUpRef.current) {
+              // Star moment: 2–3 small steps more (≈0.7–1.1s), then stop
+              // on a step boundary and look up.
+              const t = now - walkStartedAt + STEP_MS * 1.5;
+              stopAt = walkStartedAt + Math.ceil(t / STEP_MS) * STEP_MS;
+            } else if (f.factor < STOP_AT_FACTOR) {
               // finish the current step, then idle
               const t = now - walkStartedAt;
               stopAt = walkStartedAt + Math.ceil(t / STEP_MS) * STEP_MS;

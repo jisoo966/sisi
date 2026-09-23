@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { loadSignsForStar } from "@/lib/myStars";
-import { LOOK_UP_CARD_DELAY_S } from "@/lib/useLookUpTimeline";
+import { STAR_CARD_DELAY_S } from "@/lib/useStarAscent";
 
 /**
  * StarView — storyboard frame 6: above the clouds, under the star, a small
@@ -16,7 +16,7 @@ import { LOOK_UP_CARD_DELAY_S } from "@/lib/useLookUpTimeline";
  *   stamp  — a small star stamp, bottom-right
  *
  * The card rises in only after the camera has arrived in the night sky
- * (see lib/useLookUpTimeline.ts). The star itself is drawn
+ * (see lib/useStarAscent.ts). The star itself is drawn
  * by SkyStarV2. Tapping the card opens the star's journey (or, with no wish
  * yet, the place to make one).
  */
@@ -28,10 +28,15 @@ type Props = {
   placeholder?: boolean;
 };
 
-/** The postcard rises in once the camera has arrived in the night sky. */
-const CARD_DELAY = LOOK_UP_CARD_DELAY_S;
-
 export function StarView({ star, onBack, placeholder = false }: Props) {
+  // The postcard rises in once the camera has arrived in the star world
+  // (reduced motion: right after the 250ms crossfade).
+  const [CARD_DELAY] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 0.35
+      : STAR_CARD_DELAY_S,
+  );
   const [signCount, setSignCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -74,6 +79,10 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
         animate={{ opacity: 1, y: 0, rotate: -1.5 }}
         transition={{ duration: 0.8, delay: CARD_DELAY, ease: [0.22, 1, 0.36, 1] }}
       >
+        {/* Static soft shadow (a blurred block rasterized once) instead of a
+            drop-shadow filter, which would repaint on every frame of the
+            card's rise-in. */}
+        <span className="postcard-shadow" aria-hidden />
         <div className="postcard paper-bg">
           <div className="photo" aria-hidden>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -85,7 +94,7 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="p-fox" src="/V2/fox-walk/fox-walk-preview.png" alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="p-star" src="/assets/sisi-star-mark-painted.png" alt="" />
+            <img className="p-star" src="/assets/sisi-star-mark-painted-512.png" alt="" />
           </div>
 
           <p className="title">{title}</p>
@@ -145,9 +154,16 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
           background: transparent;
           cursor: pointer;
           pointer-events: auto;
-          filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35))
-            drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+          will-change: transform, opacity;
           -webkit-tap-highlight-color: transparent;
+        }
+        .postcard-shadow {
+          position: absolute;
+          inset: 14px 8px -10px 8px;
+          background: rgba(0, 0, 0, 0.42);
+          border-radius: 10px;
+          filter: blur(14px);
+          pointer-events: none;
         }
         .postcard {
           position: relative;
@@ -197,10 +213,9 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
         }
         .p-star {
           position: absolute;
-          width: 10%;
-          left: 70%;
-          top: 12%;
-          filter: drop-shadow(0 0 4px rgba(255, 236, 190, 0.9));
+          width: 12%;
+          left: 69%;
+          top: 11%;
         }
         .title {
           font-family: var(--font-fraunces), Georgia, serif;

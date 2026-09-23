@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
  *
  * Mounted only when the Journey enters star-view. Dots light up one by one
  * from the fox toward the star (~0.6s), shimmer, then the whole trail fades
- * as the camera begins to tilt up (~0.9s, lib/useLookUpTimeline.ts).
+ * as the camera begins to tilt up (~1.1s, lib/useStarAscent.ts).
  *
  * Positions mirror the CSS world variables (kept in sync by hand):
  *   companion x 37%, walking baseline 26%, cat width clamp(110px, 30vw, 165px)
@@ -55,16 +55,26 @@ export function StarTrail() {
   return (
     <div ref={ref} className="star-trail" aria-hidden>
       <svg width="100%" height="100%">
-        {dots.map((p, i) => (
-          <circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={i % 3 === 0 ? 1.7 : 1.2}
-            className="trail-dot"
-            style={{ animationDelay: `${150 + (i / Math.max(1, n)) * 550}ms, ${700 + (i % 5) * 90}ms` }}
-          />
-        ))}
+        <defs>
+          {/* Soft halo as a gradient fill — no SVG/CSS filters (cheaper). */}
+          <radialGradient id="trail-halo">
+            <stop offset="0%" stopColor="rgb(255,236,190)" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="rgb(255,236,190)" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        {dots.map((p, i) => {
+          const r = i % 3 === 0 ? 1.7 : 1.2;
+          return (
+            <g
+              key={i}
+              className="trail-dot"
+              style={{ animationDelay: `${450 + (i / Math.max(1, n)) * 450}ms, ${900 + (i % 5) * 90}ms` }}
+            >
+              <circle cx={p.x} cy={p.y} r={r * 3} fill="url(#trail-halo)" />
+              <circle cx={p.x} cy={p.y} r={r} fill="rgb(255,246,220)" />
+            </g>
+          );
+        })}
       </svg>
       <style jsx>{`
         .star-trail {
@@ -72,16 +82,14 @@ export function StarTrail() {
           inset: 0;
           z-index: 6;
           pointer-events: none;
-          animation: trail-out 450ms ease-in 1000ms forwards;
+          animation: trail-out 350ms ease-in 1100ms forwards;
         }
         .star-trail svg {
           display: block;
           overflow: visible;
         }
         .star-trail :global(.trail-dot) {
-          fill: rgb(255, 246, 220);
           opacity: 0;
-          filter: drop-shadow(0 0 2px rgba(255, 236, 190, 0.9));
           animation:
             trail-dot-in 260ms ease-out forwards,
             trail-shimmer 700ms ease-in-out infinite alternate;
