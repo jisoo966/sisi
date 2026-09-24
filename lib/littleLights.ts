@@ -10,11 +10,12 @@
  *   - one Light per practice kind per day
  *   - at most MAX_PER_DAY Lights per day in total
  *
- * Storage: Supabase `light_ledger` (migration 003) for signed-in users;
- * localStorage for guests, or until the migration has been applied.
+ * Storage: localStorage (LOCAL_ONLY mode, lib/dataMode). When real data is
+ * enabled: Supabase `light_ledger` (migration 003) for signed-in users.
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 
 export type PracticeKind = "write" | "see" | "walk" | "talk" | "step" | "evening";
 
@@ -43,6 +44,7 @@ function writeLocal(log: Entry[]) {
 
 // ── remote ledger (falls back to local on any error) ─────
 async function userId(): Promise<string | null> {
+  if (LOCAL_ONLY) return null; // redesign branch: device-only data
   try {
     const { data } = await createClient().auth.getUser();
     return data.user?.id ?? null;
@@ -119,6 +121,15 @@ export async function spendLights(amount: number, itemId: string): Promise<boole
   if (balance < amount) return false;
   await append({ at: new Date().toISOString(), kind: "spend", delta: -amount, itemId }, remote);
   return true;
+}
+
+/** Time spent with a Star (practices that earned a Light), newest first. */
+export async function practicesForStar(starId: string): Promise<{ at: string; kind: PracticeKind }[]> {
+  const { log } = await readLedger();
+  return log
+    .filter((e) => e.delta > 0 && e.starId === starId && e.kind !== "spend")
+    .map((e) => ({ at: e.at, kind: e.kind as PracticeKind }))
+    .reverse();
 }
 
 /**

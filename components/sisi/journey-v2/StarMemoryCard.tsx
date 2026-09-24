@@ -4,6 +4,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { loadSignsForStar, updateStar } from "@/lib/myStars";
+import { practicesForStar, type PracticeKind } from "@/lib/littleLights";
+
+/** Quiet timeline lines for time spent with the Star (no words written). */
+const PRACTICE_LINE: Partial<Record<PracticeKind, string>> = {
+  see: "Spent a quiet minute seeing it.",
+  walk: "Walked with it for a while.",
+  talk: "Talked it through with SiSi.",
+  step: "Took one small step.",
+};
 
 /**
  * StarMemoryCard — one star's memory on torn paper, hanging from its star
@@ -47,6 +56,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(star.wish);
   const [signs, setSigns] = useState<Sign[] | null>(null);
+  const [practices, setPractices] = useState<{ at: string; kind: PracticeKind }[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardTop, setCardTop] = useState<number | null>(null);
   const expanded = mode === "timeline";
@@ -57,6 +67,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
       return;
     }
     let cancelled = false;
+    practicesForStar(star.id).then((p) => !cancelled && setPractices(p));
     loadSignsForStar(star.id)
       .then((s) => !cancelled && setSigns(s))
       .catch(() => !cancelled && setSigns([]));
@@ -225,15 +236,23 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
                 <div className="smc-moments">
                   {signs === null ? (
                     <p className="smc-empty">…</p>
-                  ) : signs.length === 0 ? (
+                  ) : signs.length === 0 && practices.length === 0 ? (
                     <p className="smc-empty">no moments yet. the first one is on its way.</p>
                   ) : (
-                    signs.map((s) => (
-                      <div key={s.id} className="smc-moment">
-                        <p className="smc-moment-when">{formatWhen(s.createdAt)}</p>
-                        <p className="smc-moment-text">{s.text}</p>
-                      </div>
-                    ))
+                    // Written reflections + time spent with the Star, newest first.
+                    [
+                      ...signs.map((s) => ({ key: s.id, at: s.createdAt, text: s.text, quiet: false })),
+                      ...practices
+                        .filter((p) => PRACTICE_LINE[p.kind])
+                        .map((p) => ({ key: `p-${p.at}`, at: p.at, text: PRACTICE_LINE[p.kind]!, quiet: true })),
+                    ]
+                      .sort((a, b) => (a.at < b.at ? 1 : -1))
+                      .map((m) => (
+                        <div key={m.key} className={`smc-moment${m.quiet ? " is-quiet" : ""}`}>
+                          <p className="smc-moment-when">{formatWhen(m.at)}</p>
+                          <p className="smc-moment-text">{m.text}</p>
+                        </div>
+                      ))
                   )}
                 </div>
 
@@ -438,6 +457,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
           border-bottom: 1px solid rgba(43, 47, 69, 0.1);
         }
         .smc-moment:last-child { border-bottom: 0; }
+        .smc-moment.is-quiet .smc-moment-text { font-style: italic; color: rgba(43, 47, 69, 0.6); }
         .smc-moment-when {
           font-family: var(--font-eb-garamond), Georgia, serif;
           font-size: 12px;

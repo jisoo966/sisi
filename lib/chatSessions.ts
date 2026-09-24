@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 
 export type ChatSession = {
   id: string;
@@ -28,6 +29,7 @@ export type ChatMessage = {
 // ─── Auth helper ─────────────────────────────────
 
 async function getCurrentUser() {
+  if (LOCAL_ONLY) return null; // redesign branch: device-only data
   try {
     const supabase = createClient();
     const {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -82,7 +83,7 @@ export default function OnboardingPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
+      if (user && !LOCAL_ONLY) {
         // upsert (no handle_new_user trigger) — display_name 저장 + onboarded 마크
         await supabase.from("profiles").upsert({
           id: user.id,
@@ -96,11 +97,11 @@ export default function OnboardingPage() {
         localStorage.setItem("sisi:guest-onboarded", "true");
       }
       // /my-stars가 자동으로 첫 별 만드는 애니메이션 flow 시작
-      router.push("/my-stars?firstTime=true");
+      router.push("/journey?create=1");
     } catch (err) {
       console.error("save name failed:", err);
       // 실패해도 계속 진행 — 로컬 게스트로 fallback
-      router.push("/my-stars?firstTime=true");
+      router.push("/journey?create=1");
     } finally {
       setSaving(false);
     }

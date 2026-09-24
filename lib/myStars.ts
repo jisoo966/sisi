@@ -9,6 +9,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 
 export type Timeframe = "this month" | "this season" | "this year" | "someday";
 
@@ -48,6 +49,7 @@ const SIGNS_KEY = "sisi:signs";
  * Supabase 응답 실패해도 조용히 null 반환 (오프라인 대응).
  */
 async function getCurrentUser() {
+  if (LOCAL_ONLY) return null; // redesign branch: device-only data
   try {
     const supabase = createClient();
     const {

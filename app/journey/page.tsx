@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 import { AnimatePresence } from "framer-motion";
 import {
   JourneyStage,
@@ -293,6 +294,24 @@ export default function JourneyPage() {
     backToWalking();
   };
 
+  // Deep links: /journey?to=stars (Stars tab from another page) ascends;
+  // /journey?create=1 (after onboarding) opens Create Star.
+  const deepLink = useRef<"stars" | "create" | "none" | null>(null);
+  useEffect(() => {
+    if (deepLink.current === null) {
+      const q = new URLSearchParams(window.location.search);
+      deepLink.current = q.get("to") === "stars" ? "stars" : q.has("create") ? "create" : "none";
+      if (deepLink.current !== "none") window.history.replaceState(null, "", "/journey");
+    }
+    if (deepLink.current === "none") return;
+    const t = setTimeout(() => {
+      if (deepLink.current === "stars") enterStarView();
+      else if (deepLink.current === "create") setCreateOpen(true);
+      deepLink.current = "none";
+    }, 1400);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Arrived above after tapping the meadow star → show that star's summary.
   useEffect(() => {
     if (!viewCurrentOnArrival || !isStarView || busy) return;
@@ -348,6 +367,9 @@ export default function JourneyPage() {
 
   // Angel message — today's letter if unread.
   useEffect(() => {
+    // Angel messages are generated + stored server-side — skipped in
+    // local-only mode so the redesign never writes to production data.
+    if (LOCAL_ONLY) return;
     ensureTodaysMessage().then((msg) => {
       if (msg && !msg.read_at) setAngelMessage(msg);
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -71,7 +72,12 @@ export default function MeClient({
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user || LOCAL_ONLY) {
+      // local-only mode: keep the name on this device
+      try { localStorage.setItem("sisi:guest-name", displayName.trim()); } catch {}
+      setSaving(false);
+      return;
+    }
 
     await supabase.from("profiles").update({
       display_name: displayName.trim() || null,

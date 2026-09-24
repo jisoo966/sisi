@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 
@@ -176,7 +177,7 @@ You are walking beside the user on their Journey toward their Current Star: "${c
 
     // 로그인한 유저면 stars(소원) context 붙이기
     let starsContext = "";
-    if (user && supabase) {
+    if (!LOCAL_ONLY && user && supabase) {
       const { data: stars } = await supabase
         .from("stars")
         .select("wish, timeframe")
@@ -193,7 +194,7 @@ You are walking beside the user on their Journey toward their Current Star: "${c
 
     // 로그인한 유저면 마지막 user 메시지 DB 저장
     const lastUserMessage = messages[messages.length - 1];
-    if (user && supabase && sessionId && lastUserMessage?.role === "user") {
+    if (!LOCAL_ONLY && user && supabase && sessionId && lastUserMessage?.role === "user") {
       await supabase.from("chat_messages").insert({
         session_id: sessionId,
         user_id: user.id,
@@ -238,7 +239,7 @@ You are walking beside the user on their Journey toward their Current Star: "${c
         }
 
         // 완성된 응답 DB 저장 (로그인 유저만)
-        if (user && supabase && sessionId && fullResponse) {
+        if (!LOCAL_ONLY && user && supabase && sessionId && fullResponse) {
           // Save marker 파싱해서 저장 컬럼에도 반영
           const saveMatch = fullResponse.match(
             /\[SAVE:(special|shift|insight|intention)\]/,

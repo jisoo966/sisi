@@ -13,6 +13,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 import { spendLights } from "@/lib/littleLights";
 
 export type SatchelCategory = "sisi" | "trail" | "world";
@@ -71,6 +72,7 @@ function withDefaults(ids: string[]) {
 }
 
 async function uid(): Promise<string | null> {
+  if (LOCAL_ONLY) return null; // redesign branch: device-only data
   try {
     const { data } = await createClient().auth.getUser();
     return data.user?.id ?? null;

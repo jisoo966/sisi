@@ -208,6 +208,26 @@
  * for c ≈ 0.84–1.42; at rest its first soft crests frame the bottom of the Star World. */
 .jw-cloud-bank--front { top: -255.67%; height: 280%; }
 
+/* The stone-pill nav on pages outside the Journey stage (e.g. Moments). */
+.journey-nav-host {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 120px;
+  z-index: 40;
+  pointer-events: none;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --stage-padding: clamp(16px, 5vw, 24px);
+  --nav-height: clamp(52px, 13vw, 62px);
+  --nav-margin: clamp(6px, 2vw, 12px);
+}
+@media (min-width: 500px) {
+  .journey-nav-host { left: 50%; right: auto; width: 430px; margin-left: -215px; }
+}
+
 /* Journey UI (header, camera, nav): fades out over 300ms, 0.5s after the
  * tap; fades back in after the return has landed. */
 .journey-walk-ui {

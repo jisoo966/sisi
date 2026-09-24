@@ -11,6 +11,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 
 export type Postcard = {
   id: string;
@@ -30,6 +31,7 @@ const SIGNED_URL_TTL = 60 * 60 * 24; // 24시간 (재로드 시 새로 발급)
 // ─── Auth helper ─────────────────────────────────
 
 async function getCurrentUser() {
+  if (LOCAL_ONLY) return null; // redesign branch: device-only data
   try {
     const supabase = createClient();
     const {

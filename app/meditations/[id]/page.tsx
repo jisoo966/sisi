@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { LOCAL_ONLY } from "@/lib/dataMode";
 import { motion } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -54,7 +55,7 @@ export default function MeditationPlayerPage() {
       if (data) setMeditation(data);
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || LOCAL_ONLY) return;
 
       const { data: session } = await supabase
         .from("meditation_sessions")

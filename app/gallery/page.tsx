@@ -4,11 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BottomNav } from "@/components/sisi/BottomNav";
+import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { sharePostcard } from "@/lib/share";
 import { loadPostcards, type Postcard } from "@/lib/postcards";
 import { loadStars, restingStars, type Star } from "@/lib/myStars";
 import { RestingStars } from "@/components/sisi/RestingStars";
+import { WrittenMoments } from "@/components/sisi/WrittenMoments";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default function GalleryPage() {
   const [view, setView] = useState<View>("timeline"); // Timeline default (저널링 감성)
   // Stars that were let to rest live here (Moments), until they return to the sky.
   const [resting, setResting] = useState<Star[]>([]);
-  const [section, setSection] = useState<"postcards" | "resting">("postcards");
+  const [section, setSection] = useState<"postcards" | "notes" | "resting">("postcards");
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function GalleryPage() {
         {/* Header — 탭 페이지: back 없음. title + view toggle */}
         <header className="flex items-baseline justify-between mb-1">
           <h1 className="font-sentient text-[22px] text-journey-navy/95">
-            Postcards
+            Moments
           </h1>
           <ViewToggle view={view} onChange={handleViewChange} />
         </header>
@@ -87,12 +88,13 @@ export default function GalleryPage() {
         </p>
 
         {/* Postcards · Resting stars (only when some stars are resting) */}
-        {resting.length > 0 && (
+        {(
           <div className="flex gap-2 mb-5" role="tablist">
             {(
               [
                 ["postcards", "postcards"],
-                ["resting", `resting stars · ${resting.length}`],
+                ["notes", "notes"],
+                ...(resting.length > 0 ? [["resting", `resting stars · ${resting.length}`] as const] : []),
               ] as const
             ).map(([key, label]) => (
               <button
@@ -112,6 +114,8 @@ export default function GalleryPage() {
             ))}
           </div>
         )}
+
+        {section === "notes" && <WrittenMoments />}
 
         {section === "resting" && resting.length > 0 && (
           <RestingStars
@@ -172,7 +176,9 @@ export default function GalleryPage() {
         transition={{ duration: 0.3 }}
         style={{ pointerEvents: isDetailOpen ? "none" : "auto" }}
       >
-        <BottomNav theme="light" />
+        <div className="journey-nav-host">
+          <BottomNavV2 theme="light" activeTab="moments" />
+        </div>
       </motion.div>
 
       {/* 📮 Postcard Detail — 전체 화면 lift & expand */}

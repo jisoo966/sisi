@@ -23,7 +23,8 @@ type Theme = "light" | "dark";
 
 const TABS = [
   { key: "journey", href: "/journey",  label: "Journey" },
-  { key: "stars",   href: "/my-stars", label: "Stars" },
+  // From other pages, Stars returns to the Journey and ascends there.
+  { key: "stars",   href: "/journey?to=stars", label: "Stars" },
   { key: "moments", href: "/gallery",  label: "Moments" },
 ] as const;
 
