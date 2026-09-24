@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BASE_GROUND_SPEED, worldClock } from "@/lib/worldMotion";
 
 /**
@@ -38,6 +38,7 @@ type Props = {
   /** Px each copy overlaps the next (1–2 hides sub-pixel seams). */
   seamOverlap?: number;
   ariaLabel?: string;
+  className?: string;
 };
 
 export function ParallaxLayer({
@@ -52,14 +53,17 @@ export function ParallaxLayer({
   maskImage,
   seamOverlap = 1,
   ariaLabel,
+  className = "",
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const laneRef = useRef<HTMLDivElement>(null);
   const tileRef = useRef(0);
   const [copies, setCopies] = useState(2);
 
-  // Measure tile width + needed copies (on load and on resize).
-  useEffect(() => {
+  // Measure tile width + needed copies (on load and on resize). Runs before
+  // paint so the first frame is already in place (no jump when the page is
+  // handed over from Moments mid-meadow).
+  useLayoutEffect(() => {
     const measure = () => {
       const lane = laneRef.current;
       const box = containerRef.current;
@@ -67,6 +71,8 @@ export function ParallaxLayer({
       if (!lane || !box || !first || !first.complete || first.offsetWidth === 0) return;
       const tile = first.offsetWidth - seamOverlap;
       tileRef.current = tile;
+      const travelled = worldClock().getDistance() * (speed / BASE_GROUND_SPEED);
+      lane.style.transform = `translate3d(${-(((travelled % tile) + tile) % tile)}px,0,0)`;
       const need = Math.max(2, Math.ceil(box.offsetWidth / tile) + 1);
       setCopies((c) => (c === need ? c : need));
     };
@@ -80,7 +86,7 @@ export function ParallaxLayer({
       imgs.forEach((im) => im.removeEventListener("load", measure));
       ro.disconnect();
     };
-  }, [src, seamOverlap, copies]);
+  }, [src, seamOverlap, copies, speed]);
 
   // Drive the transform from the shared clock.
   useEffect(() => {
@@ -90,7 +96,8 @@ export function ParallaxLayer({
       const tile = tileRef.current;
       if (!lane || tile <= 0) return;
       const travelled = f.groundDistance * (speed / BASE_GROUND_SPEED);
-      const x = -(travelled % tile);
+      // wrap into (−tile, 0] even for negative distances (after Moments)
+      const x = -(((travelled % tile) + tile) % tile);
       lane.style.transform = `translate3d(${x}px,0,0)`;
       const moving = f.groundDelta > 0;
       if (moving !== animating) {
@@ -107,7 +114,7 @@ export function ParallaxLayer({
   return (
     <div
       ref={containerRef}
-      className={`parallax-layer align-${align}`}
+      className={`parallax-layer align-${align} ${className}`}
       style={{
         zIndex,
         height: heightPct >= 1 ? "100%" : `${Math.max(0, heightPct * 100)}%`,

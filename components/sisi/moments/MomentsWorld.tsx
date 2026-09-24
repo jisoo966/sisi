@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TrailEntry, TimelineMotion, Placed } from "@/lib/momentsTimeline";
 import { buildTrail, layoutTimeline, TRAIL_ART, trailYAt } from "@/lib/momentsTimeline";
 import { whenLabel } from "@/lib/moments";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
+import { JOURNEY_FOX_X } from "@/lib/worldHandoff";
 
 /**
  * MomentsWorld — the horizontal Memory Trail.
@@ -13,10 +14,16 @@ import { TrailFox, type TrailFoxHandle } from "./TrailFox";
  * Every visual layer is data (MOMENTS_SCENE below): swap the artwork paths
  * and ratios without touching the gestures or the timeline.
  *
- *   gestures  drag right → the past, drag left → Today. Direction locks after
- *             ~11px; a horizontal drag stays horizontal until release. Touches
- *             starting in the left 24px are ignored (iOS back gesture).
- *             Mouse wheel / trackpad moves the timeline on desktop.
+ *   gestures  drag right pulls the past closer, drag left returns toward
+ *             Today. Direction locks after ~11px; a horizontal drag stays
+ *             horizontal until release. Touches starting in the left 28px are
+ *             never captured (the iOS / Safari back gesture keeps working).
+ *             Cards, buttons and inputs never start a drag. Mouse wheel /
+ *             trackpad over the trail moves the timeline on desktop.
+ *   handoff  Journey ⇄ Moments is one continuous world: arriving, the camera
+ *             eases from the Journey framing (Sísí at 37%) to the Moments
+ *             framing while the memories appear; leaving plays it in reverse
+ *             and hands the exact meadow frame back (lib/worldHandoff).
  *   motion    follows the finger 1:1, then gentle momentum and a softly
  *             damped spring onto the nearest Moment (lib/momentsTimeline).
  *   Sísí      walks with the world's velocity; idles only when it is still.
@@ -34,6 +41,9 @@ type Band = {
   bottom: string;
   opacity?: number;
   filter?: string;
+  /** px each copy overlaps the next — must match the Journey's layer so
+   *  the meadow lines up exactly when the two pages hand over */
+  seam: number;
 };
 type Scatter = {
   kind: "scatter";
@@ -67,6 +77,7 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed)[] = [
     bottom: "calc(var(--walking-baseline) - 1.5%)",
     opacity: 0.8,
     filter: "saturate(0.75) brightness(1.15) contrast(0.85)",
+    seam: 1,
   },
   {
     kind: "band",
@@ -75,6 +86,7 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed)[] = [
     ratio: 1,
     heightPct: 1,
     bottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
+    seam: 2,
   },
 ];
 
@@ -97,27 +109,38 @@ function lightStyle(k: LightKey, x: number, y: number): React.CSSProperties {
 }
 
 const LEARNED_KEY = "sisi:moments-swipe-learned";
-const EDGE_IGNORE = 24;
+const EDGE_IGNORE = 28;
 const LOCK_PX = 11;
+const NO_DRAG = "button, a, input, textarea, select, label, [data-mkey], [role='button'], [contenteditable='true']";
 
 type Apply = (cam: number) => void;
+export type MomentsWorldHandle = {
+  /** Moments → Journey: settle the memories away, turn Sísí toward the
+   *  Journey, reframe the camera. Resolves with the meadow's ground offset. */
+  leave: (onTurned?: () => void) => Promise<number>;
+};
+type Phase = "arriving" | "ready" | "leaving";
 
-export function MomentsWorld({
-  entries,
-  motion,
-  active,
-  onOpen,
-}: {
-  entries: TrailEntry[];
-  motion: TimelineMotion;
-  /** false while the list or a detail sheet is open */
-  active: boolean;
-  onOpen: (entry: TrailEntry, el: Element) => void;
-}) {
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+export const MomentsWorld = forwardRef<
+  MomentsWorldHandle,
+  {
+    entries: TrailEntry[];
+    motion: TimelineMotion;
+    /** false while the list or a detail sheet is open */
+    active: boolean;
+    onOpen: (entry: TrailEntry, el: Element) => void;
+    /** set when Journey handed over (Sísí has already turned left) */
+    arrival: { ground: number } | null;
+    /** the Moments have loaded (until then only the world is shown) */
+    loaded: boolean;
+  }
+>(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded }, ref) {
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const foxRef = useRef<TrailFoxHandle>(null);
-  const selRef = useRef<HTMLImageElement>(null);
+  const foxRootRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
   const appliers = useRef(new Set<Apply>());
   const [size, setSize] = useState({ W: 0, H: 0, base: 0.26 });
@@ -127,6 +150,18 @@ export function MomentsWorld({
   const todayRef = useRef(false);
   const returningRef = useRef(false);
   const [hint, setHint] = useState(false);
+  const [phase, setPhase] = useState<Phase>(arrival ? "arriving" : "ready");
+  const phaseRef = useRef<Phase>(phase);
+  phaseRef.current = phase;
+  const [veiled, setVeiled] = useState(true);
+  const [revealing, setRevealing] = useState(false);
+
+  // Camera reframe between the Journey framing (p = 0) and Moments (p = Δ).
+  const pan = useRef<number | null>(arrival ? 0 : null); // null → Δ once measured
+  const panAnim = useRef<{ from: number; to: number; t0: number; dur: number; done?: () => void } | null>(null);
+  // Background offset so the meadow sits exactly where the Journey left it.
+  // (At p = 0 the view is −Δ, so the handed-over ground maps to −ground + Δ.)
+  const base = useRef<number | null>(arrival ? null : 0);
 
   /* size */
   useLayoutEffect(() => {
@@ -151,13 +186,14 @@ export function MomentsWorld({
     motion.reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   }, [motion]);
 
-  const { W, H, base } = size;
-  const baselineY = H * (1 - base);
+  const { W, H, base: baseFrac } = size;
+  const baselineY = H * (1 - baseFrac);
   const layout = useMemo(() => (W ? layoutTimeline(entries, W) : null), [entries, W]);
+  const delta = layout ? layout.foxX - W * JOURNEY_FOX_X : 0;
   const trail = useMemo(() => {
     if (!layout) return [];
     const oldest = layout.placed.length ? layout.placed[layout.placed.length - 1].x : 0;
-    return buildTrail(W, baselineY + TRAIL_DROP, W * 1.4, Math.min(-W, oldest - W * 1.6));
+    return buildTrail(W, baselineY + TRAIL_DROP, W * 1.9, Math.min(-W, oldest - W * 1.6));
   }, [layout, W, baselineY]);
 
   const ty = useCallback((x: number) => trailYAt(trail, x, baselineY + TRAIL_DROP), [trail, baselineY]);
@@ -180,29 +216,63 @@ export function MomentsWorld({
 
   const focused: Placed | undefined = focus >= 0 ? layout?.placed[focus] : undefined;
 
-  /* one frame loop: timeline → world, layers, cards, Sísí */
+  /** The background offset for the current camera (used by layers). */
+  const layerCam = useRef(0);
+  // First frame before paint: camera, base offset and layers in place.
+  useLayoutEffect(() => {
+    if (!layout) return;
+    if (pan.current === null) pan.current = delta;
+    if (base.current === null) base.current = -(arrival?.ground ?? 0) + delta;
+    const off = pan.current - delta;
+    layerCam.current = motion.cam + off + base.current;
+    appliers.current.forEach((fn) => fn(layerCam.current));
+    if (worldRef.current) worldRef.current.style.transform = `translate3d(${(motion.cam + off).toFixed(2)}px,0,0)`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, delta]);
+
+  /* one frame loop: timeline + camera → world, layers, cards, Sísí */
   useEffect(() => {
     if (!layout) return;
     let raf = 0;
     let last = performance.now();
-    let first = true;
-    let lastCam = NaN;
+    let lastKey = "";
     let lastMove = 0;
     const { focusX } = layout;
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       motion.step(dt, now);
-      const cam = motion.cam;
       if (motion.mode === "drag" && now - lastMove > 60) motion.vel = 0; // finger held still
 
-      if (cam !== lastCam || first) {
-        if (cam !== lastCam) lastMove = now;
-        first = false;
-        lastCam = cam;
+      // camera reframe
+      if (pan.current === null) pan.current = delta;
+      if (base.current === null) base.current = -(arrival?.ground ?? 0) + delta;
+      const a = panAnim.current;
+      if (a) {
+        if (a.t0 < 0) a.t0 = now;
+        const t = Math.min(1, (now - a.t0) / a.dur);
+        pan.current = a.from + (a.to - a.from) * (0.5 - 0.5 * Math.cos(Math.PI * t));
+        if (t >= 1) {
+          panAnim.current = null;
+          a.done?.();
+        }
+      }
+      const off = pan.current - delta; // 0 in the Moments framing
+      const cam = motion.cam;
+      const key = `${cam}|${off}`;
+
+      // background layers: cheap, and always current (tiles may measure late)
+      layerCam.current = motion.cam + off + (base.current ?? 0);
+      appliers.current.forEach((fn) => fn(layerCam.current));
+
+      if (key !== lastKey) {
+        if (cam !== Number(lastKey.split("|")[0])) lastMove = now;
+        lastKey = key;
+        const view = cam + off;
         const w = worldRef.current;
-        if (w) w.style.transform = `translate3d(${cam.toFixed(2)}px,0,0)`;
-        appliers.current.forEach((fn) => fn(cam));
+        if (w) w.style.transform = `translate3d(${view.toFixed(2)}px,0,0)`;
+        const fr = foxRootRef.current;
+        if (fr) fr.style.transform = off ? `translate3d(${off.toFixed(2)}px,0,0)` : "";
         // Only whole cards are readable: fade anything leaving the frame or
         // passing behind Sísí, so nothing rests awkwardly cropped.
         for (const p of layout.placed) {
@@ -223,7 +293,7 @@ export function MomentsWorld({
         focusRef.current = -1;
         setFocus(-1);
       }
-      const t = cam > W * 0.4 || returningRef.current;
+      const t = phaseRef.current === "ready" && (cam > W * 0.4 || returningRef.current);
       if (t !== todayRef.current) {
         todayRef.current = t;
         setShowToday(t);
@@ -233,7 +303,67 @@ export function MomentsWorld({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [layout, motion, W]);
+  }, [layout, motion, W, delta]);
+
+  /* Direct visit: show everything as soon as the Moments have loaded. */
+  useEffect(() => {
+    if (arrival || !loaded || !layout) return;
+    setVeiled(false);
+  }, [arrival, loaded, layout]);
+
+  /* Journey → Moments: reframe, then the trail and the newest memories appear */
+  useEffect(() => {
+    if (!arrival || !layout || !loaded) return;
+    const quick = motion.reduced;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => {
+        panAnim.current = { from: pan.current ?? 0, to: delta, t0: -1, dur: quick ? 1 : 720 };
+      }, 60),
+    );
+    timers.push(
+      setTimeout(() => {
+        setRevealing(true);
+        setVeiled(false);
+      }, quick ? 80 : 420),
+    );
+    timers.push(
+      setTimeout(() => {
+        setRevealing(false);
+        setPhase("ready");
+      }, quick ? 300 : 1500),
+    );
+    return () => timers.forEach(clearTimeout);
+    // run once per arrival
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrival, !!layout, loaded]);
+
+  /* Moments → Journey */
+  useImperativeHandle(
+    ref,
+    () => ({
+      async leave(onTurned) {
+        setPhase("leaving");
+        setShowToday(false);
+        motion.brake(260);
+        const t0 = performance.now();
+        // memories settle away while the timeline slows and Sísí finishes her step
+        while (performance.now() - t0 < 1000) {
+          const idle = foxRef.current?.isIdle() ?? true;
+          if (idle && motion.mode === "rest" && performance.now() - t0 > 320) break;
+          await wait(30);
+        }
+        foxRef.current?.face("right");
+        onTurned?.();
+        await wait(150); // let the turn read
+        await new Promise<void>((done) => {
+          panAnim.current = { from: pan.current ?? delta, to: 0, t0: -1, dur: motion.reduced ? 1 : 420, done };
+        });
+        return -(motion.cam - delta + (base.current ?? 0));
+      },
+    }),
+    [motion, delta],
+  );
 
   /* gestures */
   const g = useRef<{ id: number; x0: number; y0: number; xl: number; lock: "h" | "v" | null } | null>(null);
@@ -245,9 +375,12 @@ export function MomentsWorld({
       // ignore
     }
   };
+  const canDrag = active && phase === "ready";
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!active || e.button !== 0 || e.clientX < EDGE_IGNORE) return;
+    // Never capture near the left edge — the system back gesture lives there.
+    if (!canDrag || e.button !== 0 || e.clientX < EDGE_IGNORE) return;
+    if ((e.target as Element).closest?.(NO_DRAG)) return;
     g.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, xl: 0, lock: null };
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -276,15 +409,6 @@ export function MomentsWorld({
     if (s.lock === "h") {
       motion.dragEnd(e.timeStamp);
       if (Math.abs(e.clientX - s.x0) > 40) learn();
-      return;
-    }
-    if (!s.lock) {
-      const el = (e.target as Element).closest?.("[data-mkey]");
-      const p = el && layout?.placed.find((q) => q.key === el.getAttribute("data-mkey"));
-      if (p && el && parseFloat((el.closest(".mw-item") as HTMLElement)?.style.opacity || "1") > 0.5) {
-        if (Math.abs(motion.cam - p.D) > 1) motion.goToIndex(p.index, 650);
-        onOpen(p.item, el);
-      }
     }
   };
   const onPointerCancel = (e: React.PointerEvent) => {
@@ -293,11 +417,18 @@ export function MomentsWorld({
     if (s?.lock === "h") motion.dragEnd(e.timeStamp);
   };
 
+  const openCard = (p: Placed, el: Element) => {
+    if (!canDrag) return;
+    if (parseFloat((el.closest(".mw-item") as HTMLElement | null)?.style.opacity || "1") < 0.5) return;
+    if (Math.abs(motion.cam - p.D) > 1) motion.goToIndex(p.index, 650);
+    onOpen(p.item, el);
+  };
+
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (!active) return;
+      if (!canDrag) return;
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.offsetWidth : 1;
       const d = (-e.deltaX + e.deltaY) * unit;
       if (Math.abs(d) < 0.5) return;
@@ -308,7 +439,7 @@ export function MomentsWorld({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [active, motion]);
+  }, [canDrag, motion]);
 
   const goToday = () => {
     returningRef.current = true;
@@ -317,25 +448,23 @@ export function MomentsWorld({
 
   const register = useCallback((fn: Apply) => {
     appliers.current.add(fn);
-    fn(motion.cam);
+    fn(layerCam.current);
     return () => {
       appliers.current.delete(fn);
     };
-  }, [motion]);
+  }, []);
+
+  const rootClass = `mw-root${veiled ? " mw-veiled" : ""}${revealing ? " mw-revealing" : ""}${phase === "leaving" ? " mw-leaving" : ""}`;
 
   return (
     <div
       ref={rootRef}
-      className="mw-root"
+      className={rootClass}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      style={
-        layout
-          ? ({ ["--mm-fox-x" as string]: `${layout.foxX}px` } as React.CSSProperties)
-          : undefined
-      }
+      style={layout ? ({ ["--mm-fox-x" as string]: `${layout.foxX}px` } as React.CSSProperties) : undefined}
     >
       {/* background layers */}
       {W > 0 &&
@@ -344,7 +473,7 @@ export function MomentsWorld({
             // eslint-disable-next-line @next/next/no-img-element
             <img key={L.key} src={L.src} alt="" aria-hidden draggable={false} className={L.className} />
           ) : L.kind === "band" ? (
-            <BandLayer key={L.key} spec={L} W={W} H={H} register={register} />
+            <BandLayer key={L.key} spec={L} H={H} W={W} register={register} />
           ) : (
             <ScatterLayer key={L.key} spec={L} W={W} register={register} />
           ),
@@ -353,7 +482,7 @@ export function MomentsWorld({
       {/* the world that moves with the timeline */}
       {layout && (
         <div ref={worldRef} className="mw-world">
-          <div className="mw-trail" style={{ opacity: TRAIL_OPACITY }} aria-hidden>
+          <div className="mw-trail" aria-hidden>
             {trail.map((s, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -370,6 +499,8 @@ export function MomentsWorld({
             const y = ty(p.x);
             const cardBottom = y - p.lift;
             const ly = ty(p.x + p.lightDx) - 3;
+            // arrival: newest first
+            const rd = { ["--rd" as string]: `${140 + Math.min(p.index, 4) * 110}ms` } as React.CSSProperties;
             return (
               <div
                 key={p.key}
@@ -378,7 +509,7 @@ export function MomentsWorld({
                   if (el) itemRefs.current.set(p.key, el);
                   else itemRefs.current.delete(p.key);
                 }}
-                style={{ left: p.x }}
+                style={{ left: p.x, ...rd }}
               >
                 <span className="mw-stem" style={{ left: p.stemDx, top: cardBottom, height: Math.max(0, y - cardBottom - 2) }} />
                 {p.light && (
@@ -391,8 +522,9 @@ export function MomentsWorld({
                   role="button"
                   tabIndex={0}
                   aria-label={p.item.type === "rest" ? `A Star at Rest: ${p.item.star.wish}` : p.item.text}
+                  onClick={(e) => openCard(p, e.currentTarget)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") onOpen(p.item, e.currentTarget);
+                    if (e.key === "Enter" || e.key === " ") openCard(p, e.currentTarget);
                   }}
                   style={{
                     width: p.cardW,
@@ -409,10 +541,9 @@ export function MomentsWorld({
           })}
 
           {/* the one selected light — the focused Moment, only at rest */}
-          {focused && (
+          {focused && phase === "ready" && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              ref={selRef}
               key={`sel-${focused.key}`}
               className="mw-light mw-light--selected"
               src={LIGHTS.selected.src}
@@ -424,21 +555,31 @@ export function MomentsWorld({
         </div>
       )}
 
-      {layout && entries.length === 0 && (
+      {layout && loaded && entries.length === 0 && phase !== "arriving" && (
         <div className="mw-empty">Your moments will gather here as you walk.</div>
       )}
 
-      <TrailFox ref={foxRef} />
+      {layout && (
+        <TrailFox ref={foxRef} rootRef={foxRootRef} initialOffset={(pan.current ?? delta) - delta} />
+      )}
 
-      {hint && entries.length > 1 && (
+      {hint && entries.length > 1 && phase === "ready" && (
         <div className="mw-hint" aria-hidden>
-          <span>Swipe to walk back →</span>
-          <i />
+          <span>Pull the past closer</span>
+          <span className="mw-hint-track">
+            <i />
+            <svg className="mw-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 11V10a2 2 0 0 0-2-2 2 2 0 0 0-2 2" />
+              <path d="M14 10V9a2 2 0 0 0-2-2 2 2 0 0 0-2 2v1" />
+              <path d="M10 9.5V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v10" />
+              <path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+            </svg>
+          </span>
         </div>
       )}
 
       {showToday && (
-        <button type="button" className="mw-today" onClick={goToday} onPointerDown={(e) => e.stopPropagation()}>
+        <button type="button" className="mw-today" onClick={goToday}>
           Today
         </button>
       )}
@@ -448,24 +589,25 @@ export function MomentsWorld({
           position: absolute;
           inset: 0;
           overflow: hidden;
-          touch-action: none;
+          /* horizontal pans are ours; vertical stays with the browser.
+             Nothing global — the system back gesture is never blocked. */
+          touch-action: pan-y;
           user-select: none;
           -webkit-user-select: none;
-          --mm-fox-w: clamp(92px, 25vw, 132px);
         }
         .mw-band, .mw-scatter { position: absolute; left: 0; right: 0; pointer-events: none; overflow: visible; }
         .mw-lane { position: absolute; left: 0; top: 0; height: 100%; display: flex; will-change: transform; }
-        .mw-lane img { height: 100%; width: auto; max-width: none; flex: 0 0 auto; display: block; margin-right: -2px; }
+        .mw-lane img { height: 100%; width: auto; max-width: none; flex: 0 0 auto; display: block; }
         .mw-scatter img { position: absolute; max-width: none; height: auto; }
         .mw-world { position: absolute; left: 0; top: 0; width: 0; height: 100%; z-index: 3; will-change: transform; }
-        .mw-trail { position: absolute; left: 0; top: 0; pointer-events: none; }
+        .mw-trail { position: absolute; left: 0; top: 0; pointer-events: none; opacity: ${TRAIL_OPACITY}; }
         .mw-trail img { position: absolute; max-width: none; display: block; }
         .mw-item { position: absolute; top: 0; width: 0; height: 100%; }
         .mw-stem { position: absolute; width: 1px; background: rgba(245, 239, 230, 0.38); pointer-events: none; }
         .mw-light { position: absolute; max-width: none; pointer-events: none; }
         .mw-light--selected { animation: mw-light-in 420ms ease-out both; }
         @keyframes mw-light-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        .mw-card { position: absolute; cursor: pointer; transform-origin: 50% 100%; outline: none; }
+        .mw-card { position: absolute; cursor: pointer; transform-origin: 50% 100%; outline: none; translate: 0 0; }
         .mw-card:focus-visible { outline: 1px dashed rgba(245, 239, 230, 0.7); outline-offset: 4px; }
         .mw-note { position: relative; padding: 11px 12px 9px; color: #2b2f45; }
         .mw-note > :not(.mm-art) { position: relative; }
@@ -480,40 +622,62 @@ export function MomentsWorld({
           font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; letter-spacing: 0.02em;
           color: rgba(245, 239, 230, 0.86);
         }
+
+        /* ── arrival / departure ─────────────────────────────────── */
+        .mw-veiled .mw-trail, .mw-veiled .mw-scatter, .mw-veiled .mw-light, .mw-veiled .mw-stem { opacity: 0; }
+        .mw-veiled .mw-card { opacity: 0; translate: 0 12px; }
+        .mw-revealing .mw-trail { transition: opacity 520ms ease; }
+        .mw-revealing .mw-scatter { transition: opacity 700ms ease; }
+        .mw-revealing .mw-card { transition: opacity 460ms ease var(--rd), translate 560ms cubic-bezier(0.22, 1, 0.36, 1) var(--rd); }
+        .mw-revealing .mw-light, .mw-revealing .mw-stem { transition: opacity 420ms ease calc(var(--rd) + 120ms); }
+        /* memories settle away: cards lower and fade, then lights + threads,
+           then the trail — the sky, meadow and Sísí stay */
+        .mw-leaving .mw-card { opacity: 0; translate: 0 16px; transition: opacity 300ms ease, translate 360ms ease-in; }
+        .mw-leaving .mw-label { opacity: 0; transition: opacity 200ms ease; }
+        .mw-leaving .mw-light, .mw-leaving .mw-stem { opacity: 0 !important; transition: opacity 280ms ease 80ms; }
+        .mw-leaving .mw-trail { opacity: 0; transition: opacity 320ms ease 160ms; }
+        .mw-leaving .mw-scatter { opacity: 0; transition: opacity 420ms ease 120ms; }
+
         .mw-empty {
           position: absolute; left: 12%; width: 46%; bottom: calc(var(--walking-baseline) + 48px); z-index: 4;
           padding: 12px 14px; background: rgba(245, 239, 230, 0.92); color: #2b2f45; border-radius: 2px;
           font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15px; line-height: 1.35;
         }
         .mw-hint {
-          position: absolute; left: 0; right: 0; bottom: calc(var(--nav-total) + 26px); z-index: 7;
-          display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
-          color: rgba(245, 239, 230, 0.9); font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px;
-          animation: mw-hint-in 900ms ease-out 600ms both;
+          position: absolute; left: 0; right: 0; bottom: calc(var(--nav-total) + 22px); z-index: 7;
+          display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
+          color: rgba(245, 239, 230, 0.92); font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px;
+          animation: mw-hint-in 900ms ease-out 500ms both;
         }
-        .mw-hint i {
-          position: relative; display: block; width: 110px; height: 1px; background: rgba(245, 239, 230, 0.45);
+        .mw-hint-track { position: relative; display: block; width: 120px; height: 34px; }
+        .mw-hint-track i {
+          position: absolute; left: 6px; right: 0; top: 7px; height: 1px; background: rgba(245, 239, 230, 0.4);
         }
-        .mw-hint i::after {
-          content: ""; position: absolute; top: -3px; left: 0; width: 7px; height: 7px; border-radius: 50%;
-          background: rgba(245, 239, 230, 0.9); animation: mw-hint-dot 2.4s ease-in-out infinite;
+        .mw-hand {
+          position: absolute; left: 0; top: 0; width: 28px; height: 28px; color: rgba(245, 239, 230, 0.92);
+          animation: mw-hand 2.6s ease-in-out infinite;
         }
         @keyframes mw-hint-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-        @keyframes mw-hint-dot { 0% { transform: translateX(0); opacity: 0; } 15% { opacity: 1; } 70% { transform: translateX(103px); opacity: 1; } 100% { transform: translateX(103px); opacity: 0; } }
+        @keyframes mw-hand {
+          0% { transform: translateX(0); opacity: 0; }
+          14% { opacity: 1; }
+          66% { transform: translateX(84px); opacity: 1; }
+          84%, 100% { transform: translateX(84px); opacity: 0; }
+        }
         .mw-today {
           position: absolute; z-index: 8; right: var(--stage-padding); top: calc(var(--header-top) + 58px);
-          height: 34px; padding: 0 16px; border: 0; border-radius: 999px; cursor: pointer;
+          min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
           background: rgba(245, 239, 230, 0.94); color: #2b2f45; box-shadow: 0 2px 8px rgba(10, 18, 30, 0.18);
           font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
           animation: mw-hint-in 380ms ease-out both;
         }
         @media (prefers-reduced-motion: reduce) {
-          .mw-hint, .mw-hint i::after, .mw-today, .mw-light--selected { animation: none; }
+          .mw-hint, .mw-hand, .mw-today, .mw-light--selected { animation: none; }
         }
       `}</style>
     </div>
   );
-}
+});
 
 function Card({ p }: { p: Placed }) {
   const it = p.item;
@@ -540,26 +704,38 @@ const shortDate = (iso: string) => whenLabel(iso, true).split(" · ")[0];
 
 /* ── background layers ─────────────────────────────────────────────── */
 
-function BandLayer({ spec, W, H, register }: { spec: Band; W: number; H: number; register: (fn: Apply) => () => void }) {
+function BandLayer({ spec, H, W, register }: { spec: Band; H: number; W: number; register: (fn: Apply) => () => void }) {
   const lane = useRef<HTMLDivElement>(null);
-  const [tile, setTile] = useState(0);
+  const tileRef = useRef(0);
+  const [copies, setCopies] = useState(3);
   const h = H * spec.heightPct;
-  const copies = tile ? Math.ceil(W / tile) + 2 : 2;
 
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => setTile((img.naturalWidth / img.naturalHeight) * h - 2);
-    img.src = spec.src;
-  }, [spec.src, h]);
-
-  useEffect(() => {
-    if (!tile) return;
-    return register((cam) => {
-      const t = cam * spec.ratio;
+  // Tile width measured exactly like the Journey's ParallaxLayer (rendered
+  // width − seam), so both pages put the meadow at the same pixel.
+  const measure = useCallback(() => {
+    const first = lane.current?.firstElementChild as HTMLImageElement | null;
+    if (!first || !first.complete || first.offsetWidth === 0) return;
+    tileRef.current = first.offsetWidth - spec.seam;
+    const need = Math.max(2, Math.ceil(W / tileRef.current) + 2);
+    setCopies((c) => (c === need ? c : need));
+  }, [spec.seam, W]);
+  const lastView = useRef(0);
+  const place = useCallback(
+    (view: number) => {
+      lastView.current = view;
+      const tile = tileRef.current;
+      if (!tile || !lane.current) return;
+      const t = view * spec.ratio;
       const x = (((t % tile) + tile) % tile) - tile;
-      if (lane.current) lane.current.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
-    });
-  }, [tile, spec.ratio, register]);
+      lane.current.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
+    },
+    [spec.ratio],
+  );
+  useLayoutEffect(() => {
+    measure();
+    place(lastView.current);
+  }, [measure, place, h]);
+  useLayoutEffect(() => register(place), [register, place]);
 
   return (
     <div
@@ -570,7 +746,7 @@ function BandLayer({ spec, W, H, register }: { spec: Band; W: number; H: number;
       <div ref={lane} className="mw-lane">
         {Array.from({ length: copies }).map((_, i) => (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={spec.src} alt="" draggable={false} />
+          <img key={i} src={spec.src} alt="" draggable={false} onLoad={i === 0 ? () => { measure(); place(lastView.current); } : undefined} style={{ marginRight: -spec.seam }} />
         ))}
       </div>
     </div>

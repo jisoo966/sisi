@@ -216,7 +216,7 @@ export class TimelineMotion {
   reduced = false;
   private snaps: number[] = [0];
   private target = 0;
-  private travel: { from: number; to: number; t0: number; dur: number } | null = null;
+  private travel: { from: number; to: number; t0: number; dur: number; ease: "inout" | "out" } | null = null;
   private samples: { t: number; cam: number }[] = [];
   private dragBase = 0;
   private lastT = 0;
@@ -287,12 +287,23 @@ export class TimelineMotion {
     this.mode = "spring";
   }
 
-  /** Walk (not jump) to a cam value — Today, or a moment picked in the list. */
+  /** Walk (not jump) to a cam value — Today, or a moment picked in the list.
+   *  Long returns are capped so a distant Today never drags on. */
   goTo(cam: number, durMs?: number) {
     const d = Math.abs(cam - this.cam);
-    const dur = durMs ?? (this.reduced ? 250 : Math.max(700, Math.min(3200, (d / 620) * 1000)));
-    this.travel = { from: this.cam, to: cam, t0: -1, dur };
+    const dur = durMs ?? (this.reduced ? 250 : Math.max(700, Math.min(2000, (d / 700) * 1000)));
+    this.travel = { from: this.cam, to: cam, t0: -1, dur, ease: "inout" };
     this.target = cam;
+    this.mode = "travel";
+  }
+
+  /** Stop wherever we are with a soft deceleration (no snapping). */
+  brake(ms = 280) {
+    if (this.mode === "rest") return;
+    if (this.wheelTimer) clearTimeout(this.wheelTimer);
+    const to = Math.max(0, Math.min(this.max, this.cam + this.vel * (ms / 1000) * 0.5));
+    this.travel = { from: this.cam, to, t0: -1, dur: this.reduced ? 1 : ms, ease: "out" };
+    this.target = to;
     this.mode = "travel";
   }
   goToIndex(i: number, durMs?: number) {
@@ -311,7 +322,7 @@ export class TimelineMotion {
       const tr = this.travel;
       if (tr.t0 < 0) tr.t0 = now;
       const p = Math.min(1, (now - tr.t0) / tr.dur);
-      const e = 0.5 - 0.5 * Math.cos(Math.PI * p); // ease in-out: start and arrive softly
+      const e = tr.ease === "out" ? 1 - (1 - p) * (1 - p) : 0.5 - 0.5 * Math.cos(Math.PI * p);
       const next = tr.from + (tr.to - tr.from) * e;
       this.vel = dt > 0 ? (next - this.cam) / dt : 0;
       this.cam = next;

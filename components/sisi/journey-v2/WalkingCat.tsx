@@ -45,10 +45,19 @@ type Props = {
   lookingAtYou?: boolean;
   /** @deprecated walking state now comes from the shared world clock */
   paused?: boolean;
+  /** Turning toward Moments (the past) faces left; the Journey faces right. */
+  facing?: "left" | "right";
+  /** Walk cycle started / settled into the idle pose. */
+  onWalkingChange?: (walking: boolean) => void;
 };
 
-export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false }: Props) {
+export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, facing = "right", onWalkingChange }: Props) {
   const [walking, setWalking] = useState(false);
+  const onChangeRef = useRef(onWalkingChange);
+  onChangeRef.current = onWalkingChange;
+  useEffect(() => {
+    onChangeRef.current?.(walking);
+  }, [walking]);
   const walkingRef = useRef(false);
   const lookingUpRef = useRef(lookingUp);
   lookingUpRef.current = lookingUp;
@@ -146,6 +155,7 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false }: P
           alt=""
           className="cat-media"
           draggable={false}
+          style={facing === "left" ? { transform: "scaleX(-1)" } : undefined}
         />
       </div>
       {/* Preload both so the swap is instantaneous */}

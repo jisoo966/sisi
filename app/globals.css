@@ -397,3 +397,27 @@ input:focus-visible,
 textarea:focus-visible {
   /* input/textarea는 border 있으니 border만 강조 (glow 없음). 컴포넌트에서 자체 처리. */
 }
+
+/* ── Journey ⇄ Moments: one world across two pages ─────────────────────
+   Layers that exist only in the Journey (walking path, foreground, passing
+   trees, sky star + drifting clouds, header) quiet down while Sísí turns
+   toward Moments, and fade back in when she returns. Sky, meadow and Sísí
+   stay exactly where they are (lib/worldHandoff.ts). */
+.journey-stage-v2.jl-handoff { animation: none; }
+.journey-stage-v2.jl-quiet .jw-path,
+.journey-stage-v2.jl-quiet .jw-fore,
+.journey-stage-v2.jl-quiet .passing-trees,
+.journey-stage-v2.jl-quiet .jl-fade,
+.journey-stage-v2.jl-quiet .jw-day > :not(.journey-sky-fixed) {
+  opacity: 0 !important;
+  transition: opacity 380ms ease !important;
+}
+.journey-stage-v2.jl-quiet .jl-fade,
+.journey-stage-v2.jl-quiet .jl-fade * { pointer-events: none !important; }
+.journey-stage-v2.jl-handoff .jw-path,
+.journey-stage-v2.jl-handoff .jw-fore,
+.journey-stage-v2.jl-handoff .passing-trees,
+.journey-stage-v2.jl-handoff .jl-fade,
+.journey-stage-v2.jl-handoff .jw-day > :not(.journey-sky-fixed) {
+  transition: opacity 460ms ease 60ms !important;
+}

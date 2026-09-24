@@ -99,7 +99,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
           color: #2b2f45;
         }
         .ml-scroll {
-          position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+          position: absolute; inset: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
           padding: 26px var(--stage-padding) calc(var(--nav-total) + 28px);
           touch-action: pan-y;
         }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -211,6 +213,40 @@ export default function JourneyPage() {
   // Journey world state machine (walking ↔ star-view).
   const { isWalking, isStarView, enterStarView, backToWalking, stageClass } =
     useJourneyPhase();
+  const router = useRouter();
+
+  // ── Journey ⇄ Moments (one world across two pages) ──
+  // Arriving from Moments: start on the exact meadow frame Moments left, with
+  // the Journey-only layers (path, foreground, sky star, header) fading in.
+  const [arrival] = useState(() => {
+    const h = readHandoff("journey");
+    if (h) worldClock().setDistance(h.ground);
+    return h;
+  });
+  const [quiet, setQuiet] = useState(!!arrival);
+  const [handoffFx, setHandoffFx] = useState(!!arrival);
+  useEffect(() => {
+    if (!arrival) return;
+    let id2 = 0;
+    const id = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => setQuiet(false));
+    });
+    const t = setTimeout(() => {
+      clearHandoff();
+      setHandoffFx(false);
+    }, 1400);
+    return () => {
+      cancelAnimationFrame(id);
+      cancelAnimationFrame(id2);
+      clearTimeout(t);
+    };
+  }, [arrival]);
+  // Leaving for Moments: the world eases to a stop, Sísí finishes her step,
+  // turns left, and Moments takes over from that same frame.
+  const [leavingTo, setLeavingTo] = useState<"moments" | null>(null);
+  const [catFacing, setCatFacing] = useState<"left" | "right">("right");
+  const catWalking = useRef(false);
+  const pendingMoments = useRef(false);
 
 
   // Auth-derived name (Supabase profile or guest localStorage).
@@ -344,7 +380,7 @@ export default function JourneyPage() {
 
   // The world walks only in the meadow, with no sheet open and no camera
   // move in progress (after a return, walking resumes once we've landed).
-  const worldPaused = !isWalking || chatOpen || practiceOpen || momentOpen || eveningOpen || busy;
+  const worldPaused = !isWalking || chatOpen || practiceOpen || momentOpen || eveningOpen || busy || leavingTo !== null;
 
   // Offer the evening reflection once, a little after arriving at night.
   useEffect(() => {
@@ -358,8 +394,51 @@ export default function JourneyPage() {
   // Drive the shared world clock: ease in (0 → 32px/s over 1.2s); when the
   // camera is about to look up, decelerate over 450ms.
   useEffect(() => {
-    worldClock().setWalking(!worldPaused, isStarView ? 450 : undefined);
-  }, [worldPaused, isStarView]);
+    worldClock().setWalking(!worldPaused, isStarView ? 450 : leavingTo ? 420 : undefined);
+  }, [worldPaused, isStarView, leavingTo]);
+
+  const goToMoments = () => {
+    if (leavingTo) return;
+    if (isStarView) {
+      // From the Star World: descend to the meadow first, then turn left.
+      if (!busy) {
+        pendingMoments.current = true;
+        backToMeadow();
+      }
+      return;
+    }
+    if (busy || !isWalking || panelOpen) return;
+    setLeavingTo("moments");
+  };
+  useEffect(() => {
+    if (!pendingMoments.current || !isWalking || busy) return;
+    pendingMoments.current = false;
+    const t = setTimeout(() => setLeavingTo("moments"), 300);
+    return () => clearTimeout(t);
+  }, [isWalking, busy]);
+  useEffect(() => {
+    if (leavingTo !== "moments") return;
+    const t0 = performance.now();
+    const timers: number[] = [];
+    const waitIdle = () => {
+      const elapsed = performance.now() - t0;
+      // the ground eases out (~420ms); Sísí finishes her step, then idles
+      if ((!catWalking.current && elapsed > 380) || elapsed > 1100) {
+        setCatFacing("left");
+        // a short hold so the turn reads, then Moments continues this frame
+        timers.push(
+          window.setTimeout(() => {
+            handOff("moments", worldClock().getDistance());
+            router.push("/gallery");
+          }, 170),
+        );
+      } else {
+        timers.push(window.setTimeout(waitIdle, 30));
+      }
+    };
+    waitIdle();
+    return () => timers.forEach(clearTimeout);
+  }, [leavingTo, router]);
   useEffect(() => () => worldClock().reset(), []);
 
   // Date/greeting — mount only to avoid SSR/client timezone hydration flash.
@@ -424,7 +503,9 @@ export default function JourneyPage() {
   }, []);
 
   return (
-    <JourneyStage phaseClass={stageClass}>
+    <JourneyStage
+      phaseClass={`${stageClass}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""}`}
+    >
       {/* ── WORLD LAYER — separate depth groups; each moves at its own
           parallax rate during the Journey → Stars camera move. ── */}
       <WorldLayer>
@@ -517,6 +598,7 @@ export default function JourneyPage() {
             seamOverlap={2}
           />
           <ParallaxLayer
+            className="jw-path"
             src={PARALLAX_LAYERS.walkingPath}
             speed={LAYER_SPEED.walkingPath}
             zIndex={2}
@@ -529,6 +611,10 @@ export default function JourneyPage() {
             onTap={isWalking && !busy ? () => setChatOpen(true) : undefined}
             lookingUp={isStarView}
             lookingAtYou={landing}
+            facing={catFacing}
+            onWalkingChange={(w) => {
+              catWalking.current = w;
+            }}
           />
         </div>
 
@@ -573,7 +659,7 @@ export default function JourneyPage() {
       <UILayer>
         {/* Meadow UI (header + camera) — stays mounted; fades out over
             300ms (0.5–0.8s into the ascent), back in after the return lands. */}
-        <div className={`journey-walk-ui${isWalking && !busy && !panelOpen ? "" : " is-hidden"}`}>
+        <div className={`journey-walk-ui jl-fade${isWalking && !busy && !panelOpen ? "" : " is-hidden"}`}>
           <JourneyHeader
             dateStr={dateStr}
             greeting={greeting}
@@ -595,9 +681,11 @@ export default function JourneyPage() {
             // Cream stones in both worlds — the dark variant disappeared
             // against the cloud bank at the bottom of the Star World.
             theme="light"
-            activeTab={isStarView ? "stars" : "journey"}
-            onStarsSelect={isWalking ? goToStars : () => {}}
+            activeTab={leavingTo ? "moments" : isStarView ? "stars" : "journey"}
+            onStarsSelect={isWalking && !leavingTo ? goToStars : () => {}}
             onJourneySelect={isStarView ? backToMeadow : () => {}}
+            onMomentsSelect={goToMoments}
+            still={!!arrival}
           />
         </div>
 

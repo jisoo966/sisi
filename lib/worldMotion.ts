@@ -148,6 +148,15 @@ class WorldClock {
     this.factor = this.from = this.to = 0;
   }
 
+  /** Where the meadow is (px of ground travel). Used to hand the exact
+   *  frame over between Journey and Moments. */
+  getDistance() {
+    return this.distance;
+  }
+  setDistance(d: number) {
+    this.distance = d;
+  }
+
   isWalking() {
     return this.walking && !this.reduced;
   }

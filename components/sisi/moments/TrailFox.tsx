@@ -29,26 +29,39 @@ const MAX_RATE = 2.3; // cycles/s cap
 const PX_PER_CYCLE = 150; // world px travelled per full cycle at mid speeds
 const FLIP_V = 18;
 
-export type TrailFoxHandle = { update: (vel: number, dt: number, reduced: boolean) => void };
+export type TrailFoxHandle = {
+  update: (vel: number, dt: number, reduced: boolean) => void;
+  /** Turn in place (e.g. toward the Journey before leaving Moments). */
+  face: (dir: "left" | "right") => void;
+  isIdle: () => boolean;
+};
 
-export const TrailFox = forwardRef<TrailFoxHandle, { onTap?: () => void }>(function TrailFox({ onTap }, ref) {
+export const TrailFox = forwardRef<TrailFoxHandle, { onTap?: () => void; rootRef?: React.Ref<HTMLDivElement>; initialOffset?: number }>(function TrailFox({ onTap, rootRef, initialOffset = 0 }, ref) {
   const flipRef = useRef<HTMLDivElement>(null);
   const bobRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
   const idleRef = useRef<HTMLImageElement>(null);
   const s = useRef({ phase: 0, walking: false, finishing: false, facing: -1 as -1 | 1, frame: -1 });
 
+  const applyFacing = (f: -1 | 1) => {
+    s.current.facing = f;
+    if (flipRef.current) flipRef.current.style.transform = `scaleX(${f === -1 ? -1 : 1})`;
+  };
+
   useImperativeHandle(ref, () => ({
+    face(dir) {
+      applyFacing(dir === "left" ? -1 : 1);
+    },
+    isIdle() {
+      return !s.current.walking;
+    },
     update(vel, dt, reduced) {
       const st = s.current;
       const speed = Math.abs(vel);
 
       if (speed > FLIP_V) {
         const f: -1 | 1 = vel > 0 ? -1 : 1; // into the past → face left
-        if (f !== st.facing) {
-          st.facing = f;
-          if (flipRef.current) flipRef.current.style.transform = `scaleX(${f === -1 ? -1 : 1})`;
-        }
+        if (f !== st.facing) applyFacing(f);
       }
 
       if (reduced) {
@@ -101,7 +114,14 @@ export const TrailFox = forwardRef<TrailFoxHandle, { onTap?: () => void }>(funct
   }));
 
   return (
-    <div className="tf-root" onClick={onTap} aria-hidden>
+    <div
+      ref={rootRef}
+      className="tf-root"
+      onClick={onTap}
+      aria-hidden
+      style={initialOffset ? { transform: `translate3d(${initialOffset}px,0,0)` } : undefined}
+    >
+      {/* the pan wrapper (tf-root) is moved by MomentsWorld during camera reframes */}
       <div ref={flipRef} className="tf-flip" style={{ transform: "scaleX(-1)" }}>
         <div ref={bobRef} className="tf-bob">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -113,10 +133,10 @@ export const TrailFox = forwardRef<TrailFoxHandle, { onTap?: () => void }>(funct
         .tf-root {
           position: absolute;
           z-index: 6;
-          width: var(--mm-fox-w);
-          left: calc(var(--mm-fox-x) - var(--mm-fox-w) / 2);
-          /* the paws sit 26/648 of the width above the frame bottom */
-          bottom: calc(var(--walking-baseline) - var(--mm-fox-w) * 0.0401);
+          /* same size and paw line as the Journey's WalkingCat */
+          width: var(--cat-width);
+          left: calc(var(--mm-fox-x) - var(--cat-width) / 2);
+          bottom: calc(var(--walking-baseline) - var(--cat-width) * 0.0401);
           pointer-events: none;
         }
         .tf-flip, .tf-bob { position: relative; width: 100%; }

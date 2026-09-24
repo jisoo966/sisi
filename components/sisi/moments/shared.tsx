@@ -260,7 +260,7 @@ export function MomentsSharedStyles() {
       .mm-stage { position: fixed; inset: 0; z-index: 51; display: grid; place-items: center; pointer-events: none; }
       .mm-detail {
         position: relative; pointer-events: auto; width: min(88vw, 380px); max-height: 84svh; overflow-y: auto;
-        overscroll-behavior: contain; padding: 34px 28px 28px; color: #2b2f45;
+        overscroll-behavior-y: contain; padding: 34px 28px 28px; color: #2b2f45;
         filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.3)); scrollbar-width: none;
       }
       .mm-detail > :not(.mm-art) { position: relative; }

@@ -21,11 +21,17 @@ import { motion } from "framer-motion";
 
 type Theme = "light" | "dark";
 
+/**
+ * Order is the timeline: the past (Moments) · the present (Journey, the
+ * centre and home) · the future (Stars). The order is only conceptual —
+ * switching tabs never slides the page; each destination plays its own
+ * in-world transition.
+ */
 const TABS = [
+  { key: "moments", href: "/gallery",  label: "Moments" },
   { key: "journey", href: "/journey",  label: "Journey" },
   // From other pages, Stars returns to the Journey and ascends there.
   { key: "stars",   href: "/journey?to=stars", label: "Stars" },
-  { key: "moments", href: "/gallery",  label: "Moments" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -35,6 +41,8 @@ export function BottomNavV2({
   activeTab,
   onStarsSelect,
   onJourneySelect,
+  onMomentsSelect,
+  still = false,
 }: {
   theme?: Theme;
   /** Override the active pill (the Journey page hosts both the meadow and
@@ -44,18 +52,23 @@ export function BottomNavV2({
   onStarsSelect?: () => void;
   /** In the Star World: Journey descends back to the meadow. */
   onJourneySelect?: () => void;
+  /** Journey → Moments (or Moments → Journey) plays an in-world transition. */
+  onMomentsSelect?: () => void;
+  /** Arriving from another tab: the nav was already on screen — don't
+   *  replay the slide-up entrance. */
+  still?: boolean;
 }) {
   const pathname = usePathname();
   const isDark = theme === "dark";
 
   const handlerFor = (key: TabKey) =>
-    key === "stars" ? onStarsSelect : key === "journey" ? onJourneySelect : undefined;
+    key === "stars" ? onStarsSelect : key === "journey" ? onJourneySelect : onMomentsSelect;
 
   return (
     <motion.nav
       className={`journey-nav ${isDark ? "is-dark" : ""}`}
       aria-label="Primary"
-      initial={{ y: 24, opacity: 0 }}
+      initial={still ? false : { y: 24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 26, delay: 0.15 }}
     >
@@ -69,7 +82,7 @@ export function BottomNavV2({
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`stone-pill ${active ? "is-active" : ""}`}
+            className={`stone-pill stone-pill--${key} ${active ? "is-active" : ""}`}
             onPointerDown={
               handler
                 ? (e) => {
@@ -115,7 +128,8 @@ export function BottomNavV2({
           align-items: center;
           justify-content: center;
           padding: 0 clamp(16px, 5vw, 22px);
-          height: clamp(38px, 10vw, 44px);
+          min-width: 44px;
+          height: 44px;
           /* Pebble-ish shape — 40% side radius reads organic rather than an
              engineered pill. */
           border-radius: 40% / 50%;
@@ -129,18 +143,23 @@ export function BottomNavV2({
           box-shadow:
             0 1px 0 rgba(255, 255, 255, 0.75) inset,
             0 6px 14px rgba(28, 35, 64, 0.14);
-          transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+          opacity: 0.7;
+          transform: translateY(var(--lift, 0px));
+          transition: background 0.35s ease, color 0.35s ease, opacity 0.35s ease, transform 0.15s ease;
           -webkit-tap-highlight-color: transparent;
         }
-        .stone-pill:hover  { transform: translateY(-1px); }
-        .stone-pill:active { transform: translateY(0); }
+        /* Journey is the centre anchor: a few px higher, same size. */
+        .stone-pill--journey { --lift: -6px; }
+        .stone-pill:hover  { transform: translateY(calc(var(--lift, 0px) - 1px)); }
+        .stone-pill:active { transform: translateY(var(--lift, 0px)); }
         .stone-pill.is-pressed {
-          transform: scale(0.94);
+          transform: translateY(var(--lift, 0px)) scale(0.94);
           transition-duration: 90ms;
         }
         .stone-pill.is-active {
+          opacity: 1;
           color: var(--journey-navy);
-          background: #ede4d1;
+          background: #f7f1e3;
           box-shadow:
             0 1px 0 rgba(255, 255, 255, 0.6) inset,
             0 -1px 0 rgba(28, 35, 64, 0.08) inset,

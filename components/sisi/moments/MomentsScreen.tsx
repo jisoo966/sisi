@@ -8,7 +8,8 @@ import { loadTrail, type MomentItem, type RestItem } from "@/lib/moments";
 import { layoutTimeline, TimelineMotion, type TrailEntry } from "@/lib/momentsTimeline";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { MomentDetail, MomentsSharedStyles, originOf, RestDetail, type Origin } from "./shared";
-import { MomentsWorld } from "./MomentsWorld";
+import { MomentsWorld, type MomentsWorldHandle } from "./MomentsWorld";
+import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
 import { MomentsList } from "./MomentsList";
 
 /**
@@ -22,6 +23,8 @@ import { MomentsList } from "./MomentsList";
  * from where you were to the Moment you picked.
  */
 
+const NO_ENTRIES: TrailEntry[] = [];
+
 export function MomentsScreen() {
   const router = useRouter();
   const motion = useRef(new TimelineMotion()).current;
@@ -31,6 +34,46 @@ export function MomentsScreen() {
   const [view, setView] = useState<"trail" | "list">("trail");
   const [open, setOpen] = useState<{ item: MomentItem; from: Origin } | null>(null);
   const [openRest, setOpenRest] = useState<{ item: RestItem; from: Origin } | null>(null);
+
+  // Arriving from the Journey: continue from the exact frame it left.
+  const [arrival] = useState(() => readHandoff("moments"));
+  useEffect(() => {
+    if (!arrival) return;
+    const t = setTimeout(clearHandoff, 1600);
+    return () => clearTimeout(t);
+  }, [arrival]);
+  const worldRef = useRef<MomentsWorldHandle>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [turned, setTurned] = useState(false);
+  const [headerIn, setHeaderIn] = useState(!arrival);
+  useEffect(() => {
+    if (!arrival) return;
+    const t = setTimeout(() => setHeaderIn(true), 260);
+    return () => clearTimeout(t);
+  }, [arrival]);
+
+  /** Moments → Journey (or on to Stars): "I looked back for a moment. Now
+   *  I'm ready to keep going." The memories settle away, Sísí turns right,
+   *  the camera returns to the Journey framing, and the Journey continues
+   *  from this exact frame. */
+  const leaveTo = async (href: string) => {
+    if (leaving) return;
+    setLeaving(true);
+    setOpen(null);
+    setOpenRest(null);
+    if (view === "list") {
+      setView("trail"); // the paper closes downward, like a journal
+      await new Promise((r) => setTimeout(r, 380));
+    }
+    const w = worldRef.current;
+    if (!w) {
+      router.push(href);
+      return;
+    }
+    const ground = await w.leave(() => setTurned(true));
+    handOff("journey", ground);
+    router.push(href);
+  };
 
   const reload = useCallback(() => {
     loadTrail().then(({ items, stars, signs }) => {
@@ -51,20 +94,30 @@ export function MomentsScreen() {
   };
 
   return (
-    <main className="journey-stage-v2 mm-root">
+    <main className={`journey-stage-v2 mm-root${arrival ? " jl-handoff" : ""}`}>
       <MomentsSharedStyles />
 
-      {entries && (
-        <MomentsWorld entries={entries} motion={motion} active={view === "trail" && !open && !openRest} onOpen={openEntry} />
+      {/* The world is drawn from the first frame (sky, meadow, Sísí); the
+          memories join as soon as they have loaded. */}
+      {(
+        <MomentsWorld
+          ref={worldRef}
+          entries={entries ?? NO_ENTRIES}
+          loaded={entries !== null}
+          motion={motion}
+          arrival={arrival}
+          active={view === "trail" && !open && !openRest && !leaving}
+          onOpen={openEntry}
+        />
       )}
 
-      <header className="mm-header">
+      <header className={`mm-header${headerIn && !turned ? "" : " is-out"}`}>
         <h1 className="mm-title">Moments</h1>
         <button
           type="button"
           className="mm-toggle"
           aria-label={view === "trail" ? "Show as a list" : "Show the Memory Trail"}
-          onClick={() => setView((v) => (v === "trail" ? "list" : "trail"))}
+          onClick={() => !leaving && setView((v) => (v === "trail" ? "list" : "trail"))}
         >
           {view === "trail" ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
@@ -135,7 +188,16 @@ export function MomentsScreen() {
       </AnimatePresence>
 
       <div className="journey-nav-host">
-        <BottomNavV2 theme="light" activeTab="moments" />
+        <BottomNavV2
+          theme="light"
+          activeTab={turned ? "journey" : "moments"}
+          still={!!arrival}
+          onJourneySelect={() => leaveTo("/journey")}
+          onStarsSelect={() => leaveTo("/journey?to=stars")}
+          onMomentsSelect={() => {
+            if (view === "list" && !leaving) setView("trail");
+          }}
+        />
       </div>
 
       <style jsx global>{`
@@ -147,7 +209,10 @@ export function MomentsScreen() {
           position: absolute; z-index: 10; left: 0; right: 0; top: 0;
           display: flex; align-items: center; justify-content: space-between;
           padding: var(--header-top) var(--stage-padding) 0; pointer-events: none;
+          transition: opacity 420ms ease;
         }
+        .mm-header.is-out { opacity: 0; }
+        .mm-header.is-out * { pointer-events: none !important; }
         .mm-title {
           margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-weight: 400;
           font-size: clamp(32px, 9.5vw, 40px); letter-spacing: -0.01em; color: #1d2744;
