@@ -200,11 +200,13 @@
   display: block;
   user-select: none;
 }
-/* Rear bank: rests just above the screen; ends framing the bottom ~20%. */
-.jw-cloud-bank--rear { top: -124.9%; height: 110%; }
+/* Rear bank: same soft cloud art as the front, mirrored side by side so it is
+ * always wider than the screen. Passes behind the land and leaves through
+ * the bottom by the time the Star World settles. */
+.jw-cloud-bank--rear { top: -100%; height: 100%; }
 /* Front bank: its dense core (28–90% of the image) covers the whole screen
- * for c ≈ 0.85–1.49, then leaves only a few wisps at the very bottom. */
-.jw-cloud-bank--front { top: -261.15%; height: 280%; }
+ * for c ≈ 0.84–1.42; at rest its first soft crests frame the bottom of the Star World. */
+.jw-cloud-bank--front { top: -255.67%; height: 280%; }
 
 /* Journey UI (header, camera, nav): fades out over 300ms, 0.5s after the
  * tap; fades back in after the return has landed. */

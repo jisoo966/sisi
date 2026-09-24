@@ -11,14 +11,12 @@ import { useEffect, useRef, useState } from "react";
  * into planes instead of sliding as one picture:
  *
  *   distant sky (day + night)   0.15×
- *   distant hills               0.35×
- *   meadow + path + companion   0.75×   (the fox stays in the meadow and
- *                                         leaves through the bottom)
- *   foreground grass + trees    1.15×
+ *   land (hills + meadow + path  0.75×   one piece — the fox stays in the
+ *         + companion + front)            meadow and leaves through the bottom
  *   rear clouds                 0.70×
  *   front clouds                1.25×   (cover ~99% of the screen mid-way)
  *
- * While the clouds fully cover the screen (c ≈ 0.85–1.49) the environment
+ * While the clouds fully cover the screen (c ≈ 0.84–1.42) the environment
  * underneath switches from day to Star mode, hidden from view.
  *
  * Timeline (enter):
@@ -39,19 +37,26 @@ import { useEffect, useRef, useState } from "react";
  */
 
 /** Camera height at rest in the star world (screen heights). */
-const C_END = 2.67;
+const C_END = 2.465;
 /**
  * Environment switch point — the middle of the full-cover window: the front
- * cloud bank covers 100% of the screen for c ≈ 0.85–1.49 (≈2.8–3.35s).
+ * cloud bank covers 100% of the screen for c ≈ 0.84–1.42 (≈2.8–3.3s).
  */
-const C_SWITCH = 1.17;
+const C_SWITCH = 1.126;
 const SWITCH_BAND = 0.03;
 
+/**
+ * The land (hills, meadow + path + companion, foreground grass/trees) moves
+ * as ONE piece: with separate rates the hills detached from the path and a
+ * strip of sky opened between them, which read as the ground coming apart.
+ * Depth during the ascent comes from sky vs land vs rear/front clouds.
+ */
+const LAND_RATE = 0.75;
 const RATE = {
   sky: 0.15,
-  hills: 0.35,
-  meadow: 0.75,
-  fore: 1.15,
+  hills: LAND_RATE,
+  meadow: LAND_RATE,
+  fore: LAND_RATE,
   rear: 0.7,
   front: 1.25,
 };
@@ -61,7 +66,7 @@ type Key = [number, number, number];
 const ENTER: Key[] = [
   [1100, 0, 0],
   [2400, 0.45, 0.0008], // slow initial ascent
-  [3500, 1.75, 0.0013], // faster cloud passage
+  [3500, 1.65, 0.0011], // faster cloud passage
   [4800, C_END, 0], // long soft deceleration
 ];
 export const ASCENT_MS = 4800;
@@ -130,7 +135,7 @@ function applyCamera(e: Els, c: number) {
   show(e.meadow, 1 - n);
   show(e.fore, 1 - n);
   show(e.night, n);
-  show(e.rear, c > 0.0005 ? 1 : 0);
+  show(e.rear, smooth(c / 0.25));
   show(e.front, smooth(c / 0.2));
   return n;
 }

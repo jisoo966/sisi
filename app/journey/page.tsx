@@ -89,7 +89,9 @@ const PARALLAX_LAYERS = {
  *                  artist-painted transparent banks at the same paths.
  */
 const ASCENT_LAYERS = {
-  nightSky: "/V2/ascent/night-sky.webp",
+  // Top (starry) part of sky-star.webp — its low-res painted clouds are left
+  // out; the soft front cloud bank frames the bottom instead.
+  nightSky: "/V2/ascent/night-sky-top.webp",
   frontClouds: "/V2/ascent/cloud-bank-front.png",
   rearClouds: "/V2/ascent/cloud-bank-rear.png",
 };

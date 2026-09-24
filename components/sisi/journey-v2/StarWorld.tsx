@@ -326,19 +326,23 @@ export function StarWorld({
         .sw-sky {
           position: absolute;
           inset: 0;
+          /* Deep night that continues below the painted sky. */
+          background: linear-gradient(to bottom, #03070a 0%, #050c16 55%, #0b1b38 100%);
           transition: opacity 450ms ease;
         }
         .sw-sky-img {
           position: absolute;
           top: 0;
           left: 50%;
-          height: 125%;
+          height: 96%;
           width: auto;
           min-width: 100%;
           max-width: none;
           transform: translateX(-50%);
           display: block;
           user-select: none;
+          -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
         }
         .sw-field {
           position: absolute;
