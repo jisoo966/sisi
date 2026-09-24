@@ -32,6 +32,8 @@ type Props = {
   onRest: (star: Star) => void;
   /** Wish edited in place. */
   onEdited: (star: Star) => void;
+  /** Placeholder star → open the Create Star flow. */
+  onCreateStar?: () => void;
 };
 
 type Mode = "summary" | "timeline";
@@ -39,7 +41,7 @@ type Overlay = null | "menu" | "confirm-rest";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited }: Props) {
+export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited, onCreateStar }: Props) {
   const [mode, setMode] = useState<Mode>("summary");
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [editing, setEditing] = useState(false);
@@ -174,7 +176,11 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
                     type="button"
                     className="smc-link"
                     onClick={() => {
-                      if (placeholder) window.location.href = "/my-stars";
+                      if (placeholder) {
+                        onClose();
+                        if (onCreateStar) onCreateStar();
+                        else window.location.href = "/my-stars";
+                      }
                       else setMode("timeline");
                     }}
                   >

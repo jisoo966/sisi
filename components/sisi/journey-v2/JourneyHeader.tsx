@@ -28,8 +28,13 @@ type Props = {
   name: string;
   isDark: boolean;
   hasNudge: boolean;
-  onBellClick: () => void;
+  /** @deprecated notifications moved into the menu */
+  onBellClick?: () => void;
   onMenuClick: () => void;
+  /** Capture a Moment or Sign (hidden during focused sessions). */
+  onCameraClick?: () => void;
+  /** Open the satchel (optional customization drawer). */
+  onSatchelClick?: () => void;
 };
 
 export function JourneyHeader({
@@ -38,8 +43,9 @@ export function JourneyHeader({
   name,
   isDark,
   hasNudge,
-  onBellClick,
   onMenuClick,
+  onCameraClick,
+  onSatchelClick,
 }: Props) {
   return (
     <motion.header
@@ -61,44 +67,34 @@ export function JourneyHeader({
         </h1>
       </div>
 
+      {/* Quiet secondary tools, stacked top-right (master reference):
+          camera = capture a Moment or Sign · menu = account & settings.
+          satchel = optional customization drawer. */}
       <div className="right-col">
-        <button
-          type="button"
-          onClick={onBellClick}
-          aria-label="Notifications"
-          className="line-icon-btn"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        {onCameraClick && (
+          <button type="button" onClick={onCameraClick} aria-label="Capture a moment" className="disc-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z" />
+              <circle cx="12" cy="13" r="3.4" />
+            </svg>
+          </button>
+        )}
+        {onSatchelClick && (
+          <button type="button" onClick={onSatchelClick} aria-label="Open your satchel" className="disc-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
+              <path d="M5.5 8h13l-1 11.5a1.5 1.5 0 0 1-1.5 1.5H8a1.5 1.5 0 0 1-1.5-1.5z" />
+              <path d="M10 12.5h4" />
+            </svg>
+          </button>
+        )}
+        <button type="button" onClick={onMenuClick} aria-label="Menu" className="disc-btn disc-btn--quiet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <line x1="6" y1="8" x2="18" y2="8" />
+            <line x1="6" y1="12" x2="18" y2="12" />
+            <line x1="6" y1="16" x2="18" y2="16" />
           </svg>
           {hasNudge && <span className="nudge-dot" />}
-        </button>
-
-        <button
-          type="button"
-          onClick={onMenuClick}
-          aria-label="Menu"
-          className="line-icon-btn menu-btn"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          >
-            <line x1="4" y1="7" x2="20" y2="7" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="17" x2="20" y2="17" />
-          </svg>
         </button>
       </div>
 
@@ -150,39 +146,38 @@ export function JourneyHeader({
 
         .right-col {
           display: flex;
+          flex-direction: column;
           align-items: center;
           gap: 10px;
           flex-shrink: 0;
           margin-top: 2px;
         }
-        .line-icon-btn {
+        .disc-btn {
           position: relative;
           width: var(--icon-btn-size);
           height: var(--icon-btn-size);
           padding: 0;
           border: 0;
-          background: transparent;
-          color: inherit;
-          opacity: 0.75;
+          border-radius: 50%;
+          background: rgba(247, 242, 227, 0.92);
+          color: #2b2f45;
+          box-shadow: 0 2px 8px rgba(20, 30, 60, 0.18);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           -webkit-tap-highlight-color: transparent;
-          transition: opacity 0.2s ease, transform 0.15s ease;
+          transition: transform 0.12s ease;
         }
-        .line-icon-btn:hover  { opacity: 1; transform: translateY(-1px); }
-        .line-icon-btn:active { transform: translateY(0); }
-        .line-icon-btn svg {
-          width: 55%;
-          height: 55%;
+        .disc-btn:active { transform: scale(0.94); }
+        /* Account & settings: present but quieter than the two tools. */
+        .disc-btn--quiet {
+          width: calc(var(--icon-btn-size) * 0.8);
+          height: calc(var(--icon-btn-size) * 0.8);
+          background: rgba(247, 242, 227, 0.6);
+          box-shadow: none;
         }
-        .menu-btn { display: none; }
-        /* Only show the hamburger on larger phones where two icons fit
-           comfortably. Keeps small screens ultra-clean per mockup. */
-        @media (min-width: 380px) {
-          .menu-btn { display: inline-flex; }
-        }
+        .disc-btn svg { width: 52%; height: 52%; }
 
         .nudge-dot {
           position: absolute;

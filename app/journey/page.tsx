@@ -29,7 +29,14 @@ import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 // StarView (auto-opening postcard) superseded by StarMemoryCard; kept on disk.
 import { StarTrail } from "@/components/sisi/journey-v2/StarTrail";
 import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
-import { CaptureFAB } from "@/components/sisi/journey-v2/CaptureFAB";
+// CaptureFAB superseded by the quiet camera disc in JourneyHeader; kept on disk.
+import { DailyPractice } from "@/components/sisi/journey-v2/DailyPractice";
+import { SpendTimeCTA } from "@/components/sisi/journey-v2/SpendTimeCTA";
+import { SatchelDrawer } from "@/components/sisi/journey-v2/SatchelDrawer";
+import { MomentCapture } from "@/components/sisi/journey-v2/MomentCapture";
+import { CreateStarFlow } from "@/components/sisi/journey-v2/CreateStarFlow";
+import { EveningReflection, eveningDue } from "@/components/sisi/journey-v2/EveningReflection";
+import { earnLight } from "@/lib/littleLights";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
@@ -217,6 +224,22 @@ export default function JourneyPage() {
   const pathStars = walkingStars(allStars);
   const featuredStar: Star | null = pathStars[0] ?? null;
   const [chatOpen, setChatOpen] = useState(false);
+  // "Spend time with your Star" — the one daily practice panel.
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  // Travel satchel — optional customization drawer.
+  const [satchelOpen, setSatchelOpen] = useState(false);
+  // Camera → keep a Moment or Sign.
+  const [momentOpen, setMomentOpen] = useState(false);
+  // Create a Star (+ Vision Postcard).
+  const [createOpen, setCreateOpen] = useState(false);
+  // Evening: SiSi pauses beneath the Star once, gently.
+  const [eveningOpen, setEveningOpen] = useState(false);
+  /** Any focused panel over the meadow (hides tools + tabs, pauses SiSi). */
+  const panelOpen = practiceOpen || satchelOpen || momentOpen || eveningOpen || createOpen;
+  // Meadow star tapped → view the Current Star once we arrive above.
+  const [viewCurrentOnArrival, setViewCurrentOnArrival] = useState(false);
+  // Little Light note shown in the meadow (e.g. after a meaningful talk).
+  const [meadowToast, setMeadowToast] = useState<string | null>(null);
   // Stars load async; until then (or if none exist) show a waiting star.
   const [starsLoaded, setStarsLoaded] = useState(false);
   const skyStar: Star | null = featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
@@ -270,12 +293,32 @@ export default function JourneyPage() {
     backToWalking();
   };
 
+  // Arrived above after tapping the meadow star → show that star's summary.
+  useEffect(() => {
+    if (!viewCurrentOnArrival || !isStarView || busy) return;
+    setViewCurrentOnArrival(false);
+    const first = worldStars[0];
+    const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
+    if (first && stage) {
+      setOpenStar({ star: first, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
+    }
+  }, [viewCurrentOnArrival, isStarView, busy]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Safe-area tint follows the environment actually on screen.
   usePageBg(env === "night" ? "#03070a" : "#4384e3");
 
   // The world walks only in the meadow, with no sheet open and no camera
   // move in progress (after a return, walking resumes once we've landed).
-  const worldPaused = !isWalking || chatOpen || busy;
+  const worldPaused = !isWalking || chatOpen || practiceOpen || momentOpen || eveningOpen || busy;
+
+  // Offer the evening reflection once, a little after arriving at night.
+  useEffect(() => {
+    if (!featuredStar || !eveningDue()) return;
+    const t = setTimeout(() => {
+      if (eveningDue()) setEveningOpen(true);
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [featuredStar]);
 
   // Drive the shared world clock: ease in (0 → 32px/s over 1.2s); when the
   // camera is about to look up, decelerate over 450ms.
@@ -379,7 +422,11 @@ export default function JourneyPage() {
               star={skyStar}
               selected={isStarView}
               disabled={busy || !isWalking}
-              onTap={goToStars}
+              onTap={() => {
+                if (busy || !isWalking) return;
+                setViewCurrentOnArrival(true);
+                goToStars();
+              }}
             />
           )}
         </div>
@@ -488,22 +535,24 @@ export default function JourneyPage() {
       <UILayer>
         {/* Meadow UI (header + camera) — stays mounted; fades out over
             300ms (0.5–0.8s into the ascent), back in after the return lands. */}
-        <div className={`journey-walk-ui${isWalking && !busy ? "" : " is-hidden"}`}>
+        <div className={`journey-walk-ui${isWalking && !busy && !panelOpen ? "" : " is-hidden"}`}>
           <JourneyHeader
             dateStr={dateStr}
             greeting={greeting}
             name={name}
             isDark={false}
             hasNudge={hasNudge}
-            onBellClick={() => setNudgeOpen(true)}
             onMenuClick={() => setMenuOpen(true)}
+            onCameraClick={() => setMomentOpen(true)}
+            onSatchelClick={() => !busy && setSatchelOpen(true)}
           />
-          <CaptureFAB onClick={() => setPostcardSheetOpen(true)} />
+          {/* The one primary action on the home screen. */}
+          <SpendTimeCTA onClick={() => !busy && setPracticeOpen(true)} />
         </div>
 
         {/* Tabs — in both worlds; hidden while the camera travels.
             Meadow: Stars ascends. Star World: Journey descends. */}
-        <div className={`journey-walk-ui${busy ? " is-hidden" : ""}`}>
+        <div className={`journey-walk-ui${busy || panelOpen ? " is-hidden" : ""}`}>
           <BottomNavV2
             // Cream stones in both worlds — the dark variant disappeared
             // against the cloud bank at the bottom of the Star World.
@@ -525,15 +574,53 @@ export default function JourneyPage() {
               onClose={() => setOpenStar(null)}
               onRest={letStarRest}
               onEdited={starEdited}
+              onCreateStar={() => setCreateOpen(true)}
             />
           )}
         </AnimatePresence>
 
-        <PaperToast message={isStarView ? toast : null} />
+        <PaperToast message={isStarView ? toast : meadowToast} />
+
+        <DailyPractice
+          open={practiceOpen && isWalking}
+          star={featuredStar}
+          placeholder={isPlaceholderStar}
+          onClose={() => setPracticeOpen(false)}
+          onTalk={() => setChatOpen(true)}
+          onCreateStar={() => setCreateOpen(true)}
+        />
+
+        <CreateStarFlow
+          open={createOpen}
+          existing={allStars}
+          onClose={() => setCreateOpen(false)}
+          onCreated={(s) => {
+            setAllStars((list) => [s, ...list.filter((x) => x.id !== s.id)]);
+            setCreateOpen(false);
+          }}
+        />
+
+        <SatchelDrawer open={satchelOpen && isWalking} onClose={() => setSatchelOpen(false)} />
+        <MomentCapture open={momentOpen && isWalking} star={featuredStar} onClose={() => setMomentOpen(false)} />
+        <EveningReflection
+          open={eveningOpen && isWalking && !chatOpen && !practiceOpen && !satchelOpen && !momentOpen}
+          star={featuredStar}
+          onClose={() => setEveningOpen(false)}
+        />
       </UILayer>
 
       {/* Companion conversation — cat tap opens this. World pauses beneath. */}
-      <CompanionSheet open={chatOpen} onClose={() => setChatOpen(false)} />
+      <CompanionSheet
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        star={featuredStar}
+        onMeaningful={async () => {
+          if (await earnLight("talk", featuredStar?.id)) {
+            setMeadowToast("A Little Light found you. ✦ +1");
+            setTimeout(() => setMeadowToast(null), 3200);
+          }
+        }}
+      />
 
       {/* Contextual overlays — sheets, cards */}
       <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />

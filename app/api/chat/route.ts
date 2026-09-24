@@ -156,7 +156,23 @@ export async function POST(request: NextRequest) {
       user = null;
     }
 
-    const { messages, sessionId } = await request.json();
+    const { messages, sessionId, currentStar } = await request.json();
+
+    // Journey companion mode — the conversation panel inside Journey.
+    const journeyContext =
+      typeof currentStar === "string" && currentStar.trim()
+        ? `
+
+─── JOURNEY COMPANION MODE ───
+You are walking beside the user on their Journey toward their Current Star: "${currentStar.trim().slice(0, 200)}".
+- Reply in ONE to THREE short sentences.
+- Remember the Current Star; refer to it naturally when it helps, never forcefully.
+- Ask at most ONE question.
+- Be supportive, not instructional. No lists, no steps, no lectures.
+- No generic motivational phrases ("you've got this", "believe in yourself", "the universe is conspiring").
+- Never promise that the wish will come true, and never imply thinking alone makes it happen.
+- When it feels natural, gently connect the reflection to ONE small, realistic next step the user could take.`
+        : "";
 
     // 로그인한 유저면 stars(소원) context 붙이기
     let starsContext = "";
@@ -194,7 +210,7 @@ export async function POST(request: NextRequest) {
     const stream = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 400,
-      system: SISI_SYSTEM_PROMPT + starsContext,
+      system: SISI_SYSTEM_PROMPT + starsContext + journeyContext,
       messages: messages.map((m: { role: string; content: string }) => ({
         role: m.role as "user" | "assistant",
         content: m.content,

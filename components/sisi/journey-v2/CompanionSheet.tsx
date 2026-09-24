@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChatBubble } from "@/components/sisi/ChatBubble";
+import type { Star } from "@/lib/myStars";
+import { addSign } from "@/lib/myStars";
+import { tornEdge } from "@/lib/tornEdge";
+
+const PAPER_EDGE = tornEdge(51, 30, 0.9);
 
 /**
  * CompanionSheet — the small conversation with Sísí.
@@ -24,20 +28,33 @@ type Msg = { id: string; from: "sisi" | "user"; text: string };
 type Props = {
   open: boolean;
   onClose: () => void;
+  /**
+   * Fired once per open when the talk becomes meaningful (the user has
+   * shared at least two real messages). Used to grant one Little Light —
+   * never per message.
+   */
+  onMeaningful?: () => void;
+  /** The Current Star — SiSi remembers it in the conversation. */
+  star?: Star | null;
 };
 
 const OPENING = "What's on your mind?";
 
-function fmtTime(): string {
-  const d = new Date();
-  const h = d.getHours();
-  const m = d.getMinutes().toString().padStart(2, "0");
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hh = h % 12 || 12;
-  return `${hh}:${m} ${ampm}`;
-}
-
-export function CompanionSheet({ open, onClose }: Props) {
+export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Props) {
+  const [savedAs, setSavedAs] = useState<null | "star" | "moment">(null);
+  useEffect(() => {
+    if (open) setSavedAs(null);
+  }, [open]);
+  const sharedChars = useRef(0);
+  const sharedCount = useRef(0);
+  const meaningfulSent = useRef(false);
+  useEffect(() => {
+    if (open) {
+      sharedChars.current = 0;
+      sharedCount.current = 0;
+      meaningfulSent.current = false;
+    }
+  }, [open]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -70,6 +87,12 @@ export function CompanionSheet({ open, onClose }: Props) {
     if (!text || sending) return;
     const userMsg: Msg = { id: `u-${Date.now()}`, from: "user", text };
     setMessages((m) => [...m, userMsg]);
+    sharedCount.current += 1;
+    sharedChars.current += text.length;
+    if (!meaningfulSent.current && sharedCount.current >= 2 && sharedChars.current >= 40) {
+      meaningfulSent.current = true;
+      onMeaningful?.();
+    }
     setDraft("");
     setSending(true);
     // Placeholder Sísí bubble while streaming
@@ -84,20 +107,33 @@ export function CompanionSheet({ open, onClose }: Props) {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, currentStar: star?.wish ?? null }),
       });
       if (!resp.ok || !resp.body) throw new Error("chat failed");
 
+      // The route streams Server-Sent Events: `data: {"text": "..."}` lines.
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let acc = "";
+      let buffer = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setMessages((m) =>
-          m.map((x) => (x.id === sisiId ? { ...x, text: acc } : x)),
-        );
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") continue;
+          try {
+            acc += JSON.parse(payload).text ?? "";
+          } catch {
+            // ignore partial lines
+          }
+        }
+        const shown = acc.replace(/\[SAVE:[a-z]+\]/g, "").trim();
+        setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: shown } : x)));
       }
     } catch {
       setMessages((m) =>
@@ -131,13 +167,17 @@ export function CompanionSheet({ open, onClose }: Props) {
           {/* Sheet — slides up */}
           <motion.aside
             role="dialog"
-            aria-label="Talk with Sísí"
+            aria-label="Talk with SiSi"
             className="companion-sheet"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* SiSi stops and rests against the top edge of the paper. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="sisi-rest" src="/V2/fox-walk/fox-walk-preview.png" alt="" aria-hidden />
+            <div className="paper paper-bg" aria-hidden />
             {/* Drag handle */}
             <div className="handle" />
 
@@ -160,15 +200,46 @@ export function CompanionSheet({ open, onClose }: Props) {
             {/* Messages */}
             <div className="scroll" ref={scrollRef}>
               {messages.map((m, i) => (
-                <div key={m.id} className={`row row-${m.from}`}>
-                  <ChatBubble
-                    from={m.from}
-                    text={m.text || (sending && i === messages.length - 1 ? "…" : "")}
-                    time={i === messages.length - 1 ? fmtTime() : undefined}
-                  />
-                </div>
+                <p key={m.id} className={`line line-${m.from}`}>
+                  {m.text || (sending && i === messages.length - 1 ? "…" : "")}
+                </p>
               ))}
             </div>
+
+            {/* Keep what mattered: to the Star's timeline, or as a Moment. */}
+            {star && lastUserText(messages) && (
+              <div className="keep-row">
+                {savedAs ? (
+                  <span className="keep-done">
+                    {savedAs === "star" ? "Added to this Star." : "Saved as a Moment."}
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="keep-btn"
+                      onClick={async () => {
+                        await addSign(star.id, lastUserText(messages)!);
+                        setSavedAs("star");
+                      }}
+                    >
+                      Add to this Star
+                    </button>
+                    <span className="keep-dot" aria-hidden>·</span>
+                    <button
+                      type="button"
+                      className="keep-btn"
+                      onClick={async () => {
+                        await addSign(star.id, lastUserText(messages)!, "chat");
+                        setSavedAs("moment");
+                      }}
+                    >
+                      Save as a Moment
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Input pill */}
             <form
@@ -183,7 +254,7 @@ export function CompanionSheet({ open, onClose }: Props) {
                 type="text"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Share anything..."
+                placeholder="Tell SiSi…"
                 disabled={sending}
                 className="input"
               />
@@ -206,9 +277,7 @@ export function CompanionSheet({ open, onClose }: Props) {
             :global(.companion-backdrop) {
               position: fixed;
               inset: 0;
-              background: rgba(28, 35, 64, 0.28);
-              backdrop-filter: blur(1px);
-              -webkit-backdrop-filter: blur(1px);
+              background: rgba(28, 35, 64, 0.14);
               z-index: 30;
               border: 0;
               padding: 0;
@@ -218,15 +287,75 @@ export function CompanionSheet({ open, onClose }: Props) {
               left: 0;
               right: 0;
               bottom: 0;
-              height: 58dvh;
-              max-height: 620px;
-              border-top-left-radius: 24px;
-              border-top-right-radius: 24px;
-              background: #f7f2e3;
-              box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.18);
+              height: 56dvh;
+              max-height: 600px;
+              background: transparent;
+              filter: drop-shadow(0 -8px 22px rgba(0, 0, 0, 0.22));
               z-index: 31;
               display: flex;
               flex-direction: column;
+            }
+            /* Warm-ivory torn paper behind the conversation. */
+            .paper {
+              position: absolute;
+              inset: 0;
+              z-index: 1;
+              clip-path: ${PAPER_EDGE};
+            }
+            /* SiSi rests against the paper's top edge (lower half tucked
+               behind the paper). */
+            .sisi-rest {
+              position: absolute;
+              top: -64px;
+              left: 22px;
+              width: 104px;
+              height: auto;
+              z-index: 0;
+              pointer-events: none;
+              user-select: none;
+            }
+            .handle, .header, .scroll, .keep-row, .input-row { position: relative; z-index: 2; }
+            .line {
+              margin: 0;
+              max-width: 88%;
+              line-height: 1.45;
+            }
+            .line-sisi {
+              align-self: flex-start;
+              font-family: var(--font-fraunces), Georgia, serif;
+              font-size: 17px;
+              color: #2b2f45;
+            }
+            .line-user {
+              align-self: flex-end;
+              text-align: right;
+              font-family: var(--font-eb-garamond), Georgia, serif;
+              font-style: italic;
+              font-size: 16px;
+              color: rgba(43, 47, 69, 0.7);
+            }
+            .keep-row {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              gap: 8px;
+              padding: 0 var(--stage-padding) 6px;
+            }
+            .keep-btn {
+              border: 0;
+              background: transparent;
+              font-family: var(--font-eb-garamond), Georgia, serif;
+              font-size: 14px;
+              color: #3d74d8;
+              cursor: pointer;
+              padding: 4px 2px;
+            }
+            .keep-dot { color: rgba(43, 47, 69, 0.35); }
+            .keep-done {
+              font-family: var(--font-eb-garamond), Georgia, serif;
+              font-style: italic;
+              font-size: 14px;
+              color: rgba(43, 47, 69, 0.6);
             }
 
               .handle {
@@ -273,7 +402,7 @@ export function CompanionSheet({ open, onClose }: Props) {
                 align-items: center;
                 gap: 8px;
                 padding: 10px var(--stage-padding) calc(var(--safe-bottom) + 14px);
-                background: rgba(247, 242, 227, 0.95);
+                background: transparent;
                 border-top: 1px solid rgba(31, 42, 68, 0.08);
               }
               .input {
@@ -312,4 +441,11 @@ export function CompanionSheet({ open, onClose }: Props) {
       )}
     </AnimatePresence>
   );
+}
+
+function lastUserText(messages: { from: string; text: string }[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].from === "user" && messages[i].text.trim()) return messages[i].text.trim();
+  }
+  return null;
 }

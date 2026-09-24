@@ -395,7 +395,12 @@ export async function loadSignsForStar(starId: string): Promise<Sign[]> {
     );
 }
 
-export async function addSign(starId: string, text: string): Promise<Sign> {
+export async function addSign(
+  starId: string,
+  text: string,
+  /** Where it came from — "chat" marks a Moment saved from a talk with SiSi. */
+  source: "manual" | "chat" | "postcard" = "manual",
+): Promise<Sign> {
   const sign: Sign = {
     id: crypto.randomUUID(),
     starId,
@@ -412,6 +417,7 @@ export async function addSign(starId: string, text: string): Promise<Sign> {
       star_id: starId,
       user_id: user.id,
       text: sign.text,
+      source,
     });
     if (error) console.error("addSign error:", error);
     return sign;
