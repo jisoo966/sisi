@@ -100,8 +100,8 @@ const ASCENT_LAYERS = {
   // Top (starry) part of sky-star.webp — its low-res painted clouds are left
   // out; the soft front cloud bank frames the bottom instead.
   nightSky: "/V2/ascent/night-sky-top.webp",
-  frontClouds: "/V2/ascent/cloud-bank-front.png",
-  rearClouds: "/V2/ascent/cloud-bank-rear.png",
+  frontClouds: "/V2/ascent/cloud-bank-front-v3.png", // versioned name: never served from an old cache
+  rearClouds: "/V2/ascent/cloud-bank-rear-v3.png",
 };
 
 /** Single clouds cut (pixels untouched) from slow-clouds.png. */
