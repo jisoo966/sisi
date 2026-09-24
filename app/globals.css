@@ -200,10 +200,11 @@
   display: block;
   user-select: none;
 }
-/* Rear bank: rests just above the screen; ends framing the bottom ~30%. */
-.jw-cloud-bank--rear { top: -112%; height: 110%; }
-/* Front bank: its dense core covers the whole screen around c ≈ 1.4. */
-.jw-cloud-bank--front { top: -234%; height: 250%; }
+/* Rear bank: rests just above the screen; ends framing the bottom ~20%. */
+.jw-cloud-bank--rear { top: -124.9%; height: 110%; }
+/* Front bank: its dense core (28–90% of the image) covers the whole screen
+ * for c ≈ 0.85–1.49, then leaves only a few wisps at the very bottom. */
+.jw-cloud-bank--front { top: -261.15%; height: 280%; }
 
 /* Journey UI (header, camera, nav): fades out over 300ms, 0.5s after the
  * tap; fades back in after the return has landed. */

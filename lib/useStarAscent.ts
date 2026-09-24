@@ -18,7 +18,7 @@ import { useEffect, useRef, useState } from "react";
  *   rear clouds                 0.70×
  *   front clouds                1.25×   (cover ~99% of the screen mid-way)
  *
- * While the clouds cover the screen (c ≈ 1.37–1.43) the environment
+ * While the clouds fully cover the screen (c ≈ 0.85–1.49) the environment
  * underneath switches from day to Star mode, hidden from view.
  *
  * Timeline (enter):
@@ -39,9 +39,12 @@ import { useEffect, useRef, useState } from "react";
  */
 
 /** Camera height at rest in the star world (screen heights). */
-const C_END = 2.45;
-/** Environment switch point — the front + rear clouds cover ≈99% here. */
-const C_SWITCH = 1.4;
+const C_END = 2.67;
+/**
+ * Environment switch point — the middle of the full-cover window: the front
+ * cloud bank covers 100% of the screen for c ≈ 0.85–1.49 (≈2.8–3.35s).
+ */
+const C_SWITCH = 1.17;
 const SWITCH_BAND = 0.03;
 
 const RATE = {
