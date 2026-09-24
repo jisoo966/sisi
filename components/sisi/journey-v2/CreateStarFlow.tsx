@@ -6,6 +6,7 @@ import type { Star } from "@/lib/myStars";
 import { addSign, createStar, saveStar } from "@/lib/myStars";
 import { savePostcard } from "@/lib/postcards";
 import { tornEdge } from "@/lib/tornEdge";
+import { linkMoment } from "@/lib/momentLinks";
 
 /**
  * CreateStarFlow — brief, two steps, on torn paper over the world.
@@ -98,10 +99,11 @@ export function CreateStarFlow({
     const words = [see.trim(), feel.trim()].filter(Boolean).join(" ");
     setBusy(true);
     try {
+      const sign = words ? await addSign(star.id, words) : null;
       if (image) {
-        await savePostcard({ text: words || star.wish, imageDataURL: image.dataURL, width: image.width, height: image.height });
+        const card = await savePostcard({ text: words || star.wish, imageDataURL: image.dataURL, width: image.width, height: image.height });
+        linkMoment(card.id, star.id, sign?.id);
       }
-      if (words) await addSign(star.id, words);
     } catch {
       // the Star itself is saved; the postcard can be added again later
     }

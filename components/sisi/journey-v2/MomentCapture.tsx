@@ -6,6 +6,7 @@ import type { Star } from "@/lib/myStars";
 import { addSign } from "@/lib/myStars";
 import { savePostcard } from "@/lib/postcards";
 import { tornEdge } from "@/lib/tornEdge";
+import { linkMoment } from "@/lib/momentLinks";
 
 /**
  * MomentCapture — the camera tool. Not general photography: it keeps a
@@ -69,10 +70,11 @@ export function MomentCapture({
     setSaving(true);
     setError("");
     try {
-      if (photo) {
-        await savePostcard({ text: note, imageDataURL: photo.dataURL, width: photo.width, height: photo.height, takenAt: new Date().toISOString() });
-      }
-      if (star) await addSign(star.id, note);
+      const card = photo
+        ? await savePostcard({ text: note, imageDataURL: photo.dataURL, width: photo.width, height: photo.height, takenAt: new Date().toISOString() })
+        : null;
+      const sign = star ? await addSign(star.id, note) : null;
+      if (card && star) linkMoment(card.id, star.id, sign?.id);
       setStep("saved");
       setTimeout(onClose, 1400);
     } catch {

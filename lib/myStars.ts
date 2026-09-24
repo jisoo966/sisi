@@ -432,6 +432,19 @@ export async function addSign(
   return sign;
 }
 
+/** Edit the words of a sign / moment. */
+export async function updateSign(id: string, text: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (user) {
+    const supabase = createClient();
+    const { error } = await supabase.from("signs").update({ text: text.trim() }).eq("id", id).eq("user_id", user.id);
+    if (error) console.error("updateSign error:", error);
+    return;
+  }
+  const signs = await loadSigns();
+  localStorage.setItem(SIGNS_KEY, JSON.stringify(signs.map((s) => (s.id === id ? { ...s, text: text.trim() } : s))));
+}
+
 // ─── Sky position generator ───────────────
 
 /**

@@ -207,6 +207,19 @@ export async function savePostcard(input: {
   return postcard;
 }
 
+/** Edit a postcard's words (the image stays as it was). */
+export async function updatePostcardText(id: string, text: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (user) {
+    const supabase = createClient();
+    const { error } = await supabase.from("postcards").update({ text }).eq("id", id).eq("user_id", user.id);
+    if (error) console.error("updatePostcardText error:", error);
+    return;
+  }
+  const list: Postcard[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.map((p) => (p.id === id ? { ...p, text } : p))));
+}
+
 /** Postcard 삭제 (Storage 파일도 함께 정리). */
 export async function deletePostcard(id: string): Promise<void> {
   const user = await getCurrentUser();

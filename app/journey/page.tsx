@@ -296,11 +296,14 @@ export default function JourneyPage() {
 
   // Deep links: /journey?to=stars (Stars tab from another page) ascends;
   // /journey?create=1 (after onboarding) opens Create Star.
+  // /journey?to=stars&star=ID (from a Moment) also opens that Star on arrival.
   const deepLink = useRef<"stars" | "create" | "none" | null>(null);
+  const [arriveStarId, setArriveStarId] = useState<string | null>(null);
   useEffect(() => {
     if (deepLink.current === null) {
       const q = new URLSearchParams(window.location.search);
       deepLink.current = q.get("to") === "stars" ? "stars" : q.has("create") ? "create" : "none";
+      if (deepLink.current === "stars" && q.get("star")) setArriveStarId(q.get("star"));
       if (deepLink.current !== "none") window.history.replaceState(null, "", "/journey");
     }
     if (deepLink.current === "none") return;
@@ -322,6 +325,19 @@ export default function JourneyPage() {
       setOpenStar({ star: first, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
     }
   }, [viewCurrentOnArrival, isStarView, busy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Arrived above from a Moment → open the Star it belongs to.
+  useEffect(() => {
+    if (!arriveStarId || !isStarView || busy) return;
+    const star = worldStars.find((s) => s.id === arriveStarId);
+    if (!star && worldStars.length === 0) return; // stars still loading
+    setArriveStarId(null);
+    const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
+    const target = star ?? worldStars[0];
+    if (target && stage) {
+      setOpenStar({ star: target, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
+    }
+  }, [arriveStarId, isStarView, busy, worldStars]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Safe-area tint follows the environment actually on screen.
   usePageBg(env === "night" ? "#03070a" : "#4384e3");
