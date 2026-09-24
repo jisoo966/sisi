@@ -421,3 +421,12 @@ textarea:focus-visible {
 .journey-stage-v2.jl-handoff .jw-day > :not(.journey-sky-fixed) {
   transition: opacity 460ms ease 60ms !important;
 }
+
+/* ── Time of day: grass and ground follow the sky, gently ──
+   (--tod-b / --tod-s are set by lib/timeOfDay; Sísí and the ivory UI are
+   never graded) */
+.tod-grade {
+  filter: brightness(var(--tod-b, 1)) saturate(var(--tod-s, 1));
+  transition: filter 3s ease;
+}
+.jw-hills .parallax-layer { transition: filter 3s ease; }

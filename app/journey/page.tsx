@@ -11,8 +11,12 @@ import {
   UILayer,
 } from "@/components/sisi/journey-v2/JourneyStage";
 import { ParallaxLayer } from "@/components/sisi/journey-v2/ParallaxLayer";
-import { ForegroundOccluder } from "@/components/sisi/journey-v2/ForegroundOccluder";
-import { ForegroundClusters } from "@/components/sisi/journey-v2/ForegroundClusters";
+// ForegroundOccluder / ForegroundClusters (earlier time-based spawners) stay
+// on disk; the world now uses the distance-based PassingSprites.
+import { PassingSprites } from "@/components/sisi/journey-v2/PassingSprites";
+import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
+import { FAR_TREES, FRONT_TREES, GRASS, TOD_GRADE } from "@/lib/worldArt";
+import { useTimeOfDay } from "@/lib/timeOfDay";
 import { CloudDrift } from "@/components/sisi/journey-v2/CloudDrift";
 import { LAYER_SPEED, worldClock } from "@/lib/worldMotion";
 // LEGACY — kept on disk for future use / recoverability:
@@ -111,31 +115,6 @@ const CLOUDS = [1, 2, 3, 4, 5, 6].map((n) => ({
   src: `/V2/parallax/clouds/cloud-${n}.png`,
 }));
 
-/**
- * Foreground grass clumps cut (pixels untouched) from
- * journey-foreground-grass.png. `tall` clumps are the rare ones allowed to
- * reach the companion's lower body; the rest only cover the paws.
- */
-const FOREGROUND_GRASS_CLUSTERS = [
-  { src: "/V2/parallax/foreground-grass/cluster-1.png" },
-  { src: "/V2/parallax/foreground-grass/cluster-2.png" },
-  { src: "/V2/parallax/foreground-grass/cluster-3.png", tall: true },
-  { src: "/V2/parallax/foreground-grass/cluster-4.png" },
-  { src: "/V2/parallax/foreground-grass/cluster-5.png", tall: true },
-  { src: "/V2/parallax/foreground-grass/cluster-6.png" },
-];
-
-/**
- * Trees — each tree has exactly ONE depth role (never the companion's plane):
- *   midground (behind, small, faint)  → tree-2, tree-4
- *   foreground (in front, big, dark) → tree-1
- * tree-3-night.png is reserved for the celestial / night phase.
- */
-const MIDGROUND_TREE_SOURCES = [
-  "/V2/parallax/trees/tree-2.png",
-  "/V2/parallax/trees/tree-4.png",
-];
-const FOREGROUND_TREE_SOURCES = ["/V2/parallax/trees/tree-1.png"];
 
 /**
  * Walking path (journey-walking-path.png, 2048×768, transparent).
@@ -155,14 +134,6 @@ const PATH_BOTTOM = "calc(var(--walking-baseline) - 18.67%)";
  */
 const GROUND_BOTTOM = "calc(var(--walking-baseline) - 1% - 26.95%)";
 
-/**
- * Foreground tree placement: tree-1's canopy spans the top ~75% of the
- * image and its trunk the bottom ~22%. At 66% stage height with its base at
- * 22%, the companion's body lines up with the TRUNK, so a passing tree
- * covers only ~10–25% of the companion, briefly.
- */
-const FG_TREE_HEIGHT_PCT = 0.66;
-const FG_TREE_BASE = "22%";
 
 /** Shown in the sky when the user has not made a wish yet. */
 const PLACEHOLDER_STAR: Star = {
@@ -177,10 +148,10 @@ const PLACEHOLDER_STAR: Star = {
 
 /** 시간대별 인사 */
 function getGreeting(): string {
+  // fallback only — lib/timeOfDay drives the live greeting
   const h = new Date().getHours();
-  if (h < 5) return "Good night";
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
+  if (h >= 5 && h < 12) return "Good morning";
+  if (h >= 12 && h < 17) return "Good afternoon";
   return "Good evening";
 }
 
@@ -214,6 +185,8 @@ export default function JourneyPage() {
   const { isWalking, isStarView, enterStarView, backToWalking, stageClass } =
     useJourneyPhase();
   const router = useRouter();
+  // Morning / afternoon / evening — sky, grass grade and greeting.
+  const tod = useTimeOfDay();
 
   // ── Journey ⇄ Moments (one world across two pages) ──
   // Arriving from Moments: start on the exact meadow frame Moments left, with
@@ -527,14 +500,9 @@ export default function JourneyPage() {
         {/* 1. Distant sky (day) — sky texture, small clouds, Current Star.
             Horizontally static; 0.15× during the ascent. */}
         <div className="jw-group jw-day">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={PARALLAX_LAYERS.skyFixed}
-            alt=""
-            aria-hidden
-            draggable={false}
-            className="journey-sky-fixed"
-          />
+          {/* Sky follows the local time (morning / afternoon / evening),
+              crossfading slowly; fixed, no horizontal movement. */}
+          <TimeOfDaySky tod={tod} />
           <CloudDrift clouds={CLOUDS} zIndex={1} />
           {skyStar && (
             <SkyStarV2
@@ -559,18 +527,18 @@ export default function JourneyPage() {
         {/* 2. Distant hills — far silhouettes (7px/s) + midground vegetation
             (13.5px/s). 0.35× during the ascent. */}
         <div className="jw-group jw-hills">
-          <ForegroundOccluder
-            sources={MIDGROUND_TREE_SOURCES}
-            speedMin={LAYER_SPEED.farVegetation - 0.6}
-            speedMax={LAYER_SPEED.farVegetation + 0.6}
-            intervalMin={14}
-            intervalMax={30}
-            initialDelay={4}
-            heightPct={0.22}
-            groundBase="calc(var(--walking-baseline) + 2%)"
-            opacity={0.62}
-            filter="saturate(0.7) brightness(1.2) contrast(0.8)"
+          {/* Far trees — 0.12–0.18×, faint, one every 2–4 widths of walking */}
+          <PassingSprites
+            art={FAR_TREES}
+            ratio={[0.12, 0.18]}
+            every={[2, 4]}
+            first={[0.8, 1.6]}
+            startInView
+            height={[0.13, 0.19]}
+            base={[0.5, 2.5]}
+            opacity={[0.35, 0.55]}
             zIndex={1}
+            className="passing-trees"
           />
           <ParallaxLayer
             src={PARALLAX_LAYERS.midgroundVegetation}
@@ -580,7 +548,7 @@ export default function JourneyPage() {
             heightPct={0.18}
             bottom="calc(var(--walking-baseline) - 1.5%)"
             opacity={0.8}
-            filter="saturate(0.75) brightness(1.15) contrast(0.85)"
+            filter={`saturate(0.75) brightness(1.15) contrast(0.85) ${TOD_GRADE}`}
           />
         </div>
 
@@ -589,6 +557,7 @@ export default function JourneyPage() {
             through the bottom of the screen. */}
         <div className="jw-group jw-meadow">
           <ParallaxLayer
+            className="tod-grade"
             src={PARALLAX_LAYERS.walkingGround}
             speed={LAYER_SPEED.walkingGround}
             zIndex={1}
@@ -598,7 +567,7 @@ export default function JourneyPage() {
             seamOverlap={2}
           />
           <ParallaxLayer
-            className="jw-path"
+            className="jw-path tod-grade"
             src={PARALLAX_LAYERS.walkingPath}
             speed={LAYER_SPEED.walkingPath}
             zIndex={2}
@@ -621,25 +590,33 @@ export default function JourneyPage() {
         {/* 4. Foreground — grass clumps (42–48px/s) + trees (50–58px/s).
             1.15× during the ascent. */}
         <div className="jw-group jw-fore">
-          <ForegroundClusters
-            clusters={FOREGROUND_GRASS_CLUSTERS}
-            speedMin={LAYER_SPEED.foregroundGrass[0]}
-            speedMax={LAYER_SPEED.foregroundGrass[1]}
-            intervalMin={4}
-            intervalMax={9}
+          {/* Grass accents — 1.15–1.35×, over the paws, changing often */}
+          <PassingSprites
+            art={GRASS}
+            ratio={[1.15, 1.35]}
+            every={[0.5, 1.3]}
+            first={[0.3, 0.8]}
+            height={[0.075, 0.11]}
+            reach={[0.5, 3.2]}
+            max={4}
+            sway
+            filter={TOD_GRADE}
             zIndex={1}
           />
-          <ForegroundOccluder
-            sources={FOREGROUND_TREE_SOURCES}
-            speedMin={LAYER_SPEED.foregroundTree[0]}
-            speedMax={LAYER_SPEED.foregroundTree[1]}
-            intervalMin={12}
-            intervalMax={22}
-            initialDelay={9}
-            heightPct={FG_TREE_HEIGHT_PCT}
-            groundBase={FG_TREE_BASE}
-            filter="brightness(0.78) contrast(1.15)"
+          {/* Foreground trees — 1.55–1.9×, rare: one every 5–8 widths, never
+              two at once; the trunk may cross Sísí, the canopy stays clear of
+              the header and the CTA */}
+          <PassingSprites
+            art={FRONT_TREES}
+            ratio={[1.55, 1.9]}
+            every={[5, 8]}
+            first={[2.5, 4]}
+            height={[0.48, 0.55]}
+            base={[-5, -3]}
+            max={1}
+            filter={TOD_GRADE}
             zIndex={2}
+            className="passing-trees"
           />
         </div>
 
@@ -662,7 +639,7 @@ export default function JourneyPage() {
         <div className={`journey-walk-ui jl-fade${isWalking && !busy && !panelOpen ? "" : " is-hidden"}`}>
           <JourneyHeader
             dateStr={dateStr}
-            greeting={greeting}
+            greeting={tod?.greeting ?? greeting}
             name={name}
             isDark={false}
             hasNudge={hasNudge}

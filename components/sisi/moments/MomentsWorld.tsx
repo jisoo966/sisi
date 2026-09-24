@@ -7,6 +7,9 @@ import { whenLabel } from "@/lib/moments";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
 import { JOURNEY_FOX_X } from "@/lib/worldHandoff";
+import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
+import { useTimeOfDay } from "@/lib/timeOfDay";
+import { TOD_GRADE } from "@/lib/worldArt";
 
 /**
  * MomentsWorld — the horizontal Memory Trail.
@@ -54,9 +57,11 @@ type Scatter = {
   items: { src: string; x: number; top: string; w: number }[];
 };
 type Fixed = { kind: "fixed"; key: string; src: string; className: string };
+/** The shared time-of-day sky (same as the Journey's). */
+type Sky = { kind: "sky"; key: string };
 
-export const MOMENTS_SCENE: (Band | Scatter | Fixed)[] = [
-  { kind: "fixed", key: "sky", src: "/V2/parallax/journey-sky-fixed.png", className: "journey-sky-fixed" },
+export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
+  { kind: "sky", key: "sky" },
   {
     kind: "scatter",
     key: "clouds",
@@ -76,7 +81,7 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed)[] = [
     heightPct: 0.18,
     bottom: "calc(var(--walking-baseline) - 1.5%)",
     opacity: 0.8,
-    filter: "saturate(0.75) brightness(1.15) contrast(0.85)",
+    filter: `saturate(0.75) brightness(1.15) contrast(0.85) ${TOD_GRADE}`,
     seam: 1,
   },
   {
@@ -86,6 +91,7 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed)[] = [
     ratio: 1,
     heightPct: 1,
     bottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
+    filter: TOD_GRADE,
     seam: 2,
   },
 ];
@@ -139,6 +145,7 @@ export const MomentsWorld = forwardRef<
 >(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded }, ref) {
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
+  const tod = useTimeOfDay();
   const foxRef = useRef<TrailFoxHandle>(null);
   const foxRootRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
@@ -469,7 +476,9 @@ export const MomentsWorld = forwardRef<
       {/* background layers */}
       {W > 0 &&
         MOMENTS_SCENE.map((L) =>
-          L.kind === "fixed" ? (
+          L.kind === "sky" ? (
+            <TimeOfDaySky key={L.key} tod={tod} />
+          ) : L.kind === "fixed" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img key={L.key} src={L.src} alt="" aria-hidden draggable={false} className={L.className} />
           ) : L.kind === "band" ? (
@@ -596,6 +605,7 @@ export const MomentsWorld = forwardRef<
           -webkit-user-select: none;
         }
         .mw-band, .mw-scatter { position: absolute; left: 0; right: 0; pointer-events: none; overflow: visible; }
+        .mw-band { transition: filter 3s ease; }
         .mw-lane { position: absolute; left: 0; top: 0; height: 100%; display: flex; will-change: transform; }
         .mw-lane img { height: 100%; width: auto; max-width: none; flex: 0 0 auto; display: block; }
         .mw-scatter img { position: absolute; max-width: none; height: auto; }
