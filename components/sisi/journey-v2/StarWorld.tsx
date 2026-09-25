@@ -32,6 +32,8 @@ type Props = {
   onSelect: (star: Star, at: { x: number; y: number }) => void;
   /** A star that is going to rest: it drifts down off the path and fades. */
   leavingId?: string | null;
+  /** Increment to glide back to the Current Star (Stars tab tapped again). */
+  recenter?: number;
 };
 
 /** Where a focused star rests (fraction of screen height from the top). */
@@ -61,6 +63,7 @@ export function StarWorld({
   locked,
   onSelect,
   leavingId = null,
+  recenter = 0,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -183,6 +186,12 @@ export function StarWorld({
   }, [revealed, write]);
 
   useEffect(() => write(), [write]);
+  // Stars tab tapped again with the full sky in view: glide back to the
+  // Current Star (no reload, no replayed ascent).
+  useEffect(() => {
+    if (recenter > 0) settleTo(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recenter]);
   useEffect(() => () => cancelAnimationFrame(anim.current), []);
 
   // Drag (window listeners so star buttons still receive their clicks).

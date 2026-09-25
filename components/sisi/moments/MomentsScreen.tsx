@@ -200,6 +200,7 @@ export function MomentsScreen() {
           theme="light"
           activeTab={turned ? "journey" : "moments"}
           still={!!arrival}
+          dock={navIn ? "ground" : "sky"}
           onJourneySelect={() => leaveTo("/journey")}
           onStarsSelect={() => leaveTo("/journey?to=stars")}
           onMomentsSelect={() => {
@@ -221,7 +222,9 @@ export function MomentsScreen() {
         }
         .mm-header.is-out { opacity: 0; }
         .mm-nav { transition: opacity 360ms ease; }
-        .mm-nav.is-waiting { opacity: 0; pointer-events: none; }
+        /* arriving from the Stars: the dock stays faintly visible (and
+           locked) under the clouds, then clears as the ground appears */
+        .mm-nav.is-waiting { opacity: 0.25; pointer-events: none; }
         .mm-nav.is-waiting * { pointer-events: none !important; }
         .mm-header.is-out * { pointer-events: none !important; }
         .mm-title {

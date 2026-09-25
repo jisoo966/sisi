@@ -284,13 +284,67 @@ export default function JourneyPage() {
   // Journey → Stars camera move (see lib/useStarAscent.ts). `busy` locks
   // input from the tap until the arrival (or the return) has settled.
   const { busy, env, starRevealed, landing, descendToGate } = useStarAscent(isStarView);
+  const leavingRef = useRef(false);
   const goToStars = () => {
     if (busy || !isWalking) return;
     enterStarView();
   };
+
+  // ── Sky Dock (the same tabs over the Star World, quieter) ──
+  // One explicit lock for every camera move / route change: no duplicate
+  // animations, no queued navigations. It lifts once the destination settles.
+  const lockRef = useRef(false); // set synchronously on tap, before any state lands
+  const isLocked = () => busy || leavingTo !== null || leavingRef.current || lockRef.current;
+  // The tab the user chose, announced at once (drawn under the clouds).
+  const [ariaIntent, setAriaIntent] = useState<"journey" | "stars" | "moments" | null>(null);
+  useEffect(() => {
+    // the move has settled where it was headed → release the lock + intent
+    if (busy || leavingTo) return;
+    if (ariaIntent === "journey" && !isStarView) setAriaIntent(null);
+    if (ariaIntent === "stars" && isStarView) setAriaIntent(null);
+    if (!ariaIntent) lockRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, leavingTo, isStarView, ariaIntent]);
+  // A tap that could not start a move (e.g. nothing to leave from) must
+  // never leave the dock locked.
+  useEffect(() => {
+    if (!ariaIntent || busy || leavingTo) return;
+    const t = setTimeout(() => {
+      setAriaIntent(null);
+      lockRef.current = false;
+    }, 900);
+    return () => clearTimeout(t);
+  }, [ariaIntent, busy, leavingTo]);
+  // Unsaved words in an open Star card → ask before leaving (read-only
+  // content never asks).
+  const starDirty = useRef(false);
+  const okToLeaveStar = () =>
+    !starDirty.current || window.confirm("Leave without saving your changes to this Star?");
+  // Stars tab tapped again: close an open Star, or glide back to the Current Star.
+  const [recenter, setRecenter] = useState(0);
+  const reselectStars = () => {
+    if (isLocked()) return;
+    if (openStar) {
+      if (!okToLeaveStar()) return;
+      setOpenStar(null);
+    } else {
+      setRecenter((n) => n + 1);
+    }
+  };
+  // Quiet after ~1.8s without exploring; clear again on any touch / wheel /
+  // focus. Never hidden, never inert.
+  const [dockDim, setDockDim] = useState(false);
+  const dimTimer = useRef<ReturnType<typeof setTimeout>>();
+  const wakeDock = () => {
+    setDockDim(false);
+    clearTimeout(dimTimer.current);
+    dimTimer.current = setTimeout(() => {
+      if (document.activeElement?.closest?.(".journey-nav")) return; // keyboard / SR on the dock
+      setDockDim(true);
+    }, 1800);
+  };
   // Journey tab in the Star World: close any open memory card first
   // (paper slides down, line retracts), then descend.
-  const leavingRef = useRef(false);
   const backToMeadow = () => {
     if (busy || !isStarView || leavingRef.current) return;
     if (openStar) {
@@ -304,6 +358,28 @@ export default function JourneyPage() {
     }
     backToWalking();
   };
+
+  // Sky Dock dimming: runs while the Star World is settled; any touch,
+  // click or wheel (exploring Stars, reaching for the dock) clears it.
+  useEffect(() => {
+    if (env !== "night" || busy) {
+      clearTimeout(dimTimer.current);
+      setDockDim(false);
+      return;
+    }
+    wakeDock();
+    const wake = () => wakeDock();
+    window.addEventListener("pointerdown", wake, { passive: true });
+    window.addEventListener("wheel", wake, { passive: true });
+    window.addEventListener("keydown", wake);
+    return () => {
+      clearTimeout(dimTimer.current);
+      window.removeEventListener("pointerdown", wake);
+      window.removeEventListener("wheel", wake);
+      window.removeEventListener("keydown", wake);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [env, busy]);
 
   // Deep links: /journey?to=stars (Stars tab from another page) ascends;
   // /journey?create=1 (after onboarding) opens Create Star.
@@ -506,6 +582,7 @@ export default function JourneyPage() {
             locked={openStar !== null || leavingId !== null}
             onSelect={(star, at) => setOpenStar({ star, at })}
             leavingId={leavingId}
+            recenter={recenter}
           />
         </div>
 
@@ -665,16 +742,49 @@ export default function JourneyPage() {
 
         {/* Tabs — in both worlds; hidden while the camera travels.
             Meadow: Stars ascends. Star World: Journey descends. */}
-        <div className={`journey-walk-ui${busy || panelOpen ? " is-hidden" : ""}`}>
+        {/* The dock stays on screen (fixed to the bottom safe area, never on
+            the moving sky); faint and locked while the camera travels. */}
+        <div
+          className={`journey-walk-ui journey-dock${panelOpen ? " is-hidden" : ""}${
+            busy || leavingTo === "moments-down" ? " is-transit" : ""
+          }`}
+        >
           <BottomNavV2
             // Cream stones in both worlds — the dark variant disappeared
             // against the cloud bank at the bottom of the Star World.
             theme="light"
-            activeTab={leavingTo === "moments" ? "moments" : isStarView ? "stars" : "journey"}
-            ariaTab={leavingTo ? "moments" : undefined}
-            onStarsSelect={isWalking && !leavingTo ? goToStars : () => {}}
-            onJourneySelect={isStarView && !leavingTo ? backToMeadow : () => {}}
-            onMomentsSelect={goToMoments}
+            // Selection is announced at once (ariaTab) but drawn only where
+            // the world actually changes — under the Cloud Gate (env flips
+            // there), or with the turn toward Moments.
+            activeTab={leavingTo === "moments" ? "moments" : env === "night" ? "stars" : "journey"}
+            ariaTab={leavingTo ? "moments" : ariaIntent ?? (isStarView ? "stars" : "journey")}
+            dock={env === "night" ? "sky" : "ground"}
+            // faint + locked while travelling (see .journey-dock.is-transit)
+            quiet={openStar ? "detail" : dockDim ? "dim" : "clear"}
+            onWake={wakeDock}
+            onStarsSelect={() => {
+              if (isLocked()) return;
+              if (isStarView) reselectStars();
+              else if (isWalking && !busy) {
+                lockRef.current = true;
+                setAriaIntent("stars");
+                goToStars();
+              }
+            }}
+            onJourneySelect={() => {
+              if (isLocked() || !isStarView) return;
+              if (!okToLeaveStar()) return;
+              lockRef.current = true;
+              setAriaIntent("journey");
+              backToMeadow();
+            }}
+            onMomentsSelect={() => {
+              if (isLocked()) return;
+              if (isStarView && !okToLeaveStar()) return;
+              lockRef.current = true;
+              setAriaIntent("moments");
+              goToMoments();
+            }}
             still={!!arrival}
           />
         </div>
@@ -691,6 +801,9 @@ export default function JourneyPage() {
               onRest={letStarRest}
               onEdited={starEdited}
               onCreateStar={() => setCreateOpen(true)}
+              onDirty={(d) => {
+                starDirty.current = d;
+              }}
             />
           )}
         </AnimatePresence>

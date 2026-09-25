@@ -44,6 +44,9 @@ export function BottomNavV2({
   onMomentsSelect,
   still = false,
   ariaTab,
+  dock = "ground",
+  quiet = "clear",
+  onWake,
 }: {
   theme?: Theme;
   /** Override the active pill (the Journey page hosts both the meadow and
@@ -61,6 +64,14 @@ export function BottomNavV2({
   /** Selected state for assistive tech, when it changes ahead of the visual
    *  (e.g. Stars → Moments: announced at once, drawn under the clouds). */
   ariaTab?: TabKey;
+  /** "sky": the quieter Sky Dock over the Star World (same tabs, order,
+   *  targets and selection — just smaller and softer). */
+  dock?: "ground" | "sky";
+  /** Sky Dock only: "dim" after a short pause in exploring the Stars,
+   *  "detail" while a Star's paper is open. Never hidden, never inert. */
+  quiet?: "clear" | "dim" | "detail";
+  /** Keyboard / assistive focus reached the dock (restore its clarity). */
+  onWake?: () => void;
 }) {
   const pathname = usePathname();
   const isDark = theme === "dark";
@@ -70,7 +81,10 @@ export function BottomNavV2({
 
   return (
     <motion.nav
-      className={`journey-nav ${isDark ? "is-dark" : ""}`}
+      className={`journey-nav ${isDark ? "is-dark" : ""}${dock === "sky" ? " is-sky" : ""}${
+        dock === "sky" && quiet !== "clear" ? ` is-${quiet}` : ""
+      }`}
+      onFocusCapture={onWake}
       aria-label="Primary"
       initial={still ? false : { y: 24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -113,6 +127,8 @@ export function BottomNavV2({
 
       <style jsx global>{`
         .journey-nav {
+          transform-origin: 50% 100%;
+          transition: scale 320ms ease;
           position: absolute;
           left: max(var(--stage-padding), var(--safe-left));
           right: max(var(--stage-padding), var(--safe-right));
@@ -169,6 +185,20 @@ export function BottomNavV2({
             0 -1px 0 rgba(28, 35, 64, 0.08) inset,
             0 6px 14px rgba(28, 35, 64, 0.2);
         }
+        /* ── Sky Dock: the same tabs over the Star World, quieter ──
+           Only opacity + scale change (no layout shift); pointer and
+           accessibility behaviour stay exactly the same. */
+        .journey-nav.is-sky { scale: 0.94; }
+        .journey-nav.is-sky .stone-pill:not(.is-active) { opacity: 0.52; }
+        .journey-nav.is-sky.is-dim .stone-pill:not(.is-active) { opacity: 0.38; }
+        .journey-nav.is-sky.is-dim .stone-pill.is-active { opacity: 0.88; }
+        .journey-nav.is-sky.is-detail .stone-pill:not(.is-active) { opacity: 0.4; }
+        .journey-nav.is-sky.is-detail .stone-pill.is-active { opacity: 0.58; }
+        .journey-nav.is-sky .stone-pill { transition: background 0.35s ease, color 0.35s ease, opacity 0.3s ease, transform 0.15s ease; }
+        /* keyboard / screen reader on the dock → clear again */
+        .journey-nav.is-sky:focus-within .stone-pill:not(.is-active) { opacity: 0.6; }
+        .journey-nav.is-sky:focus-within .stone-pill.is-active { opacity: 1; }
+        .stone-pill:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.9); outline-offset: 3px; }
         /* Dark theme (used on My Stars celestial background) */
         .journey-nav.is-dark .stone-pill {
           background: rgba(255, 255, 255, 0.10);

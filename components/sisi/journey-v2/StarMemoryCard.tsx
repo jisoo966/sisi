@@ -43,6 +43,8 @@ type Props = {
   onEdited: (star: Star) => void;
   /** Placeholder star → open the Create Star flow. */
   onCreateStar?: () => void;
+  /** Unsaved edits in the card (so leaving can ask first). */
+  onDirty?: (dirty: boolean) => void;
 };
 
 type Mode = "summary" | "timeline";
@@ -50,11 +52,19 @@ type Overlay = null | "menu" | "confirm-rest";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited, onCreateStar }: Props) {
+export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited, onCreateStar, onDirty }: Props) {
   const [mode, setMode] = useState<Mode>("summary");
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(star.wish);
+  // Unsaved words in the wish editor — the page asks before leaving.
+  const onDirtyRef = useRef(onDirty);
+  onDirtyRef.current = onDirty;
+  const dirty = editing && draft.trim() !== star.wish.trim();
+  useEffect(() => {
+    onDirtyRef.current?.(dirty);
+  }, [dirty]);
+  useEffect(() => () => onDirtyRef.current?.(false), []);
   const [signs, setSigns] = useState<Sign[] | null>(null);
   const [practices, setPractices] = useState<{ at: string; kind: PracticeKind }[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);

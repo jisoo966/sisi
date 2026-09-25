@@ -430,3 +430,10 @@ textarea:focus-visible {
   transition: filter 3s ease;
 }
 .jw-hills .parallax-layer { transition: filter 3s ease; }
+
+/* Sky Dock while the camera travels: faint (≈25%), still on screen, and
+   locked so a second tap can't start another move. */
+.journey-dock { transition: opacity 300ms ease; }
+.journey-dock.is-transit { opacity: 0.25 !important; transition: opacity 300ms ease !important; }
+.journey-dock.is-transit,
+.journey-dock.is-transit * { pointer-events: none !important; }
