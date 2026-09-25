@@ -13,14 +13,31 @@
  */
 
 export type WorldTab = "journey" | "moments";
-export type Handoff = { to: WorldTab; ground: number; at: number };
+export type Handoff = {
+  to: WorldTab;
+  ground: number;
+  at: number;
+  /** "stars": arriving down through the Cloud Gate (not from the Journey) */
+  via?: "stars";
+  /** performance.now() at which the shared camera curve started */
+  t0?: number;
+  reduced?: boolean;
+};
 
 let pending: Handoff | null = null;
 const MAX_AGE_MS = 4000;
 
-export function handOff(to: WorldTab, ground: number) {
-  pending = { to, ground, at: Date.now() };
+export function handOff(to: WorldTab, ground: number, extra?: Pick<Handoff, "via" | "t0" | "reduced">) {
+  pending = { to, ground, at: Date.now(), ...extra };
 }
+
+/* The last Moment in view, remembered for this app session (memory only),
+   so coming back down from the Stars lands where the user left off. */
+let lastMomentKey: string | null = null;
+export const rememberMoment = (key: string | null) => {
+  lastMomentKey = key;
+};
+export const lastMoment = () => lastMomentKey;
 
 /** Read (without consuming — safe under StrictMode double renders). */
 export function readHandoff(to: WorldTab): Handoff | null {

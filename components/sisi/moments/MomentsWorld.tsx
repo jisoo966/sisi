@@ -6,7 +6,15 @@ import { buildTrail, layoutTimeline, TRAIL_ART, trailYAt } from "@/lib/momentsTi
 import { whenLabel } from "@/lib/moments";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
-import { JOURNEY_FOX_X } from "@/lib/worldHandoff";
+import { JOURNEY_FOX_X, lastMoment, rememberMoment } from "@/lib/worldHandoff";
+import {
+  gateC,
+  gateCloudOpacity,
+  GATE_HOLD_C,
+  GATE_TOTAL_MS,
+  RATE,
+  smooth as ease5,
+} from "@/lib/useStarAscent";
 import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
 import { useTimeOfDay } from "@/lib/timeOfDay";
 import { TOD_GRADE } from "@/lib/worldArt";
@@ -138,11 +146,14 @@ export const MomentsWorld = forwardRef<
     active: boolean;
     onOpen: (entry: TrailEntry, el: Element) => void;
     /** set when Journey handed over (Sísí has already turned left) */
-    arrival: { ground: number } | null;
+    arrival: { ground: number; via?: "stars"; t0?: number; reduced?: boolean } | null;
+    /** Stars → Moments: the ground has come into view (header + tabs may appear) */
+    onGround?: () => void;
     /** the Moments have loaded (until then only the world is shown) */
     loaded: boolean;
   }
->(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded }, ref) {
+>(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded, onGround }, ref) {
+  const fromStars = arrival?.via === "stars";
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const tod = useTimeOfDay();
@@ -164,7 +175,70 @@ export const MomentsWorld = forwardRef<
   const [revealing, setRevealing] = useState(false);
 
   // Camera reframe between the Journey framing (p = 0) and Moments (p = Δ).
-  const pan = useRef<number | null>(arrival ? 0 : null); // null → Δ once measured
+  const pan = useRef<number | null>(arrival && !fromStars ? 0 : null); // null → Δ once measured
+
+  // Stars → Moments: the second half of the Cloud Gate camera move. Sky,
+  // rear clouds, land and front clouds move at the same rates as the
+  // ascent; the trail is already in its Moments framing underneath.
+  const skyGroupRef = useRef<HTMLDivElement>(null);
+  const landGroupRef = useRef<HTMLDivElement>(null);
+  const rearRef = useRef<HTMLDivElement>(null);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const gate = useRef<{ t0: number; reduced: boolean; shift: number | null; start: number; grounded: boolean } | null>(
+    fromStars ? { t0: arrival?.t0 ?? 0, reduced: !!arrival?.reduced, shift: null, start: 0, grounded: false } : null,
+  );
+  const [gateDone, setGateDone] = useState(!fromStars);
+  const onGroundRef = useRef(onGround);
+  onGroundRef.current = onGround;
+  const applyGate = useCallback((now: number) => {
+    const g = gate.current;
+    if (!g) return;
+    const move = (el: HTMLElement | null, screens: number, opacity?: number) => {
+      if (!el) return;
+      el.style.transform = screens ? `translate3d(0, calc(${screens.toFixed(4)} * 100dvh), 0)` : "";
+      if (opacity !== undefined) {
+        el.style.opacity = opacity.toFixed(3);
+        el.style.visibility = opacity <= 0.001 ? "hidden" : "visible";
+      }
+    };
+    let c: number;
+    let fade = 1;
+    let finished: boolean;
+    if (g.reduced) {
+      if (!g.start) g.start = now;
+      const p = Math.min(1, (now - g.start) / 200);
+      c = 0;
+      fade = 1 - ease5(p);
+      move(rearRef.current, RATE.rear * 1.0, fade);
+      move(frontRef.current, RATE.front * 1.0, fade);
+      finished = p >= 1;
+    } else {
+      // Continue the shared curve from the moment the Journey handed over;
+      // if the page took long to arrive, resume inside the clouds instead
+      // of skipping ahead (never reveal ground the user did not see coming).
+      if (g.shift === null) {
+        let tHold = 0;
+        while (tHold < GATE_TOTAL_MS && gateC(tHold) > GATE_HOLD_C) tHold += 5;
+        g.shift = Math.max(0, now - g.t0 - tHold);
+      }
+      const t = now - g.t0 - g.shift;
+      c = gateC(t);
+      const o = gateCloudOpacity(c);
+      move(skyGroupRef.current, RATE.sky * c);
+      move(landGroupRef.current, RATE.meadow * c);
+      move(rearRef.current, RATE.rear * c, o.rear);
+      move(frontRef.current, RATE.front * c, o.front);
+      finished = t >= GATE_TOTAL_MS;
+    }
+    if (!g.grounded && c < 0.45) {
+      g.grounded = true;
+      onGroundRef.current?.();
+    }
+    if (finished) {
+      gate.current = null;
+      setGateDone(true);
+    }
+  }, []);
   const panAnim = useRef<{ from: number; to: number; t0: number; dur: number; done?: () => void } | null>(null);
   // Background offset so the meadow sits exactly where the Journey left it.
   // (At p = 0 the view is −Δ, so the handed-over ground maps to −ground + Δ.)
@@ -205,14 +279,32 @@ export const MomentsWorld = forwardRef<
 
   const ty = useCallback((x: number) => trailYAt(trail, x, baselineY + TRAIL_DROP), [trail, baselineY]);
 
-  useEffect(() => {
-    if (layout) motion.setSnaps(layout.snaps);
-  }, [layout, motion]);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+  const placedAt = useRef(false);
+  useLayoutEffect(() => {
+    if (!layout) return;
+    motion.setSnaps(layout.snaps);
+    // Back down from the Stars: land where the user last was in Moments
+    // this session (placed while hidden — never a visible scroll). A Moment
+    // that no longer exists falls back to Today.
+    if (fromStars && loaded && !placedAt.current) {
+      placedAt.current = true;
+      const key = lastMoment();
+      const i = key ? layout.placed.findIndex((p) => p.key === key) : -1;
+      if (i > 0) {
+        motion.jumpTo(layout.snaps[i]);
+        focusRef.current = i;
+        setFocus(i);
+      }
+    }
+  }, [layout, motion, fromStars, loaded]);
 
   /* focus → selected light */
   useEffect(() => {
     motion.onSettle = (i) => {
       if (i === 0) returningRef.current = false;
+      rememberMoment(layoutRef.current?.placed[i]?.key ?? null);
       focusRef.current = i;
       setFocus(i);
     };
@@ -222,6 +314,10 @@ export const MomentsWorld = forwardRef<
   }, [motion]);
 
   const focused: Placed | undefined = focus >= 0 ? layout?.placed[focus] : undefined;
+
+  useLayoutEffect(() => {
+    applyGate(performance.now());
+  }, [applyGate]);
 
   /** The background offset for the current camera (used by layers). */
   const layerCam = useRef(0);
@@ -234,6 +330,7 @@ export const MomentsWorld = forwardRef<
     layerCam.current = motion.cam + off + base.current;
     appliers.current.forEach((fn) => fn(layerCam.current));
     if (worldRef.current) worldRef.current.style.transform = `translate3d(${(motion.cam + off).toFixed(2)}px,0,0)`;
+    applyGate(performance.now());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout, delta]);
 
@@ -250,6 +347,7 @@ export const MomentsWorld = forwardRef<
       last = now;
       motion.step(dt, now);
       if (motion.mode === "drag" && now - lastMove > 60) motion.vel = 0; // finger held still
+      applyGate(now);
 
       // camera reframe
       if (pan.current === null) pan.current = delta;
@@ -318,9 +416,25 @@ export const MomentsWorld = forwardRef<
     setVeiled(false);
   }, [arrival, loaded, layout]);
 
+  /* Stars → Moments: after the landing settles, the nearest memories
+     appear with a short, restrained stagger; then input is enabled. */
+  useEffect(() => {
+    if (!fromStars || !gateDone || !loaded || !layout) return;
+    setRevealing(true);
+    const t1 = setTimeout(() => setVeiled(false), 30);
+    const t2 = setTimeout(() => {
+      setRevealing(false);
+      setPhase("ready");
+    }, 560);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [fromStars, gateDone, loaded, layout]);
+
   /* Journey → Moments: reframe, then the trail and the newest memories appear */
   useEffect(() => {
-    if (!arrival || !layout || !loaded) return;
+    if (!arrival || fromStars || !layout || !loaded) return;
     const quick = motion.reduced;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
@@ -350,6 +464,7 @@ export const MomentsWorld = forwardRef<
     ref,
     () => ({
       async leave(onTurned) {
+        rememberMoment(layoutRef.current?.placed[motion.nearestIndex()]?.key ?? null);
         setPhase("leaving");
         setShowToday(false);
         motion.brake(260);
@@ -473,19 +588,34 @@ export const MomentsWorld = forwardRef<
       onPointerCancel={onPointerCancel}
       style={layout ? ({ ["--mm-fox-x" as string]: `${layout.foxX}px` } as React.CSSProperties) : undefined}
     >
-      {/* background layers */}
+      {/* Sky group: time-of-day sky + drifting clouds (0.15× in the Cloud Gate) */}
+      <div ref={skyGroupRef} className="mw-group mw-group--sky">
+        {W > 0 &&
+          MOMENTS_SCENE.map((L) =>
+            L.kind === "sky" ? (
+              <TimeOfDaySky key={L.key} tod={tod} />
+            ) : L.kind === "fixed" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={L.key} src={L.src} alt="" aria-hidden draggable={false} className={L.className} />
+            ) : L.kind === "scatter" ? (
+              <ScatterLayer key={L.key} spec={L} W={W} register={register} />
+            ) : null,
+          )}
+      </div>
+
+      {/* Cloud Gate (arriving from the Stars): the same painted banks as the ascent */}
+      {!gateDone && (
+        <div ref={rearRef} className="mw-gate mw-gate--rear" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/V2/ascent/cloud-bank-rear-v3.png" alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--rear" />
+        </div>
+      )}
+
+      {/* Land group: meadow bands, the trail + memories, Sísí (0.75×) */}
+      <div ref={landGroupRef} className="mw-group mw-group--land">
       {W > 0 &&
         MOMENTS_SCENE.map((L) =>
-          L.kind === "sky" ? (
-            <TimeOfDaySky key={L.key} tod={tod} />
-          ) : L.kind === "fixed" ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={L.key} src={L.src} alt="" aria-hidden draggable={false} className={L.className} />
-          ) : L.kind === "band" ? (
-            <BandLayer key={L.key} spec={L} H={H} W={W} register={register} />
-          ) : (
-            <ScatterLayer key={L.key} spec={L} W={W} register={register} />
-          ),
+          L.kind === "band" ? <BandLayer key={L.key} spec={L} H={H} W={W} register={register} /> : null,
         )}
 
       {/* the world that moves with the timeline */}
@@ -509,7 +639,11 @@ export const MomentsWorld = forwardRef<
             const cardBottom = y - p.lift;
             const ly = ty(p.x + p.lightDx) - 3;
             // arrival: newest first
-            const rd = { ["--rd" as string]: `${140 + Math.min(p.index, 4) * 110}ms` } as React.CSSProperties;
+            const rd = {
+              ["--rd" as string]: fromStars
+                ? `${30 + Math.min(Math.abs(p.index - Math.max(0, focusRef.current)), 3) * 60}ms`
+                : `${140 + Math.min(p.index, 4) * 110}ms`,
+            } as React.CSSProperties;
             return (
               <div
                 key={p.key}
@@ -571,6 +705,14 @@ export const MomentsWorld = forwardRef<
       {layout && (
         <TrailFox ref={foxRef} rootRef={foxRootRef} initialOffset={(pan.current ?? delta) - delta} />
       )}
+      </div>
+
+      {!gateDone && (
+        <div ref={frontRef} className="mw-gate mw-gate--front" aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/V2/ascent/cloud-bank-front-v3.png" alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--front" />
+        </div>
+      )}
 
       {hint && entries.length > 1 && phase === "ready" && (
         <div className="mw-hint" aria-hidden>
@@ -604,6 +746,13 @@ export const MomentsWorld = forwardRef<
           user-select: none;
           -webkit-user-select: none;
         }
+        .mw-group { position: absolute; inset: 0; }
+        .mw-group--sky { z-index: 0; pointer-events: none; }
+        .mw-group--land { z-index: 2; }
+        .mw-gate { position: absolute; inset: 0; pointer-events: none; will-change: transform, opacity; }
+        .mw-gate--rear { z-index: 1; }
+        .mw-gate--front { z-index: 9; }
+        .mw-group--sky, .mw-group--land { will-change: transform; }
         .mw-band, .mw-scatter { position: absolute; left: 0; right: 0; pointer-events: none; overflow: visible; }
         .mw-band { transition: filter 3s ease; }
         .mw-lane { position: absolute; left: 0; top: 0; height: 100%; display: flex; will-change: transform; }

@@ -43,6 +43,7 @@ export function BottomNavV2({
   onJourneySelect,
   onMomentsSelect,
   still = false,
+  ariaTab,
 }: {
   theme?: Theme;
   /** Override the active pill (the Journey page hosts both the meadow and
@@ -57,6 +58,9 @@ export function BottomNavV2({
   /** Arriving from another tab: the nav was already on screen — don't
    *  replay the slide-up entrance. */
   still?: boolean;
+  /** Selected state for assistive tech, when it changes ahead of the visual
+   *  (e.g. Stars → Moments: announced at once, drawn under the clouds). */
+  ariaTab?: TabKey;
 }) {
   const pathname = usePathname();
   const isDark = theme === "dark";
@@ -81,7 +85,7 @@ export function BottomNavV2({
           <Link
             key={href}
             href={href}
-            aria-current={active ? "page" : undefined}
+            aria-current={(ariaTab ? ariaTab === key : active) ? "page" : undefined}
             className={`stone-pill stone-pill--${key} ${active ? "is-active" : ""}`}
             onPointerDown={
               handler

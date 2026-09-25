@@ -216,7 +216,9 @@ export default function JourneyPage() {
   }, [arrival]);
   // Leaving for Moments: the world eases to a stop, Sísí finishes her step,
   // turns left, and Moments takes over from that same frame.
-  const [leavingTo, setLeavingTo] = useState<"moments" | null>(null);
+  // "moments": from the meadow (turn left). "moments-down": from the Star
+  // World straight down through the Cloud Gate — the meadow is never shown.
+  const [leavingTo, setLeavingTo] = useState<"moments" | "moments-down" | null>(null);
   const [catFacing, setCatFacing] = useState<"left" | "right">("right");
   const catWalking = useRef(false);
   const pendingMoments = useRef(false);
@@ -281,7 +283,7 @@ export default function JourneyPage() {
 
   // Journey → Stars camera move (see lib/useStarAscent.ts). `busy` locks
   // input from the tap until the arrival (or the return) has settled.
-  const { busy, env, starRevealed, landing } = useStarAscent(isStarView);
+  const { busy, env, starRevealed, landing, descendToGate } = useStarAscent(isStarView);
   const goToStars = () => {
     if (busy || !isWalking) return;
     enterStarView();
@@ -373,11 +375,21 @@ export default function JourneyPage() {
   const goToMoments = () => {
     if (leavingTo) return;
     if (isStarView) {
-      // From the Star World: descend to the meadow first, then turn left.
-      if (!busy) {
-        pendingMoments.current = true;
-        backToMeadow();
-      }
+      // From the Star World: straight down through the clouds onto the
+      // Memory Trail. Close any open Star first (glow softens, thread
+      // retracts), then one continuous camera move.
+      if (busy) return;
+      setLeavingTo("moments-down");
+      const hadCard = openStar !== null;
+      setOpenStar(null);
+      setTimeout(
+        () =>
+          descendToGate((t0, reduced) => {
+            handOff("moments", worldClock().getDistance(), { via: "stars", t0, reduced });
+            router.push("/gallery");
+          }),
+        hadCard ? 220 : 0,
+      );
       return;
     }
     if (busy || !isWalking || panelOpen) return;
@@ -658,9 +670,10 @@ export default function JourneyPage() {
             // Cream stones in both worlds — the dark variant disappeared
             // against the cloud bank at the bottom of the Star World.
             theme="light"
-            activeTab={leavingTo ? "moments" : isStarView ? "stars" : "journey"}
+            activeTab={leavingTo === "moments" ? "moments" : isStarView ? "stars" : "journey"}
+            ariaTab={leavingTo ? "moments" : undefined}
             onStarsSelect={isWalking && !leavingTo ? goToStars : () => {}}
-            onJourneySelect={isStarView ? backToMeadow : () => {}}
+            onJourneySelect={isStarView && !leavingTo ? backToMeadow : () => {}}
             onMomentsSelect={goToMoments}
             still={!!arrival}
           />

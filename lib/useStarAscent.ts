@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * useStarAscent — Journey → Stars as a cinematic camera move (~4.8s).
@@ -37,7 +37,7 @@ import { useEffect, useRef, useState } from "react";
  */
 
 /** Camera height at rest in the star world (screen heights). */
-const C_END = 2.465;
+export const C_END = 2.465;
 /**
  * Environment switch point — the middle of the full-cover window: the front
  * cloud bank covers 100% of the screen for c ≈ 0.84–1.42 (≈2.8–3.3s).
@@ -52,7 +52,7 @@ const SWITCH_BAND = 0.03;
  * Depth during the ascent comes from sky vs land vs rear/front clouds.
  */
 const LAND_RATE = 0.75;
-const RATE = {
+export const RATE = {
   sky: 0.15,
   hills: LAND_RATE,
   meadow: LAND_RATE,
@@ -62,7 +62,7 @@ const RATE = {
 };
 
 /** [time ms, c, dc/dt per ms] */
-type Key = [number, number, number];
+export type Key = [number, number, number];
 const ENTER: Key[] = [
   [1100, 0, 0],
   [2400, 0.45, 0.0008], // slow initial ascent
@@ -85,7 +85,7 @@ const RETURN_TIME_SCALE = (ASCENT_MS - ENTER[0][0]) / RETURN_CAMERA_MS;
 /** When the postcard may rise in (after the arrival settles). */
 export const STAR_CARD_DELAY_S = (ASCENT_MS + SETTLE_MS) / 1000;
 
-function hermite(keys: Key[], t: number): number {
+export function hermite(keys: Key[], t: number): number {
   if (t <= keys[0][0]) return keys[0][1];
   for (let i = 1; i < keys.length; i++) {
     const [t0, v0, m0] = keys[i - 1];
@@ -105,7 +105,7 @@ function hermite(keys: Key[], t: number): number {
   }
   return keys[keys.length - 1][1];
 }
-const smooth = (x: number) => {
+export const smooth = (x: number) => {
   const s = Math.min(1, Math.max(0, x));
   return s * s * s * (s * (s * 6 - 15) + 10);
 };
@@ -142,6 +142,27 @@ function applyCamera(e: Els, c: number) {
 
 export type AscentEnv = "day" | "night";
 
+/* ── Stars → Moments through the Cloud Gate ─────────────────────────────
+   One continuous curve, shared by both pages (times from the tap + card
+   close): gentle start, faster through the clouds, soft landing.
+     0 → A      Star World → dense clouds (Journey page)
+     A → A+B    clouds → the Memory Trail (Moments page)                  */
+export const GATE_A_MS = 720;
+export const GATE_B_MS = 700;
+export const GATE_TOTAL_MS = GATE_A_MS + GATE_B_MS;
+const GATE_KEYS: Key[] = [
+  [0, C_END, 0],
+  [GATE_A_MS, 1.12, -0.0024],
+  [GATE_TOTAL_MS, 0, 0],
+];
+export const gateC = (t: number) => hermite(GATE_KEYS, Math.max(0, Math.min(GATE_TOTAL_MS, t)));
+/** Hand over once the front clouds fully cover the screen (0.84–1.42)… */
+export const GATE_HANDOFF_C = 1.36;
+/** …and never let either page show a lower camera than this while waiting. */
+export const GATE_HOLD_C = 0.9;
+/** Opacity of the cloud banks at camera height c (as in applyCamera). */
+export const gateCloudOpacity = (c: number) => ({ rear: smooth(c / 0.25), front: smooth(c / 0.2) });
+
 export function useStarAscent(isStarView: boolean) {
   const [busy, setBusy] = useState(false);
   const [env, setEnv] = useState<AscentEnv>("day");
@@ -149,6 +170,53 @@ export function useStarAscent(isStarView: boolean) {
   /** True for the short beat after landing when the fox looks at the user. */
   const [landing, setLanding] = useState(false);
   const cRef = useRef(0);
+  const gateRaf = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(gateRaf.current), []);
+
+  /**
+   * Stars → Moments: descend from the Star World straight into the dense
+   * Cloud Gate (never down to the Journey meadow). Once the clouds cover the
+   * whole screen, `onCovered(t0)` hands the camera over — Moments continues
+   * the same curve (lib/cloudGate) from that instant down onto the trail.
+   * While waiting for the next page, the camera holds inside the clouds.
+   */
+  const descendToGate = useCallback((onCovered: (t0: number, reduced: boolean) => void) => {
+    const q = (s: string) => document.querySelector<HTMLElement>(s);
+    const found = {
+      day: q(".jw-day"), hills: q(".jw-hills"), meadow: q(".jw-meadow"), fore: q(".jw-fore"),
+      night: q(".jw-night"), rear: q(".jw-clouds-rear"), front: q(".jw-clouds-front"),
+    };
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t0 = performance.now();
+    if (Object.values(found).some((v) => !v)) return onCovered(t0, true);
+    const e = found as Els;
+    setBusy(true);
+    let called = false;
+    const tick = (now: number) => {
+      const t = now - t0;
+      if (reduced) {
+        // crossfade into the dense cloud texture, no camera travel
+        ty(e.rear, RATE.rear * GATE_HOLD_C);
+        ty(e.front, RATE.front * GATE_HOLD_C);
+        show(e.rear, smooth(t / 120));
+        show(e.front, smooth(t / 120));
+        if (t >= 125 && !called) {
+          called = true;
+          onCovered(t0, true);
+        }
+      } else {
+        const c = Math.max(GATE_HOLD_C, gateC(t));
+        cRef.current = c;
+        applyCamera(e, c);
+        if (!called && c <= GATE_HANDOFF_C) {
+          called = true;
+          onCovered(t0, false);
+        }
+      }
+      gateRaf.current = requestAnimationFrame(tick);
+    };
+    gateRaf.current = requestAnimationFrame(tick);
+  }, []);
 
   useEffect(() => {
     const q = (s: string) => document.querySelector<HTMLElement>(s);
@@ -263,5 +331,5 @@ export function useStarAscent(isStarView: boolean) {
     };
   }, [isStarView]);
 
-  return { busy, env, starRevealed, landing };
+  return { busy, env, starRevealed, landing, descendToGate };
 }

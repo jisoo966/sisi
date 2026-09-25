@@ -297,6 +297,15 @@ export class TimelineMotion {
     this.mode = "travel";
   }
 
+  /** Place the timeline at once, at rest (used while hidden, e.g. under
+   *  the clouds — never a visible scroll). */
+  jumpTo(cam: number) {
+    this.travel = null;
+    this.cam = this.target = Math.max(0, Math.min(this.max, cam));
+    this.vel = 0;
+    this.mode = "rest";
+  }
+
   /** Stop wherever we are with a soft deceleration (no snapping). */
   brake(ms = 280) {
     if (this.mode === "rest") return;

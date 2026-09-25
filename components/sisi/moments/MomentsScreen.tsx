@@ -46,11 +46,15 @@ export function MomentsScreen() {
   const [leaving, setLeaving] = useState(false);
   const [turned, setTurned] = useState(false);
   const [headerIn, setHeaderIn] = useState(!arrival);
+  // From the Stars the header and tabs wait until the ground comes into view
+  // (onGround); from the Journey they follow the reframe.
+  const fromStars = arrival?.via === "stars";
+  const [navIn, setNavIn] = useState(!fromStars);
   useEffect(() => {
-    if (!arrival) return;
+    if (!arrival || fromStars) return;
     const t = setTimeout(() => setHeaderIn(true), 260);
     return () => clearTimeout(t);
-  }, [arrival]);
+  }, [arrival, fromStars]);
 
   /** Moments → Journey (or on to Stars): "I looked back for a moment. Now
    *  I'm ready to keep going." The memories settle away, Sísí turns right,
@@ -106,6 +110,10 @@ export function MomentsScreen() {
           loaded={entries !== null}
           motion={motion}
           arrival={arrival}
+          onGround={() => {
+            setHeaderIn(true);
+            setNavIn(true);
+          }}
           active={view === "trail" && !open && !openRest && !leaving}
           onOpen={openEntry}
         />
@@ -187,7 +195,7 @@ export function MomentsScreen() {
         )}
       </AnimatePresence>
 
-      <div className="journey-nav-host">
+      <div className={`journey-nav-host mm-nav${navIn ? "" : " is-waiting"}`}>
         <BottomNavV2
           theme="light"
           activeTab={turned ? "journey" : "moments"}
@@ -212,6 +220,9 @@ export function MomentsScreen() {
           transition: opacity 420ms ease;
         }
         .mm-header.is-out { opacity: 0; }
+        .mm-nav { transition: opacity 360ms ease; }
+        .mm-nav.is-waiting { opacity: 0; pointer-events: none; }
+        .mm-nav.is-waiting * { pointer-events: none !important; }
         .mm-header.is-out * { pointer-events: none !important; }
         .mm-title {
           margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-weight: 400;
