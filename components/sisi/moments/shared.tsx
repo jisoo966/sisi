@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { unrestStar, updateSign } from "@/lib/myStars";
 import { updatePostcardText } from "@/lib/postcards";
-import { whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
+import { ENTRY_LABEL, whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
 
 /**
  * Shared Moments pieces — paper artwork helpers and the "paper opens in
@@ -152,7 +152,10 @@ export function MomentDetail({
       ) : (
         <p className="mm-dtext">{item.text}</p>
       )}
-      <p className="mm-when">{whenLabel(item.at, true)}</p>
+      <p className="mm-when">
+        {item.kind ? `${ENTRY_LABEL[item.kind]} · ` : ""}
+        {whenLabel(item.at, true)}
+      </p>
       {star && (
         <>
           <div className="mm-rule" />

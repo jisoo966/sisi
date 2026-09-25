@@ -34,7 +34,15 @@ type Props = {
   leavingId?: string | null;
   /** Increment to glide back to the Current Star (Stars tab tapped again). */
   recenter?: number;
+  /** A new wish is being written: the path steps down one place so the
+   *  seed-star can be born in the Current Star's spot. */
+  reserveTop?: boolean;
+  /** Brighten one star once, gently (e.g. an entry was just added). */
+  pulse?: { id: string; n: number } | null;
 };
+
+/** Where the Current Star (top of the path) sits in the Star World. */
+export const CURRENT_STAR_POS = { x: 0.5, y: 0.22, scale: 1.7 };
 
 /** Where a focused star rests (fraction of screen height from the top). */
 const FOCUS_Y = 0.22;
@@ -64,6 +72,8 @@ export function StarWorld({
   onSelect,
   leavingId = null,
   recenter = 0,
+  reserveTop = false,
+  pulse = null,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -84,7 +94,9 @@ export function StarWorld({
   const placed: Placed[] = useMemo(() => {
     const list = stars.slice(0, MAX_STARS);
     const { w, h } = size;
-    return list.map((star, i) => {
+    const k = reserveTop ? 1 : 0;
+    return list.map((star, i0) => {
+      const i = i0 + k;
       // Loose walked path: a slow meander + a little per-star wander.
       const meander = 0.17 * Math.sin(i * 1.25 + 0.6);
       const wander = (hash01(star.id, 7) - 0.5) * 0.12;
@@ -97,7 +109,7 @@ export function StarWorld({
         scale: i === 0 ? 1.7 : 0.95 + hash01(star.id, 3) * 0.35,
       };
     });
-  }, [stars, size]);
+  }, [stars, size, reserveTop]);
 
   /** Scroll offsets (px) that bring each star to the focus line. */
   const stops = useMemo(() => placed.map((p) => p.y - FOCUS_Y * size.h), [placed, size.h]);
@@ -124,6 +136,15 @@ export function StarWorld({
   // (position transitions are enabled only for this moment).
   const [reflowing, setReflowing] = useState(false);
   const prevCount = useRef(stars.length);
+  // …and when the path steps down for (or back up after) a new wish.
+  const prevReserve = useRef(reserveTop);
+  useEffect(() => {
+    if (prevReserve.current === reserveTop) return;
+    prevReserve.current = reserveTop;
+    setReflowing(true);
+    const t = setTimeout(() => setReflowing(false), 1000);
+    return () => clearTimeout(t);
+  }, [reserveTop]);
   useEffect(() => {
     if (stars.length < prevCount.current) {
       setReflowing(true);
@@ -279,7 +300,7 @@ export function StarWorld({
         )}
         {placed[0] && (
           <p
-            className={`sw-hint${revealed && !hinted && !hasSelection ? " is-shown" : ""}`}
+            className={`sw-hint${revealed && !hinted && !hasSelection && !reserveTop ? " is-shown" : ""}`}
             style={{ left: placed[0].x, top: placed[0].y + 58 }}
             aria-hidden
           >
@@ -310,7 +331,10 @@ export function StarWorld({
                 style={{ transitionDelay: revealed && i > 0 ? `${1100 + i * 90}ms` : "0ms" }}
               >
               <span className="sw-star-scale" style={{ transform: `scale(${p.scale})` }}>
-                <span className="sw-star-pulse">
+                <span
+                  key={pulse && pulse.id === p.star.id ? `pulse-${pulse.n}` : "still"}
+                  className={`sw-star-pulse${pulse && pulse.id === p.star.id ? " is-brighten" : ""}`}
+                >
                   <StarLayers
                     staged={i === 0}
                     revealed={revealed}

@@ -23,6 +23,8 @@ export type MomentItem = {
   starId?: string;
   postcardId?: string;
   signId?: string;
+  /** "Something good" / "A step I took" entry on a Star */
+  kind?: "good" | "step";
 };
 export type StarItem = { type: "star"; key: string; at: string; star: Star };
 export type RestItem = {
@@ -63,7 +65,7 @@ export async function loadTrail(): Promise<{ items: TrailItem[]; stars: Star[]; 
 
   signs.forEach((s) => {
     if (linkedSignIds.has(s.id)) return; // shown once, as its photo
-    items.push({ type: "moment", key: `s-${s.id}`, at: s.createdAt, text: s.text, starId: s.starId, signId: s.id });
+    items.push({ type: "moment", key: `s-${s.id}`, at: s.createdAt, text: s.text, starId: s.starId, signId: s.id, kind: s.kind });
   });
 
   stars.forEach((star) => {
@@ -115,3 +117,9 @@ export function rangeLabel(first?: string, last?: string): string {
     ? `${m(f)} ${y}`
     : `${m(f)}–${m(l)} ${y}`;
 }
+
+/** The label an entry carries on its Star and in Moments. */
+export const ENTRY_LABEL: Record<"good" | "step", string> = {
+  good: "Something good",
+  step: "A step I took",
+};

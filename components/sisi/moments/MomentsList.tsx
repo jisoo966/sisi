@@ -72,7 +72,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
                   <span className="ml-body">
                     <span className="ml-date">
                       {d}
-                      {p.light === "linked" && <i className="ml-dot" aria-label="linked to a Star" />}
+                      {it.type === "moment" && it.starId && <i className="ml-dot" aria-label="connected to a Star" />}
                     </span>
                     <span className="ml-text">
                       {it.type === "rest" ? (

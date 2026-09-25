@@ -97,8 +97,10 @@ export function layoutTimeline(entries: TrailEntry[], W: number): TimelineLayout
 
     let light: LightKind = null;
     if (item.type === "moment") {
-      if (item.starId && firstOfStar.get(item.starId) === key) light = "linked";
-      else if (item.image && i - lastLight > 2) light = "idle"; // meaningful + sparse
+      // The thread to a Star is not permanent (it would clutter the trail):
+      // it shows only for the selected Moment, or briefly after saving.
+      // Photos kept on purpose get a small idle light, sparsely.
+      if (item.image && i - lastLight > 2) light = "idle";
     }
     if (light) lastLight = i;
 

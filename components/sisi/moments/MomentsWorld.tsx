@@ -6,7 +6,7 @@ import { buildTrail, layoutTimeline, TRAIL_ART, trailYAt } from "@/lib/momentsTi
 import { whenLabel } from "@/lib/moments";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
-import { JOURNEY_FOX_X, lastMoment, rememberMoment } from "@/lib/worldHandoff";
+import { JOURNEY_FOX_X, clearJustSaved, lastMoment, rememberMoment, takeJustSaved } from "@/lib/worldHandoff";
 import {
   gateC,
   gateCloudOpacity,
@@ -290,7 +290,7 @@ export const MomentsWorld = forwardRef<
     // that no longer exists falls back to Today.
     if (fromStars && loaded && !placedAt.current) {
       placedAt.current = true;
-      const key = lastMoment();
+      const key = takeJustSaved() ?? lastMoment(); // an entry just saved → land on it
       const i = key ? layout.placed.findIndex((p) => p.key === key) : -1;
       if (i > 0) {
         motion.jumpTo(layout.snaps[i]);
@@ -314,6 +314,18 @@ export const MomentsWorld = forwardRef<
   }, [motion]);
 
   const focused: Placed | undefined = focus >= 0 ? layout?.placed[focus] : undefined;
+  // An entry just saved to a Star: its thread shows for a few seconds.
+  const [justSaved] = useState(() => takeJustSaved());
+  const [showSavedThread, setShowSavedThread] = useState(false);
+  useEffect(() => {
+    if (!justSaved || phase !== "ready") return;
+    setShowSavedThread(true);
+    const t = setTimeout(() => {
+      setShowSavedThread(false);
+      clearJustSaved();
+    }, 4200);
+    return () => clearTimeout(t);
+  }, [justSaved, phase]);
 
   useLayoutEffect(() => {
     applyGate(performance.now());
@@ -678,8 +690,36 @@ export const MomentsWorld = forwardRef<
                 >
                   {p.label && <span className="mw-label">{p.label}</span>}
                   <Card p={p} />
+                  {p.item.type === "moment" && p.item.starId && (
+                    // a small Star mark: this memory belongs to a wish
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="mw-starmark" src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden draggable={false} />
+                  )}
                 </div>
               </div>
+            );
+          })}
+
+          {/* the thread up to its Star — only for the selected Moment, or
+              briefly for an entry just saved */}
+          {layout.placed.map((p) => {
+            const it = p.item;
+            const show =
+              phase === "ready" &&
+              it.type === "moment" &&
+              !!it.starId &&
+              ((focused && focused.key === p.key) || (showSavedThread && justSaved === p.key));
+            if (!show) return null;
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`thread-${p.key}`}
+                className="mw-light mw-thread"
+                src={LIGHTS.linked.src}
+                alt=""
+                draggable={false}
+                style={lightStyle("linked", p.x + p.lightDx, ty(p.x + p.lightDx) - 3)}
+              />
             );
           })}
 
@@ -765,6 +805,12 @@ export const MomentsWorld = forwardRef<
         .mw-stem { position: absolute; width: 1px; background: rgba(245, 239, 230, 0.38); pointer-events: none; }
         .mw-light { position: absolute; max-width: none; pointer-events: none; }
         .mw-light--selected { animation: mw-light-in 420ms ease-out both; }
+        .mw-thread { animation: mw-thread-in 600ms ease-out both; }
+        @keyframes mw-thread-in { from { opacity: 0; clip-path: inset(100% 0 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+        .mw-starmark {
+          position: absolute; right: -5px; top: -6px; width: 16px; height: 16px; z-index: 2; pointer-events: none;
+          filter: drop-shadow(0 1px 2px rgba(10, 18, 30, 0.35));
+        }
         @keyframes mw-light-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
         .mw-card { position: absolute; cursor: pointer; transform-origin: 50% 100%; outline: none; translate: 0 0; }
         .mw-card:focus-visible { outline: 1px dashed rgba(245, 239, 230, 0.7); outline-offset: 4px; }

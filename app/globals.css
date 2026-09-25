@@ -437,3 +437,35 @@ textarea:focus-visible {
 .journey-dock.is-transit { opacity: 0.25 !important; transition: opacity 300ms ease !important; }
 .journey-dock.is-transit,
 .journey-dock.is-transit * { pointer-events: none !important; }
+
+/* A Star brightens once, gently, when something is added to it. */
+.sw-star-pulse.is-brighten { animation: sw-brighten 1.3s ease-in-out 1 !important; }
+@keyframes sw-brighten {
+  0% { filter: brightness(1); transform: scale(1); }
+  40% { filter: brightness(1.35); transform: scale(1.08); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sw-star-pulse.is-brighten { animation: none !important; }
+}
+
+/* My Stars — title + a quiet "+ New Star", part of the night sky (no FAB). */
+.stars-top {
+  position: absolute; z-index: 13; left: 0; right: 0; top: var(--header-top);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--stage-padding);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 500ms ease, visibility 0s linear 500ms;
+}
+.stars-top.is-shown { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 600ms ease 200ms; }
+.stars-top-title {
+  font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 16px;
+  color: rgba(247, 241, 227, 0.62); letter-spacing: 0.01em;
+}
+.stars-new {
+  min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(247, 241, 227, 0.32); background: rgba(247, 241, 227, 0.06);
+  color: rgba(247, 241, 227, 0.9); font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.stars-new:hover, .stars-new:focus-visible { background: rgba(247, 241, 227, 0.12); border-color: rgba(247, 241, 227, 0.5); outline: none; }

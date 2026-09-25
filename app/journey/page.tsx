@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
+import { clearHandoff, handOff, readHandoff, rememberSaved } from "@/lib/worldHandoff";
+import { NewStarSky } from "@/components/sisi/stars/NewStarSky";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -319,12 +320,53 @@ export default function JourneyPage() {
   // content never asks).
   const starDirty = useRef(false);
   const okToLeaveStar = () =>
-    !starDirty.current || window.confirm("Leave without saving your changes to this Star?");
+    !(starDirty.current || newStarDirty.current) ||
+    window.confirm("Leave without saving what you wrote?");
+
+  // ── New Star (written inside the Star World) ──
+  const [newStarOpen, setNewStarOpen] = useState(false);
+  const newStarDirty = useRef(false);
+  const pendingNewStar = useRef(false);
+  /** From anywhere: rise to the Stars (if needed), then begin a new wish. */
+  const startNewStar = () => {
+    if (isStarView) {
+      if (busy) return;
+      setOpenStar(null);
+      setRecenter((n) => n + 1);
+      setNewStarOpen(true);
+    } else if (isWalking && !busy) {
+      pendingNewStar.current = true;
+      enterStarView();
+    }
+  };
+  useEffect(() => {
+    if (!pendingNewStar.current || !isStarView || busy) return;
+    pendingNewStar.current = false;
+    setNewStarOpen(true);
+  }, [isStarView, busy]);
+  useEffect(() => {
+    if (!isStarView) setNewStarOpen(false);
+  }, [isStarView]);
+  const starBorn = (s: Star) => {
+    setAllStars((list) => [s, ...list.filter((x) => x.id !== s.id)]);
+    setNewStarOpen(false);
+    newStarDirty.current = false;
+    const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
+    const w = stage?.offsetWidth ?? window.innerWidth;
+    const h = stage?.offsetHeight ?? window.innerHeight;
+    // the new Star sits where the seed was born (the top of the path)
+    setTimeout(() => setOpenStar({ star: s, at: { x: w * 0.5, y: h * 0.22 } }), 250);
+  };
+  // A Star brightens once when something is added to it.
+  const [starPulse, setStarPulse] = useState<{ id: string; n: number } | null>(null);
   // Stars tab tapped again: close an open Star, or glide back to the Current Star.
   const [recenter, setRecenter] = useState(0);
   const reselectStars = () => {
     if (isLocked()) return;
-    if (openStar) {
+    if (newStarOpen) {
+      if (!okToLeaveStar()) return;
+      setNewStarOpen(false);
+    } else if (openStar) {
       if (!okToLeaveStar()) return;
       setOpenStar(null);
     } else {
@@ -396,7 +438,7 @@ export default function JourneyPage() {
     if (deepLink.current === "none") return;
     const t = setTimeout(() => {
       if (deepLink.current === "stars") enterStarView();
-      else if (deepLink.current === "create") setCreateOpen(true);
+      else if (deepLink.current === "create") startNewStar();
       deepLink.current = "none";
     }, 1400);
     return () => clearTimeout(t);
@@ -579,7 +621,9 @@ export default function JourneyPage() {
             revealed={starRevealed}
             active={isStarView && env === "night" && !busy}
             selectedId={openStar?.star.id ?? null}
-            locked={openStar !== null || leavingId !== null}
+            reserveTop={newStarOpen}
+            pulse={starPulse}
+            locked={openStar !== null || leavingId !== null || newStarOpen}
             onSelect={(star, at) => setOpenStar({ star, at })}
             leavingId={leavingId}
             recenter={recenter}
@@ -760,7 +804,7 @@ export default function JourneyPage() {
             ariaTab={leavingTo ? "moments" : ariaIntent ?? (isStarView ? "stars" : "journey")}
             dock={env === "night" ? "sky" : "ground"}
             // faint + locked while travelling (see .journey-dock.is-transit)
-            quiet={openStar ? "detail" : dockDim ? "dim" : "clear"}
+            quiet={openStar || newStarOpen ? "detail" : dockDim ? "dim" : "clear"}
             onWake={wakeDock}
             onStarsSelect={() => {
               if (isLocked()) return;
@@ -800,13 +844,43 @@ export default function JourneyPage() {
               onClose={() => setOpenStar(null)}
               onRest={letStarRest}
               onEdited={starEdited}
-              onCreateStar={() => setCreateOpen(true)}
+              onCreateStar={startNewStar}
+              onEntrySaved={(entry) => {
+                setStarPulse((p) => ({ id: entry.starId, n: (p?.n ?? 0) + 1 }));
+                // the same entry is a Moment: show its thread there briefly
+                rememberSaved(`s-${entry.id}`);
+              }}
               onDirty={(d) => {
                 starDirty.current = d;
               }}
             />
           )}
         </AnimatePresence>
+
+        {/* My Stars — a quiet way to begin a new wish, part of the night sky */}
+        <div
+          className={`stars-top${
+            env === "night" && isStarView && !busy && !openStar && !newStarOpen && !leavingTo ? " is-shown" : ""
+          }`}
+        >
+          <span className="stars-top-title">My Stars</span>
+          <button type="button" className="stars-new" onClick={startNewStar}>
+            + New Star
+          </button>
+        </div>
+
+        <NewStarSky
+          open={newStarOpen && isStarView}
+          existing={allStars}
+          onClose={() => {
+            if (!okToLeaveStar()) return;
+            setNewStarOpen(false);
+          }}
+          onBorn={starBorn}
+          onDirty={(d) => {
+            newStarDirty.current = d;
+          }}
+        />
 
         <PaperToast message={isStarView ? toast : meadowToast} />
 
@@ -816,7 +890,7 @@ export default function JourneyPage() {
           placeholder={isPlaceholderStar}
           onClose={() => setPracticeOpen(false)}
           onTalk={() => setChatOpen(true)}
-          onCreateStar={() => setCreateOpen(true)}
+          onCreateStar={startNewStar}
         />
 
         <CreateStarFlow

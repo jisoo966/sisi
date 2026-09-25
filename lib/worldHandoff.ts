@@ -51,3 +51,17 @@ export function clearHandoff() {
 
 /** Sísí's screen anchor in the Journey (matches --companion-x: 37%). */
 export const JOURNEY_FOX_X = 0.37;
+
+/* The entry just saved to a Star (this session): Moments shows its thread
+   to the Star briefly the first time it comes into view. */
+let justSaved: { key: string; at: number } | null = null;
+export const rememberSaved = (momentKey: string) => {
+  justSaved = { key: momentKey, at: Date.now() };
+};
+/** The key if saved in the last 15 minutes (read-only; see clearJustSaved). */
+export const takeJustSaved = (): string | null =>
+  justSaved && Date.now() - justSaved.at < 15 * 60_000 ? justSaved.key : null;
+/** Its thread has been shown once — don't show it again. */
+export const clearJustSaved = () => {
+  justSaved = null;
+};

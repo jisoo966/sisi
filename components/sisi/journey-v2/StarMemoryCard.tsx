@@ -3,7 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
-import { loadSignsForStar, updateStar } from "@/lib/myStars";
+import { addSign, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
+import { ENTRY_LABEL } from "@/lib/moments";
+import { tornEdge } from "@/lib/tornEdge";
 import { practicesForStar, type PracticeKind } from "@/lib/littleLights";
 
 /** Quiet timeline lines for time spent with the Star (no words written). */
@@ -45,22 +47,66 @@ type Props = {
   onCreateStar?: () => void;
   /** Unsaved edits in the card (so leaving can ask first). */
   onDirty?: (dirty: boolean) => void;
+  /** An entry ("Something good" / "A step I took") was saved to this Star. */
+  onEntrySaved?: (entry: Sign) => void;
 };
 
-type Mode = "summary" | "timeline";
+/**
+ *   add     "+ Add to this Star": the same paper grows in place —
+ *           "What brought your Star a little closer today?" → Something good
+ *           | A step I took → one short field
+ *   saved   the paper folds down into a small torn note on the thread
+ *           (entry, date, "+ Add another")
+ */
+type Mode = "summary" | "timeline" | "add" | "saved";
+
+const ASK: Record<EntryKind, { q: string; sub: string }> = {
+  good: {
+    q: "What made you feel hopeful or grateful?",
+    sub: "A kind word, a small opportunity, or anything that felt meaningful.",
+  },
+  step: { q: "What small step did you take toward your Star?", sub: "Even a very small step counts." },
+};
+const NOTE_EDGE = tornEdge(23, 18, 2.2);
 type Overlay = null | "menu" | "confirm-rest";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited, onCreateStar, onDirty }: Props) {
+export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited, onCreateStar, onDirty, onEntrySaved }: Props) {
   const [mode, setMode] = useState<Mode>("summary");
+  const [back, setBack] = useState<Mode>("summary");
+  const [kind, setKind] = useState<EntryKind | null>(null);
+  const [entry, setEntry] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<Sign | null>(null);
+  const startAdd = () => {
+    setBack(mode === "timeline" ? "timeline" : "summary");
+    setKind(null);
+    setEntry("");
+    setMode("add");
+  };
+  const saveEntry = async () => {
+    const t = entry.trim();
+    if (!t || !kind || saving) return;
+    setSaving(true);
+    try {
+      const sign = await addSign(star.id, t, "manual", kind);
+      setSigns((list) => [sign, ...(list ?? [])]);
+      setSaved(sign);
+      setEntry("");
+      setMode("saved");
+      onEntrySaved?.(sign);
+    } finally {
+      setSaving(false);
+    }
+  };
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(star.wish);
   // Unsaved words in the wish editor — the page asks before leaving.
   const onDirtyRef = useRef(onDirty);
   onDirtyRef.current = onDirty;
-  const dirty = editing && draft.trim() !== star.wish.trim();
+  const dirty = (editing && draft.trim() !== star.wish.trim()) || (mode === "add" && entry.trim().length > 0);
   useEffect(() => {
     onDirtyRef.current?.(dirty);
   }, [dirty]);
@@ -95,7 +141,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [mode, signs, editing]);
+  }, [mode, signs, editing, kind]);
 
   const latest = signs && signs.length > 0 ? signs[0] : null;
 
@@ -161,8 +207,8 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
       <motion.div
         ref={cardRef}
         layout
-        className={`smc-card${expanded ? " is-expanded" : ""}`}
-        style={expanded ? { top: expandedTop, rotate: 0 } : { rotate: -0.5 }}
+        className={`smc-card${expanded ? " is-expanded" : ""}${mode === "saved" ? " is-note" : ""}`}
+        style={expanded ? { top: expandedTop, rotate: 0 } : { rotate: mode === "saved" ? -1.2 : -0.5 }}
         initial={{ y: "115%" }}
         animate={{ y: 0 }}
         exit={{ y: "120%", transition: { duration: 0.45, ease: [0.55, 0, 0.75, 0.2] } }}
@@ -171,11 +217,81 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
         aria-label={placeholder ? "Your waiting star" : "Star memory"}
       >
         <span className="smc-shadow" aria-hidden />
-        <motion.div layout className="smc-paper paper-bg">
+        <motion.div layout className="smc-paper paper-bg" style={mode === "saved" ? { clipPath: NOTE_EDGE } : undefined}>
           <span className="smc-handle" aria-hidden />
 
           <AnimatePresence mode="wait" initial={false}>
-            {!expanded ? (
+            {mode === "add" ? (
+              /* ── Add to this Star (the paper grows in place) ── */
+              <motion.div
+                key={`add-${kind ?? "choose"}`}
+                className="smc-content smc-add"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.15, duration: 0.3 } }}
+                exit={{ opacity: 0, transition: { duration: 0.15 } }}
+              >
+                <p className="smc-when">{star.wish}</p>
+                {!kind ? (
+                  <>
+                    <h2 className="smc-title">What brought your Star a little closer today?</h2>
+                    <div className="smc-choices">
+                      <button type="button" className="smc-choice" onClick={() => setKind("good")}>
+                        Something good
+                      </button>
+                      <button type="button" className="smc-choice" onClick={() => setKind("step")}>
+                        A step I took
+                      </button>
+                    </div>
+                    <button type="button" className="smc-link smc-back" onClick={() => setMode(back)}>
+                      Not now
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="smc-title">{ASK[kind].q}</h2>
+                    <p className="smc-sub">{ASK[kind].sub}</p>
+                    <textarea
+                      className="smc-edit-input smc-entry"
+                      rows={2}
+                      maxLength={240}
+                      autoFocus
+                      value={entry}
+                      onChange={(e) => setEntry(e.target.value)}
+                    />
+                    <div className="smc-add-actions">
+                      <button type="button" className="smc-link" onClick={() => setKind(null)}>
+                        Back
+                      </button>
+                      <button type="button" className="smc-save" disabled={!entry.trim() || saving} onClick={saveEntry}>
+                        Save to this Star
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            ) : mode === "saved" && saved ? (
+              /* ── Saved: a small torn note on the thread ── */
+              <motion.div
+                key="saved"
+                className="smc-content smc-saved"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.35, duration: 0.35 } }}
+                exit={{ opacity: 0, transition: { duration: 0.15 } }}
+              >
+                <p className="smc-kind">
+                  {saved.kind ? ENTRY_LABEL[saved.kind] : ""} · {formatDate(saved.createdAt)}
+                </p>
+                <p className="smc-saved-text">{saved.text}</p>
+                <div className="smc-saved-actions">
+                  <button type="button" className="smc-link smc-link--strong" onClick={startAdd}>
+                    + Add another
+                  </button>
+                  <button type="button" className="smc-link" onClick={() => setMode("timeline")}>
+                    Open star <span aria-hidden>→</span>
+                  </button>
+                </div>
+              </motion.div>
+            ) : !expanded ? (
               /* ── Summary ─────────────────────────────── */
               <motion.div
                 key="summary"
@@ -186,11 +302,21 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
               >
                 <p className="smc-when">{placeholder ? "tonight" : formatDate(star.createdAt)}</p>
                 <h2 className="smc-title">{placeholder ? "a star, waiting" : star.wish || "your star"}</h2>
+                {!placeholder && <StatusMark arrived={!!star.fulfilledAt} />}
                 <p className="smc-sentence">
                   {placeholder
                     ? "this star is waiting for your wish."
-                    : latest?.text ?? "no moments yet. the first one is on its way."}
+                    : !latest
+                      ? "Your journey begins here."
+                      : Date.now() - new Date(latest.createdAt).getTime() > 7 * 864e5
+                        ? "Your Star is still here. Let’s keep walking with it."
+                        : latest.text}
                 </p>
+                {!placeholder && (
+                  <button type="button" className="smc-add-btn" onClick={startAdd}>
+                    + Add to this Star
+                  </button>
+                )}
                 <div className="smc-rule" />
                 <div className="smc-actions">
                   <button
@@ -205,7 +331,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
                       else setMode("timeline");
                     }}
                   >
-                    {placeholder ? "make a wish" : "open star"} <span aria-hidden>→</span>
+                    {placeholder ? "make a wish" : "Open star"} <span aria-hidden>→</span>
                   </button>
                 </div>
               </motion.div>
@@ -247,19 +373,28 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
                   {signs === null ? (
                     <p className="smc-empty">…</p>
                   ) : signs.length === 0 && practices.length === 0 ? (
-                    <p className="smc-empty">no moments yet. the first one is on its way.</p>
+                    <p className="smc-empty">Your journey begins here.</p>
                   ) : (
                     // Written reflections + time spent with the Star, newest first.
                     [
-                      ...signs.map((s) => ({ key: s.id, at: s.createdAt, text: s.text, quiet: false })),
+                      ...signs.map((s) => ({
+                        key: s.id,
+                        at: s.createdAt,
+                        text: s.text,
+                        quiet: false,
+                        label: s.kind ? ENTRY_LABEL[s.kind] : null,
+                      })),
                       ...practices
                         .filter((p) => PRACTICE_LINE[p.kind])
-                        .map((p) => ({ key: `p-${p.at}`, at: p.at, text: PRACTICE_LINE[p.kind]!, quiet: true })),
+                        .map((p) => ({ key: `p-${p.at}`, at: p.at, text: PRACTICE_LINE[p.kind]!, quiet: true, label: null })),
                     ]
                       .sort((a, b) => (a.at < b.at ? 1 : -1))
                       .map((m) => (
                         <div key={m.key} className={`smc-moment${m.quiet ? " is-quiet" : ""}`}>
-                          <p className="smc-moment-when">{formatWhen(m.at)}</p>
+                          <p className="smc-moment-when">
+                            {m.label && <span className={`smc-moment-kind`}>{m.label} · </span>}
+                            {formatWhen(m.at)}
+                          </p>
                           <p className="smc-moment-text">{m.text}</p>
                         </div>
                       ))
@@ -268,10 +403,10 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
 
                 <div className="smc-footer">
                   {/* A status mark, not a button. */}
-                  <span className={`smc-status${star.fulfilledAt ? " is-arrived" : ""}`}>
-                    <span className="smc-status-dot" aria-hidden />
-                    {star.fulfilledAt ? "it arrived" : "still walking"}
-                  </span>
+                  <StatusMark arrived={!!star.fulfilledAt} />
+                  <button type="button" className="smc-add-btn smc-add-btn--sm" onClick={startAdd}>
+                    + Add to this Star
+                  </button>
                   <button
                     type="button"
                     className="smc-more"
@@ -355,6 +490,32 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
       </motion.div>
 
       <style jsx global>{`
+        .smc-add-btn {
+          display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin: 4px 0 2px;
+          padding: 0 20px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3; cursor: pointer;
+          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16.5px;
+        }
+        .smc-add-btn--sm { min-height: 40px; padding: 0 14px; font-size: 15px; margin: 0 0 0 auto; }
+        .smc-sub { margin: -2px 0 10px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15px; color: rgba(43, 47, 69, 0.64); }
+        .smc-choices { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 6px; }
+        .smc-choice {
+          min-height: 50px; border-radius: 14px; border: 1px solid rgba(43, 47, 69, 0.16); background: rgba(255, 255, 255, 0.55);
+          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17.5px; color: #2b2f45; cursor: pointer;
+        }
+        .smc-back { margin-top: 4px; }
+        .smc-entry { width: 100%; }
+        .smc-add-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+        .smc-save {
+          min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3; cursor: pointer;
+          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16.5px;
+        }
+        .smc-save:disabled { opacity: 0.45; }
+        .smc-card.is-note { left: 16%; right: 16%; }
+        .smc-card.is-note .smc-paper { padding: 18px 18px 14px; }
+        .smc-kind, .smc-moment-kind { font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; color: rgba(43, 47, 69, 0.62); }
+        .smc-kind { margin: 0 0 4px; font-size: 13.5px; }
+        .smc-saved-text { margin: 0 0 10px; font-family: var(--font-fraunces), Georgia, serif; font-size: 17px; line-height: 1.32; color: #2b2f45; }
+        .smc-saved-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
         .smc-backdrop {
           position: absolute;
           inset: 0;
@@ -653,6 +814,15 @@ const TORN_EDGE = (() => {
   for (let i = N - 1; i >= 1; i--) pts.push(`${(jag(i, 4) * 1.1).toFixed(2)}% ${((i / N) * 100).toFixed(2)}%`);
   return `polygon(${pts.join(", ")})`;
 })();
+
+function StatusMark({ arrived }: { arrived: boolean }) {
+  return (
+    <span className={`smc-status${arrived ? " is-arrived" : ""}`}>
+      <span className="smc-status-dot" aria-hidden />
+      {arrived ? "It arrived" : "Still walking"}
+    </span>
+  );
+}
 
 function formatDate(iso: string): string {
   try {

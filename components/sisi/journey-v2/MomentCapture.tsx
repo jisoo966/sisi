@@ -13,7 +13,7 @@ import { linkMoment } from "@/lib/momentLinks";
  * Moment or Sign noticed along the journey, connected to the Current Star.
  *
  *   options  Take a photo · Choose from library · Write only
- *   capture  "Did you notice a Sign?" (+ the photo) · "What was it?"
+ *   capture  "What did you notice?" (+ the photo) · "What was it?"
  *            → Save moment
  *
  * Optional, and never required to receive a Light.
@@ -123,7 +123,7 @@ export function MomentCapture({
                 {step === "capture" && (
                   <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="mc-head">
-                      <p className="mc-title">Did you notice a Sign?</p>
+                      <p className="mc-title">What did you notice?</p>
                       <span className="mc-stamp" aria-hidden>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/assets/sisi-star-mark-painted-512.png" alt="" />

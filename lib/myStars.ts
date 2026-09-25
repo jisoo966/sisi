@@ -32,11 +32,22 @@ export type Star = {
   restedAt?: string | null;
 };
 
+/**
+ * Entries on a Star after its wish (never new wishes):
+ *   good  "Something good" — a hopeful thing, gratitude, a kind word,
+ *         a small opportunity, a meaningful coincidence
+ *   step  "A step I took" — a real action toward the wish
+ * Older entries (reflections, captured moments) have no kind.
+ * The same record is the Star's timeline entry AND the Moment — never copied.
+ */
+export type EntryKind = "good" | "step";
+
 export type Sign = {
   id: string;
   starId: string;
   text: string;
   createdAt: string; // ISO
+  kind?: EntryKind;
 };
 
 const STARS_KEY = "sisi:stars";
@@ -402,12 +413,14 @@ export async function addSign(
   text: string,
   /** Where it came from — "chat" marks a Moment saved from a talk with SiSi. */
   source: "manual" | "chat" | "postcard" = "manual",
+  kind?: EntryKind,
 ): Promise<Sign> {
   const sign: Sign = {
     id: crypto.randomUUID(),
     starId,
     text: text.trim(),
     createdAt: new Date().toISOString(),
+    ...(kind ? { kind } : {}),
   };
 
   const user = await getCurrentUser();
