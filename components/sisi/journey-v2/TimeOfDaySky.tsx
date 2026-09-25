@@ -18,6 +18,16 @@ import { SKY_SRC, type SkyPhase, type TimeOfDay } from "@/lib/timeOfDay";
 
 const FADE_MS = 3200;
 
+/** Each painting's horizon colour (its last rows), continued below the
+ *  painting so the sky never ends in a hard edge — e.g. while the land
+ *  moves faster than the sky during the Stars camera move. */
+const HORIZON: Record<SkyPhase, string> = {
+  // horizon colour → back to the painting's own upper blue, softly
+  morning: "linear-gradient(to bottom, rgb(152, 198, 244) 0%, rgb(96, 164, 246) 22%)",
+  afternoon: "linear-gradient(to bottom, rgb(46, 123, 241) 0%, rgb(48, 125, 242) 22%)",
+  evening: "linear-gradient(to bottom, rgb(250, 153, 132) 0%, rgb(120, 118, 200) 7%, rgb(33, 109, 225) 18%)",
+};
+
 type Layer = { id: number; phase: SkyPhase; shown: boolean };
 
 export function TimeOfDaySky({ tod }: { tod: TimeOfDay | null }) {
@@ -65,6 +75,7 @@ export function TimeOfDaySky({ tod }: { tod: TimeOfDay | null }) {
           className="tod-sky-layer"
           style={{
             backgroundImage: `url(${SKY_SRC[l.phase]})`,
+            ["--tod-horizon" as string]: HORIZON[l.phase],
             opacity: l.shown ? 1 : 0,
             zIndex: i,
           }}
@@ -93,9 +104,19 @@ export function TimeOfDaySky({ tod }: { tod: TimeOfDay | null }) {
           background-repeat: no-repeat;
           transition: opacity ${FADE_MS}ms ease-in-out;
         }
+        /* the sky continues below the painting in its horizon colour */
+        .tod-sky-layer::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: calc(100% - 1px);
+          height: 200%;
+          background: var(--tod-horizon);
+        }
         .tod-sky-ink {
           position: absolute;
-          inset: 0;
+          inset: 0 0 -200% 0;
           z-index: 5;
           background: #0b1a33;
           transition: opacity 3s ease-in-out;
