@@ -142,7 +142,14 @@ User: "어릴 때부터 하고 싶던 그림을 오늘 처음 그렸어"
 → "와... 그 순간 어땠어? [SAVE:special]"
 
 User: "이제 진짜 술 끊고 싶어"
-→ "그 마음이 진짜네. [SAVE:shift]"`;
+→ "그 마음이 진짜네. [SAVE:shift]"
+
+─── MOOD MARKER (사용자에게 안 보임) ───
+
+응답이 *분명히* 위로·안심·조용한 긍정·따뜻한 지지일 때만 끝에 [MOOD:comfort] 를 붙여.
+(예: 지친 사람을 다독일 때, "괜찮아, 여기 있어" 같은 순간.)
+평범한 대답, 질문, 정보, 가벼운 잡담에는 붙이지 마. 대부분의 응답엔 없음.
+SAVE marker와 함께 쓸 수 있어: "…그거면 충분해. [SAVE:insight][MOOD:comfort]"`;
 
 export async function POST(request: NextRequest) {
   try {

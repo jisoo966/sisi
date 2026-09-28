@@ -6,6 +6,7 @@ import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment, loadMoments, type MomentType } from "@/lib/momentStore";
 import { tornEdge } from "@/lib/tornEdge";
+import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
 
 /**
  * CompanionSheet — sitting with Sísí, inside the same landscape.
@@ -29,8 +30,9 @@ import { tornEdge } from "@/lib/tornEdge";
 
 const PAPER_EDGE = tornEdge(51, 30, 0.9);
 const NOTE_EDGE = tornEdge(61, 14, 2.4);
-const PEEK_SRC = "/V2/sisi/sisi-peek.png"; // front-facing peek pose (optional art slot)
-const FOX_FALLBACK = "/V2/fox-walk/fox-walk-preview.png";
+/** A reply is prepared with a thoughtful look, held at least this long. */
+const MIN_THINK_MS = 700;
+const MARKERS = /\[(SAVE|MOOD):[a-z]+\]/gi;
 
 type Pill = { label: string; act: () => void; quiet?: boolean };
 type Msg = {
@@ -74,7 +76,10 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
   const [stars, setStars] = useState<Star[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [peek, setPeek] = useState(PEEK_SRC);
+  // Sísí's expression — one explicit state, changed only when it means something
+  const [expr, setExpr] = useState<SisiChatExpression>("seated");
+  const [scrolling, setScrolling] = useState(false);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout>>();
   const choicesShown = useRef(false);
   const sharedChars = useRef(0);
   const sharedCount = useRef(0);
@@ -88,6 +93,8 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       setMessages([]);
       setDraft("");
       setKeep(null);
+      // a first welcome: seated; opening from a thought: already listening
+      setExpr(opening ? "listening" : "seated");
       setDismissed(new Set());
       choicesShown.current = false;
       sharedChars.current = 0;
@@ -127,6 +134,8 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     }
     setDraft("");
     setSending(true);
+    setExpr("thinking");
+    const thinkingSince = Date.now();
     const sisiId = `s-${Date.now()}`;
     setMessages((m) => [...m, { id: sisiId, from: "sisi", text: "" }]);
 
@@ -158,9 +167,14 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             // partial line
           }
         }
-        const shown = acc.replace(/\[SAVE:[a-z]+\]/g, "").trim();
+        const shown = acc.replace(MARKERS, "").trim();
         setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: shown } : x)));
       }
+      // Explicit mood from the reply (never guessed from keywords):
+      // a clearly supportive answer → eyes closed; otherwise listening.
+      const mood: SisiChatExpression = /\[MOOD:comfort\]/i.test(acc) ? "comfort" : "listening";
+      const wait = Math.max(0, MIN_THINK_MS - (Date.now() - thinkingSince));
+      setTimeout(() => setExpr(mood), wait);
       // Sísí thought the user's words were worth keeping → offer, never save.
       const worth = /\[SAVE:[a-z]+\]/.test(acc);
       // directions come after something real was shared (not a starter tap)
@@ -173,14 +187,17 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         );
       }
     } catch {
+      setExpr("listening");
       setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: "Let’s try that again in a moment." } : x)));
     } finally {
       setSending(false);
     }
   }
 
-  const startKeep = (mode: Keep["mode"], text: string) =>
+  const startKeep = (mode: Keep["mode"], text: string) => {
+    setExpr("listening");
     setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "something_good" });
+  };
 
   const confirmKeep = async () => {
     if (!keep || keepBusy || !keep.text.trim()) return;
@@ -203,6 +220,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         { id: `a-${t}`, from: "sisi", text: "We can keep talking, or return to our walk.", after: true },
       ]);
       setKeep(null);
+      setExpr("comfort"); // a meaningful thought, kept
     } finally {
       setKeepBusy(false);
     }
@@ -265,16 +283,12 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             exit={{ y: "108%" }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* Sísí peeks over the top edge of the paper. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className={`sisi-peek${peek === FOX_FALLBACK ? " is-side" : ""}`}
-              src={peek}
-              alt=""
-              aria-hidden
-              onError={() => setPeek(FOX_FALLBACK)}
-            />
+            {/* Sísí rests on the paper, paws over its top edge. */}
+            <SisiChatCharacter expression={expr} still={scrolling} />
             <div className="paper paper-bg" aria-hidden />
+            <p className="sr-only" role="status" aria-live="polite">
+              {sending ? "Sísí is thinking…" : ""}
+            </p>
 
             {keep ? (
               /* ── 4a / 4b: keep, with an editable preview ── */
@@ -355,7 +369,16 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
               </div>
             ) : (
               <>
-                <div className="scroll" ref={scrollRef}>
+                <div
+                  className="scroll"
+                  ref={scrollRef}
+                  onScroll={() => {
+                    // hold still while the user scrolls
+                    setScrolling(true);
+                    clearTimeout(scrollTimer.current);
+                    scrollTimer.current = setTimeout(() => setScrolling(false), 450);
+                  }}
+                >
                   {/* 1 · Sísí welcomes you */}
                   <div className="greet">
                     <p className="greet-h">I’m here.</p>
@@ -429,7 +452,11 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
                     ref={inputRef}
                     type="text"
                     value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e) => {
+                      setDraft(e.target.value);
+                      // typing: Sísí turns to listen
+                      if (e.target.value && !sending && expr !== "listening") setExpr("listening");
+                    }}
                     placeholder="Share anything…"
                     aria-label="Share anything"
                     disabled={sending}
@@ -464,16 +491,14 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
               .companion-sheet { left: 50%; right: auto; width: 410px; margin-left: -205px; }
             }
             .companion-sheet .paper { position: absolute; inset: 0; z-index: 1; clip-path: ${PAPER_EDGE}; }
-            .companion-sheet .sisi-peek {
-              position: absolute; z-index: 0; left: 50%; top: -86px; width: 118px; margin-left: -59px;
-              pointer-events: none; user-select: none;
+            .companion-sheet .sr-only {
+              position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
             }
-            .companion-sheet .sisi-peek.is-side { width: 128px; margin-left: -64px; top: -78px; }
             .companion-sheet .scroll, .companion-sheet .input-row, .companion-sheet .keep { position: relative; z-index: 2; }
 
             .companion-sheet .scroll {
               flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain;
-              padding: 26px 18px 10px; display: flex; flex-direction: column; gap: 12px;
+              padding: 44px 18px 10px; display: flex; flex-direction: column; gap: 12px;
             }
             .companion-sheet .greet { text-align: center; padding: 6px 0 4px; }
             .companion-sheet .greet-h { margin: 0 0 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 27px; color: #1d2744; }
@@ -531,7 +556,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             .companion-sheet .send-btn svg { width: 18px; height: 18px; }
 
             /* keep panels */
-            .companion-sheet .keep { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+            .companion-sheet .keep { flex: 1; min-height: 0; overflow-y: auto; padding: 40px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
             .companion-sheet .keep-head { display: flex; align-items: center; justify-content: center; position: relative; min-height: 44px; }
             .companion-sheet .keep-title { margin: 0; padding: 0 40px; text-align: center; font-family: var(--font-fraunces), Georgia, serif; font-size: 19px; color: #1d2744; }
             .companion-sheet .icon-btn {

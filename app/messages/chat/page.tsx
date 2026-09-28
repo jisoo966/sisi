@@ -37,6 +37,7 @@ function parseSaveMarker(text: string): {
   clean: string;
   reason: SaveReason | null;
 } {
+  text = text.replace(/\[MOOD:[a-z]+\]/gi, ""); // expression hint for the Journey companion
   const match = text.match(/\[SAVE:(special|shift|insight|intention)\]/i);
   if (!match) return { clean: text.trim(), reason: null };
   return {

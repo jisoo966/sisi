@@ -636,7 +636,14 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
         .smj-note--origin { width: 78%; text-align: center; align-items: center; }
         .smj-foot { position: absolute; left: max(22px, var(--safe-left)); right: max(22px, var(--safe-right)); bottom: calc(var(--nav-total) + 16px); }
         .smj-dim { position: fixed !important; }
-        .smj-menu { position: absolute; top: calc(var(--header-top) + 48px); right: 14px; bottom: auto; transform-origin: top right; }
+        /* the ⋯ menu on the full journey: a small paper menu right under ⋯
+           (more specific than .smc-menu, which is anchored to the bottom) */
+        .smc-menu.smj-menu {
+          position: absolute; top: calc(var(--header-top) + 46px); right: 12px; bottom: auto; left: auto;
+          height: auto; min-width: 200px; transform-origin: top right;
+        }
+        .smj-icon:focus { outline: none; }
+        .smj-icon:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.7); outline-offset: 2px; border-radius: 50%; }
         .smc-backdrop {
           position: absolute;
           inset: 0;
