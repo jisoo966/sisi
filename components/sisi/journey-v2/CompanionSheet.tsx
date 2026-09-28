@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Star } from "@/lib/myStars";
-import { addSign } from "@/lib/myStars";
+import { loadStars, walkingStars } from "@/lib/myStars";
+import { createMoment, type MomentType } from "@/lib/momentStore";
 import { tornEdge } from "@/lib/tornEdge";
 
 const PAPER_EDGE = tornEdge(51, 30, 0.9);
@@ -23,7 +24,15 @@ const PAPER_EDGE = tornEdge(51, 30, 0.9);
  * "we stopped and talked" feeling.
  */
 
-type Msg = { id: string; from: "sisi" | "user"; text: string };
+/**
+ * offer    Sísí marked the user's words as worth keeping ([SAVE:…]) — offer
+ *          Save as a Moment · Add to a Star · Keep talking. Never automatic.
+ * choices  once per talk, a gentle direction: See my journey · Find a small
+ *          step · Just keep talking (ignoring it is fine too).
+ */
+type Msg = { id: string; from: "sisi" | "user"; text: string; offer?: string; choices?: boolean };
+/** An explicit keep, previewed and editable before anything is saved. */
+type Keep = { mode: "moment" | "star"; text: string; starId: string | null; type: MomentType };
 
 type Props = {
   open: boolean;
@@ -36,15 +45,54 @@ type Props = {
   onMeaningful?: () => void;
   /** The Current Star — SiSi remembers it in the conversation. */
   star?: Star | null;
+  /** "See my journey" — rise to this Star's journey */
+  onSeeJourney?: (star: Star) => void;
+  /** Sísí's first line (e.g. the thought the user wanted to talk about) */
+  opening?: string | null;
 };
 
 const OPENING = "What's on your mind?";
 
-export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Props) {
-  const [savedAs, setSavedAs] = useState<null | "star" | "moment">(null);
+export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSeeJourney, opening = null }: Props) {
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [keep, setKeep] = useState<Keep | null>(null);
+  const [keepBusy, setKeepBusy] = useState(false);
+  const [stars, setStars] = useState<Star[]>([]);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [manualOffer, setManualOffer] = useState<string | null>(null);
+  const choicesShown = useRef(false);
   useEffect(() => {
-    if (open) setSavedAs(null);
+    if (!open) return;
+    setSavedNote(null);
+    setKeep(null);
+    setDismissed(new Set());
+    setManualOffer(null);
+    choicesShown.current = false;
+    loadStars().then((s) => setStars(walkingStars(s)));
   }, [open]);
+
+  const startKeep = (mode: Keep["mode"], text: string) =>
+    setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "something_good" });
+  const confirmKeep = async () => {
+    if (!keep || keepBusy || !keep.text.trim()) return;
+    if (keep.mode === "star" && !keep.starId) return;
+    setKeepBusy(true);
+    try {
+      // only the chosen words — never the conversation
+      await createMoment({
+        source: "sisi_conversation",
+        type: keep.mode === "star" ? keep.type : "general",
+        text: keep.text,
+        starId: keep.mode === "star" ? keep.starId : null,
+      });
+      const wish = stars.find((s) => s.id === keep.starId)?.wish;
+      setSavedNote(keep.mode === "star" ? `Added to “${wish ?? "your Star"}”. It’s in Moments too.` : "Kept in your Moments.");
+      setKeep(null);
+      setManualOffer(null);
+    } finally {
+      setKeepBusy(false);
+    }
+  };
   const sharedChars = useRef(0);
   const sharedCount = useRef(0);
   const meaningfulSent = useRef(false);
@@ -64,7 +112,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
   // Seed with Sísí's opening when the sheet first opens (once per open).
   useEffect(() => {
     if (open && messages.length === 0) {
-      setMessages([{ id: "greet", from: "sisi", text: OPENING }]);
+      setMessages([{ id: "greet", from: "sisi", text: opening ?? OPENING }]);
       setTimeout(() => inputRef.current?.focus(), 350);
     }
     if (!open) {
@@ -82,9 +130,10 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  async function send() {
-    const text = draft.trim();
+  async function send(preset?: string) {
+    const text = (preset ?? draft).trim();
     if (!text || sending) return;
+    setSavedNote(null);
     const userMsg: Msg = { id: `u-${Date.now()}`, from: "user", text };
     setMessages((m) => [...m, userMsg]);
     sharedCount.current += 1;
@@ -101,7 +150,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
 
     try {
       const history = [...messages, userMsg]
-        .filter((x) => x.id !== "greet")
+        .filter((x) => x.id !== "greet" || x.text !== OPENING)
         .map((x) => ({ role: x.from === "user" ? "user" : "assistant", content: x.text }));
 
       const resp = await fetch("/api/chat", {
@@ -134,6 +183,15 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
         }
         const shown = acc.replace(/\[SAVE:[a-z]+\]/g, "").trim();
         setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: shown } : x)));
+      }
+      // Sísí thought these words were worth keeping → offer (never save).
+      const worth = /\[SAVE:[a-z]+\]/.test(acc);
+      const giveChoices = !!star && sharedCount.current >= 2 && !choicesShown.current && !worth;
+      if (giveChoices) choicesShown.current = true;
+      if (worth || giveChoices) {
+        setMessages((m) =>
+          m.map((x) => (x.id === sisiId ? { ...x, offer: worth ? text : undefined, choices: giveChoices } : x)),
+        );
       }
     } catch {
       setMessages((m) =>
@@ -200,46 +258,114 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
             {/* Messages */}
             <div className="scroll" ref={scrollRef}>
               {messages.map((m, i) => (
-                <p key={m.id} className={`line line-${m.from}`}>
-                  {m.text || (sending && i === messages.length - 1 ? "…" : "")}
-                </p>
+                <div key={m.id} className={`turn turn-${m.from}`}>
+                  <p className={`line line-${m.from}`}>
+                    {m.text || (sending && i === messages.length - 1 ? "…" : "")}
+                  </p>
+                  {m.offer && !dismissed.has(m.id) && !keep && (
+                    <div className="offer" role="group" aria-label="Keep this?">
+                      <button type="button" className="keep-btn" onClick={() => startKeep("moment", m.offer!)}>Save as a Moment</button>
+                      <span className="keep-dot" aria-hidden>·</span>
+                      <button type="button" className="keep-btn" onClick={() => startKeep("star", m.offer!)}>Add to a Star</button>
+                      <span className="keep-dot" aria-hidden>·</span>
+                      <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setDismissed((d) => new Set(d).add(m.id))}>Keep talking</button>
+                    </div>
+                  )}
+                  {m.choices && !dismissed.has(`c-${m.id}`) && star && (
+                    <div className="offer" role="group" aria-label="Where would you like to go?">
+                      <button type="button" className="chip" onClick={() => onSeeJourney?.(star)}>See my journey</button>
+                      <button
+                        type="button"
+                        className="chip"
+                        onClick={() => {
+                          setDismissed((d) => new Set(d).add(`c-${m.id}`));
+                          send("Could you help me find one very small next step?");
+                        }}
+                      >
+                        Find a small step
+                      </button>
+                      <button type="button" className="chip chip--quiet" onClick={() => setDismissed((d) => new Set(d).add(`c-${m.id}`))}>
+                        Just keep talking
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
-            {/* Keep what mattered: to the Star's timeline, or as a Moment. */}
-            {star && lastUserText(messages) && (
-              <div className="keep-row">
-                {savedAs ? (
-                  <span className="keep-done">
-                    {savedAs === "star" ? "Added to this Star." : "Saved as a Moment."}
-                  </span>
-                ) : (
+            {/* Keep something — only when the user asks, with an editable
+                preview; only the chosen words are saved. */}
+            {keep ? (
+              <div className="keep-panel">
+                <p className="keep-h">{keep.mode === "star" ? "Add to a Star" : "Save as a Moment"}</p>
+                <textarea
+                  className="keep-text"
+                  rows={2}
+                  maxLength={240}
+                  value={keep.text}
+                  aria-label="What to keep"
+                  onChange={(e) => setKeep({ ...keep, text: e.target.value })}
+                />
+                {keep.mode === "star" && (
                   <>
-                    <button
-                      type="button"
-                      className="keep-btn"
-                      onClick={async () => {
-                        await addSign(star.id, lastUserText(messages)!);
-                        setSavedAs("star");
-                      }}
-                    >
-                      Add to this Star
-                    </button>
-                    <span className="keep-dot" aria-hidden>·</span>
-                    <button
-                      type="button"
-                      className="keep-btn"
-                      onClick={async () => {
-                        await addSign(star.id, lastUserText(messages)!, "chat");
-                        setSavedAs("moment");
-                      }}
-                    >
-                      Save as a Moment
-                    </button>
+                    <div className="keep-stars">
+                      {stars.map((s2) => (
+                        <button
+                          key={s2.id}
+                          type="button"
+                          className={`chip${keep.starId === s2.id ? " is-on" : ""}`}
+                          onClick={() => setKeep({ ...keep, starId: s2.id })}
+                        >
+                          {s2.wish}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="keep-types">
+                      {([
+                        ["something_good", "Something good"],
+                        ["small_step", "A small step"],
+                      ] as const).map(([t, label]) => (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`chip${keep.type === t ? " is-on" : ""}`}
+                          onClick={() => setKeep({ ...keep, type: t })}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </>
                 )}
+                <div className="keep-actions">
+                  <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setKeep(null)}>Keep talking</button>
+                  <button
+                    type="button"
+                    className="keep-save"
+                    disabled={keepBusy || !keep.text.trim() || (keep.mode === "star" && !keep.starId)}
+                    onClick={confirmKeep}
+                  >
+                    {keep.mode === "star" ? "Add to this Star" : "Save as a Moment"}
+                  </button>
+                </div>
               </div>
-            )}
+            ) : manualOffer ? (
+              <div className="keep-row">
+                <button type="button" className="keep-btn" onClick={() => startKeep("moment", manualOffer)}>Save as a Moment</button>
+                <span className="keep-dot" aria-hidden>·</span>
+                <button type="button" className="keep-btn" onClick={() => startKeep("star", manualOffer)}>Add to a Star</button>
+                <span className="keep-dot" aria-hidden>·</span>
+                <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setManualOffer(null)}>Keep talking</button>
+              </div>
+            ) : savedNote ? (
+              <div className="keep-row"><span className="keep-done">{savedNote}</span></div>
+            ) : lastUserText(messages) && !sending ? (
+              <div className="keep-row">
+                <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setManualOffer(lastUserText(messages))}>
+                  Keep something from this talk
+                </button>
+              </div>
+            ) : null}
 
             {/* Input pill */}
             <form
@@ -314,7 +440,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
               pointer-events: none;
               user-select: none;
             }
-            .handle, .header, .scroll, .keep-row, .input-row { position: relative; z-index: 2; }
+            .handle, .header, .scroll, .keep-row, .keep-panel, .input-row { position: relative; z-index: 2; }
             .line {
               margin: 0;
               max-width: 88%;
@@ -351,6 +477,25 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null }: Pro
               padding: 4px 2px;
             }
             .keep-dot { color: rgba(43, 47, 69, 0.35); }
+            .keep-btn--quiet { color: rgba(43, 47, 69, 0.55); }
+            .turn { display: flex; flex-direction: column; gap: 6px; }
+            .turn-user { align-items: flex-end; }
+            .offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+            .chip {
+              min-height: 36px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+              border: 1px solid rgba(61, 116, 216, 0.35); background: rgba(255, 255, 255, 0.5);
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; color: #2b4f9e;
+              max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .chip.is-on { background: #3d74d8; border-color: #3d74d8; color: #f7f2e3; }
+            .chip--quiet { border-color: rgba(43, 47, 69, 0.15); color: rgba(43, 47, 69, 0.6); }
+            .keep-panel { position: relative; z-index: 2; margin: 0 var(--stage-padding) 8px; padding: 12px 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(43, 47, 69, 0.1); }
+            .keep-h { margin: 0 0 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 16px; color: #2b2f45; }
+            .keep-text { width: 100%; resize: none; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43, 47, 69, 0.15); background: #fffdf8; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; color: #2b2f45; outline: none; }
+            .keep-stars, .keep-types { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+            .keep-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+            .keep-save { min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; cursor: pointer; }
+            .keep-save:disabled { opacity: 0.45; }
             .keep-done {
               font-family: var(--font-eb-garamond), Georgia, serif;
               font-style: italic;

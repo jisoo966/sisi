@@ -1,18 +1,16 @@
 /**
- * lib/moments — the Memory Trail (Moments tab).
+ * lib/moments — the Moments archive (Memory Trail + list).
  *
- * One chronological trail, newest first, made of:
- *   moment  a photo moment (postcard) or a written one (sign), each linked to
- *           the Star it belongs to when known
- *   star    the day a Star began (a small light on the path)
+ * Everything the user chose to keep, newest first. Every moment is the ONE
+ * canonical record in lib/momentStore — the same record a Star's Full
+ * Journey shows — plus:
+ *   star    the day a Star began
  *   rest    a Star at Rest — its moments stay here, it can return to the sky
  */
 
 import type { EntryKind, Sign, Star } from "@/lib/myStars";
 import { loadSigns, loadStars } from "@/lib/myStars";
-import type { Postcard } from "@/lib/postcards";
-import { loadPostcards } from "@/lib/postcards";
-import { momentLinks } from "@/lib/momentLinks";
+import { loadMoments, type MomentSource, type MomentType } from "@/lib/momentStore";
 
 export type MomentItem = {
   type: "moment";
@@ -21,8 +19,15 @@ export type MomentItem = {
   text: string;
   image?: string;
   starId?: string;
-  postcardId?: string;
+  /** the canonical record (edit / delete / connect through it) */
+  momentId: string;
+  source: MomentSource;
+  mtype: MomentType;
+  /** the connected Star's wish, for the card */
+  starTitle?: string;
+  /** @deprecated kept for older callers — same as momentId */
   signId?: string;
+  postcardId?: string;
   /** "Something good" / "A step I took" entry on a Star */
   kind?: EntryKind;
 };
@@ -39,33 +44,29 @@ export type RestItem = {
 export type TrailItem = MomentItem | StarItem | RestItem;
 
 export async function loadTrail(): Promise<{ items: TrailItem[]; stars: Star[]; signs: Sign[] }> {
-  const [postcards, signs, stars] = await Promise.all([loadPostcards(), loadSigns(), loadStars()]);
-  const links = momentLinks();
-  const linkedSignIds = new Set(
-    Object.values(links)
-      .map((l) => l.signId)
-      .filter(Boolean) as string[],
-  );
+  const [moments, signs, stars] = await Promise.all([loadMoments(), loadSigns(), loadStars()]);
+  const wish = new Map(stars.map((s) => [s.id, s.wish]));
 
   const items: TrailItem[] = [];
 
-  postcards.forEach((p: Postcard) => {
-    const link = links[p.id];
+  moments.forEach((m) => {
+    const kind = m.type === "something_good" || m.type === "small_step" ? m.type : undefined;
+    // a Star that no longer exists: keep the Moment, just without the link
+    const starId = m.starId && wish.has(m.starId) ? m.starId : undefined;
     items.push({
       type: "moment",
-      key: `p-${p.id}`,
-      at: p.takenAt || p.createdAt,
-      text: p.text,
-      image: p.image,
-      starId: link?.starId,
-      postcardId: p.id,
-      signId: link?.signId,
+      key: `s-${m.id}`,
+      at: m.createdAt,
+      text: m.text ?? "",
+      image: m.image ?? undefined,
+      starId,
+      starTitle: starId ? wish.get(starId) : undefined,
+      momentId: m.id,
+      signId: m.id,
+      source: m.source,
+      mtype: m.type,
+      kind,
     });
-  });
-
-  signs.forEach((s) => {
-    if (linkedSignIds.has(s.id)) return; // shown once, as its photo
-    items.push({ type: "moment", key: `s-${s.id}`, at: s.createdAt, text: s.text, starId: s.starId, signId: s.id, kind: s.kind });
   });
 
   stars.forEach((star) => {
@@ -121,5 +122,5 @@ export function rangeLabel(first?: string, last?: string): string {
 /** The label an entry carries on its Star and in Moments. */
 export const ENTRY_LABEL: Record<EntryKind, string> = {
   something_good: "Something good",
-  step_taken: "A step I took",
+  small_step: "A step I took",
 };

@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffec
 import type { TrailEntry, TimelineMotion, Placed } from "@/lib/momentsTimeline";
 import { buildTrail, layoutTimeline, TRAIL_ART, trailYAt } from "@/lib/momentsTimeline";
 import { whenLabel } from "@/lib/moments";
+import { TYPE_LABEL } from "@/lib/momentStore";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
 import { JOURNEY_FOX_X, clearJustSaved, lastMoment, rememberMoment, takeJustSaved } from "@/lib/worldHandoff";
@@ -149,10 +150,12 @@ export const MomentsWorld = forwardRef<
     arrival: { ground: number; via?: "stars"; t0?: number; reduced?: boolean } | null;
     /** Stars → Moments: the ground has come into view (header + tabs may appear) */
     onGround?: () => void;
+    /** the Star title / mark on a card was tapped */
+    onStar?: (starId: string) => void;
     /** the Moments have loaded (until then only the world is shown) */
     loaded: boolean;
   }
->(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded, onGround }, ref) {
+>(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded, onGround, onStar }, ref) {
   const fromStars = arrival?.via === "stars";
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -689,11 +692,22 @@ export const MomentsWorld = forwardRef<
                   }}
                 >
                   {p.label && <span className="mw-label">{p.label}</span>}
-                  <Card p={p} />
+                  <Card p={p} onStar={onStar} />
                   {p.item.type === "moment" && p.item.starId && (
                     // a small Star mark: this memory belongs to a wish
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img className="mw-starmark" src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden draggable={false} />
+                    <button
+                      type="button"
+                      className="mw-starmark"
+                      aria-label={`Open the Star: ${p.item.starTitle ?? ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (p.item.type === "moment" && p.item.starId) onStar?.(p.item.starId);
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden draggable={false} />
+                    </button>
                   )}
                 </div>
               </div>
@@ -807,7 +821,17 @@ export const MomentsWorld = forwardRef<
         .mw-light--selected { animation: mw-light-in 420ms ease-out both; }
         .mw-thread { animation: mw-thread-in 600ms ease-out both; }
         @keyframes mw-thread-in { from { opacity: 0; clip-path: inset(100% 0 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+        .mw-star-title {
+          display: flex; align-items: center; gap: 4px; max-width: 100%; margin: 0 0 4px; padding: 0; border: 0;
+          background: transparent; cursor: pointer; text-align: left;
+          font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 11.5px; color: #3d5fae;
+        }
+        .mw-star-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mw-star-title img { width: 11px; height: 11px; flex: 0 0 auto; }
+        .mw-card--photo .mw-star-title { color: rgba(247, 241, 227, 0.92); margin: 0 0 3px 2px; }
+        .mw-starmark img { width: 100%; height: 100%; display: block; }
         .mw-starmark {
+          border: 0; padding: 0; background: transparent; cursor: pointer; pointer-events: auto !important;
           position: absolute; right: -5px; top: -6px; width: 16px; height: 16px; z-index: 2; pointer-events: none;
           filter: drop-shadow(0 1px 2px rgba(10, 18, 30, 0.35));
         }
@@ -884,7 +908,7 @@ export const MomentsWorld = forwardRef<
   );
 });
 
-function Card({ p }: { p: Placed }) {
+function Card({ p, onStar }: { p: Placed; onStar?: (starId: string) => void }) {
   const it = p.item;
   if (it.type === "rest") {
     return (
@@ -895,12 +919,40 @@ function Card({ p }: { p: Placed }) {
       </div>
     );
   }
-  if (it.image) return <Postcard image={it.image} caption={shortDate(it.at)} />;
+  // ★ Find work that feels like me — tapping it opens that Star
+  const starLine =
+    it.starId && it.starTitle ? (
+      <button
+        type="button"
+        className="mw-star-title"
+        onClick={(e) => {
+          e.stopPropagation();
+          onStar?.(it.starId!);
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden />
+        <span>{it.starTitle}</span>
+      </button>
+    ) : null;
+  const typeLabel = TYPE_LABEL[it.mtype];
+  if (it.image)
+    return (
+      <>
+        {starLine}
+        <Postcard image={it.image} caption={shortDate(it.at)} />
+      </>
+    );
   return (
     <div className="mw-note">
       <ArtFill art={ART.slip} />
+      {starLine}
+      {it.mtype === "companion_note" && <span className="mw-note-kicker">A note from Sísí</span>}
       <span className="mw-note-text">{it.text}</span>
-      <span className="mw-note-date">{shortDate(it.at)}</span>
+      <span className="mw-note-date">
+        {typeLabel && it.mtype !== "companion_note" ? `${typeLabel} · ` : ""}
+        {shortDate(it.at)}
+      </span>
     </div>
   );
 }

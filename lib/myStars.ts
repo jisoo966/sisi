@@ -8,6 +8,7 @@
  * 모든 read/write 함수는 async.
  */
 
+import { createMoment, detachStar, loadMoments, loadStarMoments, toMomentType, updateMoment, type Moment } from "@/lib/momentStore";
 import { createClient } from "@/lib/supabase/client";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 
@@ -36,17 +37,16 @@ export type Star = {
  * Entries on a Star after its wish (never new wishes):
  *   something_good  "Something good" — a hopeful thing, gratitude, a kind
  *                   word, a small opportunity, a meaningful coincidence
- *   step_taken      "A step I took" — a real action toward the wish
+ *   small_step      "A step I took" — a real action toward the wish
  * Older entries (reflections, captured moments) have no kind.
  * The same record is the Star's timeline entry AND the Moment — never copied.
  */
-export type EntryKind = "something_good" | "step_taken";
+export type EntryKind = "something_good" | "small_step";
 
 /** Read older saved entries ("good" / "step") in the current form. */
 export function normalizeKind(k: unknown): EntryKind | undefined {
-  if (k === "something_good" || k === "good") return "something_good";
-  if (k === "step_taken" || k === "step") return "step_taken";
-  return undefined;
+  const t = toMomentType(k);
+  return t === "something_good" || t === "small_step" ? t : undefined;
 }
 
 export type Sign = {
@@ -57,10 +57,14 @@ export type Sign = {
   kind?: EntryKind;
   /** owner (null on this device before sign-in) */
   userId?: string | null;
+  /** a photo, when the entry is a connected Journey Moment */
+  image?: string;
+  /** companion_note / general entries keep their own label */
+  momentType?: string;
 };
 
 const STARS_KEY = "sisi:stars";
-const SIGNS_KEY = "sisi:signs";
+// Star entries now live in lib/momentStore ("sisi:signs" is kept as a backup).
 
 // ─── Auth helper ─────────────────────────────────
 
@@ -109,21 +113,6 @@ function dbToStar(row: StarRow): Star {
   };
 }
 
-type SignRow = {
-  id: string;
-  star_id: string;
-  text: string;
-  created_at: string;
-};
-
-function dbToSign(row: SignRow): Sign {
-  return {
-    id: row.id,
-    starId: row.star_id,
-    text: row.text,
-    createdAt: row.created_at,
-  };
-}
 
 // ─── Stars ─────────────────────────────────
 
@@ -290,6 +279,7 @@ export async function deleteStar(id: string): Promise<void> {
       .eq("id", id)
       .eq("user_id", user.id);
     if (error) console.error("deleteStar error:", error);
+    await detachStar(id);
     return;
   }
 
@@ -297,9 +287,8 @@ export async function deleteStar(id: string): Promise<void> {
   const stars = await loadStars();
   const filtered = stars.filter((s) => s.id !== id);
   localStorage.setItem(STARS_KEY, JSON.stringify(filtered));
-  const signs = await loadSigns();
-  const filteredSigns = signs.filter((s) => s.starId !== id);
-  localStorage.setItem(SIGNS_KEY, JSON.stringify(filteredSigns));
+  // Its Moments stay (they are the user's life, not the Star's property).
+  await detachStar(id);
 }
 
 /**
@@ -363,125 +352,56 @@ export async function updateStar(
 
 // ─── Signs ─────────────────────────────────
 
-export async function loadSigns(): Promise<Sign[]> {
-  const user = await getCurrentUser();
-
-  if (user) {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("signs")
-      .select("id, star_id, text, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("loadSigns error:", error);
-      return [];
-    }
-    return (data as SignRow[]).map(dbToSign);
-  }
-
-  if (typeof window === "undefined") return [];
-  try {
-    const raw: Sign[] = JSON.parse(localStorage.getItem(SIGNS_KEY) ?? "[]");
-    return raw.map((s) => {
-      const kind = normalizeKind(s.kind);
-      return kind ? { ...s, kind } : { ...s, kind: undefined };
-    });
-  } catch {
-    return [];
-  }
+/*
+ * Star entries are Moments (lib/momentStore) — the ONE saved record that
+ * Moments and a Star's Full Journey both show. These functions keep their
+ * old shape so every existing caller works unchanged.
+ */
+function toSign(m: Moment): Sign {
+  const kind = m.type === "something_good" || m.type === "small_step" ? m.type : undefined;
+  return {
+    id: m.id,
+    starId: m.starId ?? "",
+    text: m.text ?? "",
+    createdAt: m.createdAt,
+    ...(kind ? { kind } : {}),
+    userId: m.userId,
+    ...(m.image ? { image: m.image } : {}),
+    momentType: m.type,
+  };
 }
 
+/** Every Moment connected to a Star, newest first. */
+export async function loadSigns(): Promise<Sign[]> {
+  return (await loadMoments()).filter((m) => m.starId).map(toSign);
+}
+
+/** One Star's entries (its Full Journey), newest first. */
 export async function loadSignsForStar(starId: string): Promise<Sign[]> {
-  const user = await getCurrentUser();
-
-  if (user) {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("signs")
-      .select("id, star_id, text, created_at")
-      .eq("star_id", starId)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("loadSignsForStar error:", error);
-      return [];
-    }
-    return (data as SignRow[]).map(dbToSign);
-  }
-
-  const all = await loadSigns();
-  return all
-    .filter((s) => s.starId === starId)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+  return (await loadStarMoments(starId)).map(toSign);
 }
 
 export async function addSign(
   starId: string,
   text: string,
-  /** Where it came from — "chat" marks a Moment saved from a talk with SiSi. */
+  /** Where it came from — "chat" is an insight kept from a talk with Sísí. */
   source: "manual" | "chat" | "postcard" = "manual",
   kind?: EntryKind,
 ): Promise<Sign> {
-  const sign: Sign = {
-    id: crypto.randomUUID(),
+  const m = await createMoment({
+    source: source === "chat" ? "sisi_conversation" : source === "postcard" ? "journey_capture" : "star_check_in",
+    type: kind ?? "general",
+    text,
     starId,
-    text: text.trim(),
-    createdAt: new Date().toISOString(),
-    ...(kind ? { kind } : {}),
-  };
-
-  const user = await getCurrentUser();
-  sign.userId = user?.id ?? null;
-
-
-  if (user) {
-    const supabase = createClient();
-    const { error } = await supabase.from("signs").insert({
-      id: sign.id,
-      star_id: starId,
-      user_id: user.id,
-      text: sign.text,
-      source,
-      // needs a `kind` column on signs (see supabase/migrations/004)
-      ...(sign.kind ? { kind: sign.kind } : {}),
-    });
-    if (error) console.error("addSign error:", error);
-    return sign;
-  }
-
-  // localStorage fallback
-  const signs = await loadSigns();
-  signs.unshift(sign);
-  localStorage.setItem(SIGNS_KEY, JSON.stringify(signs));
-  return sign;
+  });
+  return toSign(m);
 }
 
-/** Edit the words of a sign / moment. */
+/** Edit the words of an entry — everywhere it appears. */
 export async function updateSign(id: string, text: string): Promise<void> {
-  const user = await getCurrentUser();
-  if (user) {
-    const supabase = createClient();
-    const { error } = await supabase.from("signs").update({ text: text.trim() }).eq("id", id).eq("user_id", user.id);
-    if (error) console.error("updateSign error:", error);
-    return;
-  }
-  const signs = await loadSigns();
-  localStorage.setItem(SIGNS_KEY, JSON.stringify(signs.map((s) => (s.id === id ? { ...s, text: text.trim() } : s))));
+  await updateMoment(id, { text });
 }
 
-// ─── Sky position generator ───────────────
-
-/**
- * 새 별을 만들 때 *sky 안 랜덤한 안전 위치* 생성.
- * 화면 가장자리·하단 (fox 있는 영역) 피함.
- * 기존 별과 너무 가깝지 않게 minimum spacing 유지.
- */
 export function generateStarPosition(existingStars: Star[]): {
   x: number;
   y: number;

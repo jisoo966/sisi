@@ -5,6 +5,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { addSign, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { tornEdge } from "@/lib/tornEdge";
+import { hintDone, markHint } from "@/lib/hints";
+import { thoughtAfterCheckIn, isKept, type Thought } from "@/lib/sisiThoughts";
+import { keepThought } from "@/components/sisi/journey-v2/CompanionCues";
 
 /**
  * StarMemoryCard — the Star check-in, on torn ivory paper hanging from the
@@ -57,7 +60,7 @@ const CHOICE: Record<EntryKind, { title: string; desc: string; q: string; sub: s
     sub: "A kind word, a small opportunity, or anything that gave you hope.",
     ph: "My friend encouraged me to keep going.",
   },
-  step_taken: {
+  small_step: {
     title: "A step I took",
     desc: "Something you did, however small.",
     q: "What small step did you take?",
@@ -73,9 +76,12 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [kind, setKind] = useState<EntryKind | null>(null);
   // Typed text is kept per branch for this session (Back never loses it).
-  const [drafts, setDrafts] = useState<Record<EntryKind, string>>({ something_good: "", step_taken: "" });
+  const [drafts, setDrafts] = useState<Record<EntryKind, string>>({ something_good: "", small_step: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Sign | null>(null);
+  // under the saved note: the first time, where to find it; otherwise, now
+  // and then, a thought for the walk
+  const [after, setAfter] = useState<{ hint: true } | { thought: Thought; kept: boolean } | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(star.wish);
   const [signs, setSigns] = useState<Sign[] | null>(null);
@@ -148,6 +154,13 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
       const sign = await addSign(star.id, t, "manual", kind);
       setSigns((list) => [sign, ...(list ?? [])]);
       setSaved(sign);
+      if (!hintDone("starSaved")) {
+        markHint("starSaved");
+        setAfter({ hint: true });
+      } else {
+        const t = thoughtAfterCheckIn();
+        setAfter(t ? { thought: t, kept: isKept(t.id) } : null);
+      }
       setDrafts((d) => ({ ...d, [kind]: "" }));
       setMode("saved");
       onEntrySaved?.(sign);
@@ -332,6 +345,26 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
             animate={{ opacity: 1, y: 0, transition: { delay: 0.55, duration: 0.35 } }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
           >
+            {after && "hint" in after && (
+              <p className="smc-after-line">Saved to your Star. You can also find this in Moments.</p>
+            )}
+            {after && "thought" in after && (
+              <div className="smc-after-thought">
+                <p className="smc-after-kicker">A thought for your walk</p>
+                <p className="smc-after-line">{after.thought.text}</p>
+                <button
+                  type="button"
+                  className="smc-after-keep"
+                  disabled={after.kept}
+                  onClick={async () => {
+                    setAfter({ ...after, kept: true });
+                    await keepThought(after.thought);
+                  }}
+                >
+                  {after.kept ? "Kept in your Moments" : "Keep this"}
+                </button>
+              </div>
+            )}
             <button type="button" className="smc-primary" onClick={onClose}>
               Back to My Stars
             </button>
@@ -413,7 +446,15 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
                     transition={{ duration: 0.35, delay: 0.1 + Math.min(i, 5) * 0.06, ease: SOFT }}
                   >
                     <span className="smj-bead" aria-hidden />
-                    {s.kind && <span className="smj-kind">{CHOICE[s.kind].title}</span>}
+                    {s.kind ? (
+                      <span className="smj-kind">{CHOICE[s.kind].title}</span>
+                    ) : s.momentType === "companion_note" ? (
+                      <span className="smj-kind">A note from Sísí</span>
+                    ) : null}
+                    {s.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img className="smj-photo" src={s.image} alt="" loading="lazy" />
+                    )}
                     <span className="smj-text">{s.text}</span>
                     <span className="smj-when">{dayLabel(s.createdAt)}</span>
                   </motion.div>
@@ -544,6 +585,12 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
         .smc-card.is-note .smc-paper { padding: 18px 18px 14px; }
         .smc-saved-text { margin: 0 0 8px; font-family: var(--font-fraunces), Georgia, serif; font-size: 17px; line-height: 1.32; color: #2b2f45; }
         .smc-saved-when { margin: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14px; color: rgba(43, 47, 69, 0.6); }
+        .smc-after-line { margin: 0 0 12px; text-align: center; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15.5px; line-height: 1.4; color: rgba(247, 241, 227, 0.86); }
+        .smc-after-thought { text-align: center; margin-bottom: 6px; }
+        .smc-after-thought .smc-after-line { margin-bottom: 2px; font-style: normal; font-family: var(--font-fraunces), Georgia, serif; font-size: 16px; }
+        .smc-after-kicker { margin: 0 0 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(247, 241, 227, 0.6); }
+        .smc-after-keep { min-height: 40px; margin-bottom: 6px; padding: 0 8px; border: 0; background: transparent; cursor: pointer; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px; color: #f1e2b8; }
+        .smc-after-keep:disabled { color: rgba(247, 241, 227, 0.55); cursor: default; }
         .smc-after {
           position: absolute; z-index: 23; left: max(22px, var(--safe-left)); right: max(22px, var(--safe-right));
           bottom: calc(var(--nav-total) + 14px);
@@ -582,6 +629,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
           display: flex; flex-direction: column; gap: 4px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
         }
         .smj-bead { position: absolute; top: 3px; left: calc(50% - 3px + var(--thread-x, 0px)); width: 6px; height: 6px; border-radius: 50%; background: #e9b949; }
+        .smj-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px; margin: 2px 0 4px; }
         .smj-kind { font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(43, 47, 69, 0.58); }
         .smj-text { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16.5px; line-height: 1.34; }
         .smj-when { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13.5px; color: rgba(43, 47, 69, 0.58); }

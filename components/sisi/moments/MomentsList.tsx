@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { monthLabel } from "@/lib/moments";
+import { TYPE_LABEL } from "@/lib/momentStore";
 import type { Placed } from "@/lib/momentsTimeline";
 
 /**
@@ -70,9 +71,15 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
                     <span className="ml-thumb ml-thumb--none" aria-hidden />
                   )}
                   <span className="ml-body">
+                    {it.type === "moment" && it.starTitle && (
+                      <span className="ml-star">
+                        <i className="ml-dot" aria-hidden />
+                        {it.starTitle}
+                      </span>
+                    )}
                     <span className="ml-date">
+                      {it.type === "moment" && TYPE_LABEL[it.mtype] ? `${TYPE_LABEL[it.mtype]} · ` : ""}
                       {d}
-                      {it.type === "moment" && it.starId && <i className="ml-dot" aria-label="connected to a Star" />}
                     </span>
                     <span className="ml-text">
                       {it.type === "rest" ? (
@@ -95,7 +102,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
       <style jsx global>{`
         .ml-sheet {
           position: absolute; z-index: 20; left: 0; right: 0; bottom: 0;
-          top: calc(var(--header-top) + 64px);
+          top: calc(var(--header-top) + 100px); /* below the filters */
           color: #2b2f45;
         }
         .ml-scroll {
@@ -125,6 +132,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
         .ml-thumb--none { height: 1px; }
         .ml-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .ml-date { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; color: rgba(43, 47, 69, 0.55); }
+        .ml-star { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: #3d5fae; }
         .ml-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #d4a82a; }
         .ml-text {
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;

@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
-import { unrestStar, updateSign } from "@/lib/myStars";
-import { updatePostcardText } from "@/lib/postcards";
-import { ENTRY_LABEL, whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
+import { unrestStar } from "@/lib/myStars";
+import { whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
+import { deleteMoment, TYPE_LABEL, updateMoment } from "@/lib/momentStore";
 
 /**
  * Shared Moments pieces — paper artwork helpers and the "paper opens in
@@ -120,70 +120,135 @@ export function MomentDetail({
   item,
   from,
   star,
+  stars = [],
   onClose,
   onViewStar,
   onSaved,
+  onDeleted,
 }: {
   item: MomentItem;
   from: Origin;
   star?: Star;
+  /** Stars it could be connected to */
+  stars?: Star[];
   onClose: () => void;
   onViewStar: (id: string) => void;
+  /** the record changed (edit / connect / disconnect) */
   onSaved: () => void;
+  onDeleted?: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit" | "connect" | "delete">("view");
+  const [text, setText] = useState(item.text);
   const [draft, setDraft] = useState(item.text);
   const [busy, setBusy] = useState(false);
+  const [starNow, setStarNow] = useState<Star | undefined>(star);
+  const id = item.momentId;
+  // A Star reflection belongs to its Star; other Moments may be (dis)connected.
+  const canDisconnect = !!starNow && item.source !== "star_check_in";
 
   const save = async () => {
     const t = draft.trim();
-    if (!t || busy) return;
+    if ((!t && !item.image) || busy) return;
     setBusy(true);
-    if (item.postcardId) await updatePostcardText(item.postcardId, t);
-    if (item.signId) await updateSign(item.signId, t);
+    await updateMoment(id, { text: t || null }); // the same record, everywhere
+    setText(t);
+    setBusy(false);
+    setMode("view");
     onSaved();
   };
+  const connect = async (s: Star | null) => {
+    setBusy(true);
+    await updateMoment(id, { starId: s ? s.id : null });
+    setStarNow(s ?? undefined);
+    setBusy(false);
+    setMode("view");
+    onSaved();
+  };
+  const remove = async () => {
+    setBusy(true);
+    await deleteMoment(id); // gone from Moments and the Star's journey alike
+    onDeleted?.();
+  };
 
+  const typeLabel = TYPE_LABEL[item.mtype];
   return (
     <Unfold from={from} label="Moment" onClose={onClose}>
       {item.image && <Postcard image={item.image} className="mm-d-pc" />}
-      {editing ? (
+      {item.mtype === "companion_note" && <p className="mm-kicker">A note from Sísí</p>}
+      {mode === "edit" ? (
         <textarea className="mm-dinput" rows={3} maxLength={240} value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} />
       ) : (
-        <p className="mm-dtext">{item.text}</p>
+        text && <p className="mm-dtext">{text}</p>
       )}
       <p className="mm-when">
-        {item.kind ? `${ENTRY_LABEL[item.kind]} · ` : ""}
+        {typeLabel && item.mtype !== "companion_note" ? `${typeLabel} · ` : ""}
         {whenLabel(item.at, true)}
       </p>
-      {star && (
+
+      {starNow && mode !== "connect" && (
         <>
           <div className="mm-rule" />
-          <button type="button" className="mm-star-row" onClick={() => onViewStar(star.id)}>
+          <button type="button" className="mm-star-row" onClick={() => onViewStar(starNow.id)}>
             <Crop art={ART.stamp} style={{ width: 26, flex: "0 0 auto" }} />
-            <span>{star.wish}</span>
+            <span>{starNow.wish}</span>
             <span className="chev" aria-hidden>›</span>
           </button>
         </>
       )}
-      <div className="mm-actions">
-        {editing ? (
-          <>
-            <button type="button" className="mm-btn" onClick={() => { setDraft(item.text); setEditing(false); }}>Cancel</button>
-            <button type="button" className="mm-btn mm-btn--primary" disabled={busy || !draft.trim()} onClick={save}>Save</button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="mm-btn" onClick={() => setEditing(true)}>✎ Edit</button>
-            {star && (
-              <button type="button" className="mm-btn mm-btn--primary" onClick={() => onViewStar(star.id)}>
+
+      {mode === "connect" && (
+        <div className="mm-connect">
+          <div className="mm-rule" />
+          <p className="mm-kicker">Connect to a Star</p>
+          {stars.map((s) => (
+            <button key={s.id} type="button" className="mm-star-row" disabled={busy} onClick={() => connect(s)}>
+              <Crop art={ART.stamp} style={{ width: 22, flex: "0 0 auto" }} />
+              <span>{s.wish}</span>
+            </button>
+          ))}
+          <button type="button" className="mm-textbtn" onClick={() => setMode("view")}>
+            Not now
+          </button>
+        </div>
+      )}
+
+      {mode === "delete" ? (
+        <div className="mm-confirm">
+          <p className="mm-kicker">Delete this Moment? It will be removed everywhere it appears.</p>
+          <div className="mm-actions">
+            <button type="button" className="mm-btn" onClick={() => setMode("view")}>Keep it</button>
+            <button type="button" className="mm-btn mm-btn--danger" disabled={busy} onClick={remove}>Delete</button>
+          </div>
+        </div>
+      ) : mode === "edit" ? (
+        <div className="mm-actions">
+          <button type="button" className="mm-btn" onClick={() => { setDraft(text); setMode("view"); }}>Cancel</button>
+          <button type="button" className="mm-btn mm-btn--primary" disabled={busy || (!draft.trim() && !item.image)} onClick={save}>Save</button>
+        </div>
+      ) : mode === "view" ? (
+        <>
+          <div className="mm-actions">
+            <button type="button" className="mm-btn" onClick={() => setMode("edit")}>✎ Edit</button>
+            {starNow ? (
+              <button type="button" className="mm-btn mm-btn--primary" onClick={() => onViewStar(starNow.id)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/assets/sisi-star-mark-painted-512.png" alt="" /> View Star
               </button>
+            ) : null}
+          </div>
+          <div className="mm-secondary">
+            {!starNow && stars.length > 0 && (
+              <button type="button" className="mm-textbtn" onClick={() => setMode("connect")}>Connect to a Star</button>
             )}
-          </>
-        )}
-      </div>
+            {canDisconnect && (
+              <button type="button" className="mm-textbtn" disabled={busy} onClick={() => connect(null)}>
+                Disconnect from this Star
+              </button>
+            )}
+            <button type="button" className="mm-textbtn mm-textbtn--quiet" onClick={() => setMode("delete")}>Delete</button>
+          </div>
+        </>
+      ) : null}
     </Unfold>
   );
 }
@@ -292,6 +357,15 @@ export function MomentsSharedStyles() {
       }
       .mm-btn--primary { flex: 1.3; border: 0; background: #3d74d8; color: #f7f2e3; }
       .mm-btn img { width: 20px; height: 20px; }
+      .mm-btn--danger { flex: 1; border: 0; background: #a4574a; color: #f7f2e3; }
+      .mm-secondary { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin-top: 10px; }
+      .mm-textbtn {
+        min-height: 44px; padding: 0 6px; border: 0; background: transparent; cursor: pointer;
+        font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; color: #3d74d8;
+      }
+      .mm-textbtn--quiet { color: rgba(43, 47, 69, 0.55); }
+      .mm-connect .mm-star-row { min-height: 44px; }
+      .mm-confirm { margin-top: 16px; }
     `}</style>
   );
 }

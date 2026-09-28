@@ -3,32 +3,35 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
-import { addSign } from "@/lib/myStars";
-import { savePostcard } from "@/lib/postcards";
+import { loadStars, walkingStars } from "@/lib/myStars";
+import { createMoment, updateMoment } from "@/lib/momentStore";
+import { hintDone, markHint } from "@/lib/hints";
 import { tornEdge } from "@/lib/tornEdge";
-import { linkMoment } from "@/lib/momentLinks";
 
 /**
- * MomentCapture — the camera tool. Not general photography: it keeps a
- * Moment or Sign noticed along the journey, connected to the Current Star.
+ * MomentCapture — Journey Capture: keep something from the life you are
+ * walking through (a photo, a few words, or both).
  *
- *   options  Take a photo · Choose from library · Write only
- *   capture  "What did you notice?" (+ the photo) · "What was it?"
- *            → Save moment
+ *   options   Capture a moment — Take a photo (or choose from library) ·
+ *             Write a note. The first time, one line explains what it's for.
+ *   capture   the photo + optional words, or a short note → Save moment
+ *   saved     "Kept." — it is in Moments now. Optionally, and only if the
+ *             user wants: Connect to a Star (the SAME record gets a star_id;
+ *             nothing is copied). Never automatic: life needn't be a wish.
  *
- * Optional, and never required to receive a Light.
+ * Saved as one Moment: source journey_capture · type general.
  */
 
-type Step = "options" | "capture" | "saved";
+type Step = "options" | "capture" | "saved" | "connect";
 const EDGE = tornEdge(31);
 
 export function MomentCapture({
   open,
-  star,
   onClose,
 }: {
   open: boolean;
-  star: Star | null;
+  /** @deprecated captures are no longer linked to the Current Star automatically */
+  star?: Star | null;
   onClose: () => void;
 }) {
   const [step, setStep] = useState<Step>("options");
@@ -36,6 +39,10 @@ export function MomentCapture({
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [stars, setStars] = useState<Star[]>([]);
+  const [connectedTo, setConnectedTo] = useState<Star | null>(null);
+  const [firstTime, setFirstTime] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +53,16 @@ export function MomentCapture({
     setText("");
     setSaving(false);
     setError("");
+    setSavedId(null);
+    setConnectedTo(null);
+    setFirstTime(!hintDone("capture"));
+    loadStars().then((s) => setStars(walkingStars(s)));
   }, [open]);
+
+  const close = () => {
+    markHint("capture");
+    onClose();
+  };
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,23 +80,36 @@ export function MomentCapture({
     reader.readAsDataURL(file);
   };
 
+  const canSave = !!photo || text.trim().length > 0;
   const save = async () => {
-    const note = text.trim();
-    if (!note || saving) return;
+    if (!canSave || saving) return;
     setSaving(true);
     setError("");
     try {
-      const card = photo
-        ? await savePostcard({ text: note, imageDataURL: photo.dataURL, width: photo.width, height: photo.height, takenAt: new Date().toISOString() })
-        : null;
-      const sign = star ? await addSign(star.id, note) : null;
-      if (card && star) linkMoment(card.id, star.id, sign?.id);
+      const m = await createMoment({
+        source: "journey_capture",
+        type: "general",
+        text: text.trim() || null,
+        image: photo?.dataURL ?? null,
+        imageWidth: photo?.width,
+        imageHeight: photo?.height,
+        starId: null, // saved without a Star; connecting is optional
+      });
+      markHint("capture");
+      markHint("moments"); // their first Moment — Moments needn't explain itself now
+      setSavedId(m.id);
       setStep("saved");
-      setTimeout(onClose, 1400);
     } catch {
       setError("It didn’t save just now. Try once more?");
-      setSaving(false);
     }
+    setSaving(false);
+  };
+
+  const connect = async (s: Star) => {
+    if (!savedId) return;
+    await updateMoment(savedId, { starId: s.id });
+    setConnectedTo(s);
+    setStep("saved");
   };
 
   return (
@@ -92,7 +121,7 @@ export function MomentCapture({
             type="button"
             aria-label="Close"
             className="mc-backdrop"
-            onClick={onClose}
+            onClick={close}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -101,7 +130,7 @@ export function MomentCapture({
             key="mc-sheet"
             className="mc-sheet"
             role="dialog"
-            aria-label="Keep a moment"
+            aria-label="Capture a moment"
             initial={{ y: "110%" }}
             animate={{ y: 0 }}
             exit={{ y: "115%", transition: { duration: 0.35 } }}
@@ -113,22 +142,23 @@ export function MomentCapture({
               <AnimatePresence mode="wait" initial={false}>
                 {step === "options" && (
                   <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <p className="mc-title">Keep a moment</p>
-                    <button type="button" className="mc-option" onClick={() => cameraRef.current?.click()}>Take a photo</button>
-                    <button type="button" className="mc-option" onClick={() => libraryRef.current?.click()}>Choose from library</button>
-                    <button type="button" className="mc-option" onClick={() => setStep("capture")}>Write only</button>
+                    <p className="mc-title">Capture a moment</p>
+                    {firstTime && <p className="mc-sub">Save something from the life you’re walking through.</p>}
+                    <button type="button" className="mc-option" onClick={() => cameraRef.current?.click()}>
+                      Take a photo
+                    </button>
+                    <button type="button" className="mc-option" onClick={() => setStep("capture")}>
+                      Write a note
+                    </button>
+                    <button type="button" className="mc-quiet" onClick={() => libraryRef.current?.click()}>
+                      or choose a photo from your library
+                    </button>
                     {error && <p className="mc-error">{error}</p>}
                   </motion.div>
                 )}
                 {step === "capture" && (
                   <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="mc-head">
-                      <p className="mc-title">What did you notice?</p>
-                      <span className="mc-stamp" aria-hidden>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/assets/sisi-star-mark-painted-512.png" alt="" />
-                      </span>
-                    </div>
+                    <p className="mc-title">{photo ? "A few words, if you like" : "Write a note"}</p>
                     {photo && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img className="mc-photo" src={photo.dataURL} alt="Your moment" />
@@ -137,13 +167,13 @@ export function MomentCapture({
                       className="mc-input"
                       rows={photo ? 2 : 3}
                       maxLength={240}
-                      placeholder="What was it?"
+                      placeholder={photo ? "What was happening?" : "What do you want to remember?"}
                       value={text}
                       autoFocus={!photo}
                       onChange={(e) => setText(e.target.value)}
                     />
                     {error && <p className="mc-error">{error}</p>}
-                    <button type="button" className="mc-primary" disabled={!text.trim() || saving} onClick={save}>
+                    <button type="button" className="mc-primary" disabled={!canSave || saving} onClick={save}>
                       Save moment
                     </button>
                   </motion.div>
@@ -151,7 +181,35 @@ export function MomentCapture({
                 {step === "saved" && (
                   <motion.div key="s" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <p className="mc-title">Kept.</p>
-                    <p className="mc-sub">{star ? "It’s part of your Star’s journey now." : "It’s in your Moments now."}</p>
+                    <p className="mc-sub">
+                      {connectedTo ? `It’s part of “${connectedTo.wish}” now, and in your Moments.` : "It’s in your Moments."}
+                    </p>
+                    <button type="button" className="mc-primary" onClick={close}>
+                      Done
+                    </button>
+                    {!connectedTo && stars.length > 0 && (
+                      <button type="button" className="mc-quiet" onClick={() => setStep("connect")}>
+                        Connect to a Star
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+                {step === "connect" && (
+                  <motion.div key="k" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <p className="mc-title">Connect to a Star</p>
+                    <p className="mc-sub">Only if it feels part of that wish.</p>
+                    <div className="mc-stars">
+                      {stars.map((s) => (
+                        <button key={s.id} type="button" className="mc-option mc-star" onClick={() => connect(s)}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden />
+                          <span>{s.wish}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <button type="button" className="mc-quiet" onClick={() => setStep("saved")}>
+                      Not now
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -178,6 +236,11 @@ export function MomentCapture({
             .mc-primary { display: block; width: 100%; height: 48px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; cursor: pointer; }
             .mc-primary:disabled { opacity: 0.45; }
             .mc-error { font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 14px; color: #a4574a; margin: 0 0 10px; }
+            .mc-quiet { display: block; margin: 6px auto 0; min-height: 44px; padding: 0 12px; border: 0; background: transparent; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; color: #3d74d8; cursor: pointer; }
+            .mc-stars { display: flex; flex-direction: column; max-height: 38vh; overflow-y: auto; }
+            .mc-star { display: flex; align-items: center; gap: 10px; text-align: left; padding: 0 14px; }
+            .mc-star img { width: 20px; height: 20px; flex: 0 0 auto; }
+            .mc-star span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           `}</style>
         </>
       )}

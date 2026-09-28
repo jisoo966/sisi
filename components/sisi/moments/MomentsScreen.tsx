@@ -11,6 +11,17 @@ import { MomentDetail, MomentsSharedStyles, originOf, RestDetail, type Origin } 
 import { MomentsWorld, type MomentsWorldHandle } from "./MomentsWorld";
 import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
 import { MomentsList } from "./MomentsList";
+import { onMomentsChanged } from "@/lib/momentStore";
+import { hintDone, markHint } from "@/lib/hints";
+import { walkingStars } from "@/lib/myStars";
+
+/** Keep the first version simple: everything · connected to a Star · photos. */
+type Filter = "all" | "stars" | "photos";
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "stars", label: "Stars" },
+  { key: "photos", label: "Photos" },
+];
 
 /**
  * MomentsScreen — the Moments tab.
@@ -87,9 +98,33 @@ export function MomentsScreen() {
     });
   }, []);
   useEffect(reload, [reload]);
+  // Edited / deleted / connected anywhere → every view shows the same record.
+  useEffect(() => onMomentsChanged(reload), [reload]);
+
+  const [filter, setFilter] = useState<Filter>("all");
+  const shown = useMemo(() => {
+    if (!entries || filter === "all") return entries;
+    return entries.filter((e) =>
+      filter === "stars" ? (e.type === "moment" ? !!e.starId : true) : e.type === "moment" && !!e.image,
+    );
+  }, [entries, filter]);
+  const pickFilter = (f: Filter) => {
+    if (f === filter) return;
+    motion.jumpTo(0); // a different set of Moments: start again at Today
+    setFilter(f);
+  };
+
+  // First visit: one quiet explanation (never again once dismissed, or once
+  // the user has captured their first Moment).
+  const [explain, setExplain] = useState(false);
+  // (Journey Capture marks it done when the user saves their first Moment.)
+  useEffect(() => {
+    if (!entries) return;
+    setExplain(!hintDone("moments"));
+  }, [entries]);
 
   const starById = useMemo(() => new Map(stars.map((s) => [s.id, s])), [stars]);
-  const listPlaced = useMemo(() => (entries ? layoutTimeline(entries, 390).placed : []), [entries]);
+  const listPlaced = useMemo(() => (shown ? layoutTimeline(shown, 390).placed : []), [shown]);
   const viewStar = (id: string) => router.push(`/journey?to=stars&star=${id}`);
 
   const openEntry = (e: TrailEntry, el: Element) => {
@@ -106,7 +141,8 @@ export function MomentsScreen() {
       {(
         <MomentsWorld
           ref={worldRef}
-          entries={entries ?? NO_ENTRIES}
+          entries={shown ?? NO_ENTRIES}
+          onStar={(id) => viewStar(id)}
           loaded={entries !== null}
           motion={motion}
           arrival={arrival}
@@ -142,6 +178,50 @@ export function MomentsScreen() {
         </button>
       </header>
 
+      {/* filters */}
+      <div className={`mm-filters${headerIn && !turned ? "" : " is-out"}`} role="tablist" aria-label="Show">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.key}
+            className={`mm-chip${filter === f.key ? " is-on" : ""}`}
+            onClick={() => pickFilter(f.key)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* first visit: what Moments is */}
+      <AnimatePresence>
+        {explain && headerIn && !turned && view === "trail" && (
+          <fm.div
+            key="explain"
+            className="mm-explain paper-bg"
+            role="note"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.45 } }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+          >
+            <button
+              type="button"
+              className="mm-explain-x"
+              aria-label="Got it"
+              onClick={() => {
+                markHint("moments");
+                setExplain(false);
+              }}
+            >
+              ×
+            </button>
+            <p className="mm-explain-h">Your life along the way</p>
+            <p className="mm-explain-p">Moments you capture and reflections you add to your Stars live here.</p>
+          </fm.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {view === "list" && entries && (
           <fm.div
@@ -170,9 +250,13 @@ export function MomentsScreen() {
             item={open.item}
             from={open.from}
             star={open.item.starId ? starById.get(open.item.starId) : undefined}
+            stars={walkingStars(stars)}
             onClose={() => setOpen(null)}
             onViewStar={viewStar}
             onSaved={() => {
+              reload();
+            }}
+            onDeleted={() => {
               setOpen(null);
               reload();
             }}
@@ -221,6 +305,29 @@ export function MomentsScreen() {
           transition: opacity 420ms ease;
         }
         .mm-header.is-out { opacity: 0; }
+        .mm-filters {
+          position: absolute; z-index: 10; left: var(--stage-padding); top: calc(var(--header-top) + 54px);
+          display: flex; gap: 8px; transition: opacity 420ms ease;
+        }
+        .mm-filters.is-out { opacity: 0; pointer-events: none; }
+        .mm-chip {
+          min-height: 36px; min-width: 44px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+          border: 1px solid rgba(247, 241, 227, 0.55); background: rgba(247, 241, 227, 0.14);
+          color: #f7f1e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
+          transition: background 0.25s ease, color 0.25s ease;
+        }
+        .mm-chip.is-on { background: #f7f2e3; color: #1d2744; border-color: #f7f2e3; }
+        .mm-explain {
+          position: absolute; z-index: 10; left: var(--stage-padding); right: var(--stage-padding);
+          top: calc(var(--header-top) + 104px); padding: 14px 44px 14px 16px; color: #2b2f45;
+          box-shadow: 0 8px 20px rgba(10, 18, 30, 0.22); border-radius: 2px;
+        }
+        .mm-explain-h { margin: 0 0 4px; font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; }
+        .mm-explain-p { margin: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px; line-height: 1.38; color: rgba(43, 47, 69, 0.75); }
+        .mm-explain-x {
+          position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; border: 0; background: transparent;
+          font-size: 22px; color: rgba(43, 47, 69, 0.55); cursor: pointer;
+        }
         .mm-nav { transition: opacity 360ms ease; }
         /* arriving from the Stars: the dock stays faintly visible (and
            locked) under the clouds, then clears as the ground appears */

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearHandoff, handOff, readHandoff, rememberSaved } from "@/lib/worldHandoff";
 import { NewStarSky } from "@/components/sisi/stars/NewStarSky";
+import { CompanionCues } from "@/components/sisi/journey-v2/CompanionCues";
+import { markHint } from "@/lib/hints";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -223,6 +225,13 @@ export default function JourneyPage() {
   const [catFacing, setCatFacing] = useState<"left" | "right">("right");
   const catWalking = useRef(false);
   const pendingMoments = useRef(false);
+  // Talking with Sísí (optionally starting from a thought).
+  const [chatOpening, setChatOpening] = useState<string | null>(null);
+  const openChat = (opening?: string) => {
+    markHint("talk");
+    setChatOpening(opening ?? null);
+    setChatOpen(true);
+  };
 
 
   // Auth-derived name (Supabase profile or guest localStorage).
@@ -710,7 +719,7 @@ export default function JourneyPage() {
             seamOverlap={2}
           />
           <WalkingCat
-            onTap={isWalking && !busy ? () => setChatOpen(true) : undefined}
+            onTap={isWalking && !busy ? () => openChat() : undefined}
             lookingUp={isStarView}
             lookingAtYou={landing}
             facing={catFacing}
@@ -882,6 +891,12 @@ export default function JourneyPage() {
           }}
         />
 
+        {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
+        <CompanionCues
+          visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && env === "day" && !quiet}
+          onTalk={(opening) => openChat(opening)}
+        />
+
         <PaperToast message={isStarView ? toast : meadowToast} />
 
         <DailyPractice
@@ -915,6 +930,13 @@ export default function JourneyPage() {
       {/* Companion conversation — cat tap opens this. World pauses beneath. */}
       <CompanionSheet
         open={chatOpen}
+        opening={chatOpening}
+        onSeeJourney={(s) => {
+          // close the talk, rise to the Stars, and open this Star
+          setChatOpen(false);
+          setArriveStarId(s.id);
+          setTimeout(() => goToStars(), 380);
+        }}
         onClose={() => setChatOpen(false)}
         star={featuredStar}
         onMeaningful={async () => {
