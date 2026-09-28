@@ -808,7 +808,6 @@ export const MomentsWorld = forwardRef<
         .mw-gate--front { z-index: 9; }
         .mw-group--sky, .mw-group--land { will-change: transform; }
         .mw-band, .mw-scatter { position: absolute; left: 0; right: 0; pointer-events: none; overflow: visible; }
-        .mw-band { transition: filter 3s ease; }
         .mw-lane { position: absolute; left: 0; top: 0; height: 100%; display: flex; will-change: transform; }
         .mw-lane img { height: 100%; width: auto; max-width: none; flex: 0 0 auto; display: block; }
         .mw-scatter img { position: absolute; max-width: none; height: auto; }

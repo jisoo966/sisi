@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BASE_GROUND_SPEED, layerDelta, rand, worldClock } from "@/lib/worldMotion";
+import { BASE_GROUND_SPEED, layerDelta, worldClock } from "@/lib/worldMotion";
+import { keepLayer, layerRng, lowPower, restoreLayer, worldCoord, type Rng } from "@/lib/journeyWorld";
 
 /**
  * PassingSprites — individual objects that pass through the world while
@@ -21,6 +22,15 @@ import { BASE_GROUND_SPEED, layerDelta, rand, worldClock } from "@/lib/worldMoti
  * Objects spawn fully outside the right edge, are never wrapped, and are
  * recycled only after they have fully left the left edge. The same asset
  * never appears twice in a row.
+ *
+ * Scheduler (lib/journeyWorld):
+ *   - seeded per session and layer: varied between walks, stable within one
+ *   - `layer` keeps the live objects + schedule in memory, so returning from
+ *     Moments / Stars continues the same world
+ *   - role "front": reports where the passing tree is (Stars waits for it
+ *     to clear Sísí), and spawns nothing while held (conversation, ascent)
+ *   - role "flora": no flower patch while a big tree passes; after a few
+ *     patches, a stretch of open meadow
  */
 
 export type SpriteArt = { src: string; iw: number; ih: number; box: [number, number, number, number] };
@@ -51,6 +61,21 @@ type Props = {
   filter?: string;
   zIndex?: number;
   className?: string;
+  /** stable name: seeds this layer and keeps it across page visits */
+  layer?: string;
+  role?: "far" | "flora" | "front";
+  /** relative frequency per asset (default 1 each) */
+  weights?: number[];
+};
+
+type Kept = {
+  rng: Rng;
+  live: Live[];
+  xs: [number, number][];
+  nextId: number;
+  untilSpawn: number | null;
+  lastArt: number;
+  run: number;
 };
 
 type Live = { id: number; art: number; h: number; base: number; opacity: number; ratio: number; sway: number };
@@ -70,14 +95,41 @@ export function PassingSprites({
   filter,
   zIndex = 1,
   className = "",
+  layer,
+  role,
+  weights,
 }: Props) {
-  const [live, setLive] = useState<Live[]>([]);
+  const kept = useRef(layer ? restoreLayer<Kept>(`sprites:${layer}`) : undefined).current;
+  const rng = useRef<Rng>(kept?.rng ?? layerRng(layer ?? `sprites-${Math.random()}`));
+  const rand = (a: number, b: number) => rng.current.range(a, b);
+  const [live, setLive] = useState<Live[]>(kept?.live ?? []);
   const rootRef = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<number, HTMLDivElement>());
-  const xs = useRef(new Map<number, number>());
-  const nextId = useRef(1);
-  const untilSpawn = useRef<number | null>(null); // px of ground travel
-  const lastArt = useRef(-1);
+  const xs = useRef(new Map<number, number>(kept?.xs ?? []));
+  const nextId = useRef(kept?.nextId ?? 1);
+  const untilSpawn = useRef<number | null>(kept?.untilSpawn ?? null); // px of ground travel
+  const lastArt = useRef(kept?.lastArt ?? -1);
+  const run = useRef(kept?.run ?? 0); // consecutive flora patches
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  // remember this stretch of the world for the next visit
+  useEffect(
+    () => () => {
+      if (!layer) return;
+      keepLayer<Kept>(`sprites:${layer}`, {
+        rng: rng.current,
+        live: liveRef.current,
+        xs: Array.from(xs.current.entries()),
+        nextId: nextId.current,
+        untilSpawn: untilSpawn.current,
+        lastArt: lastArt.current,
+        run: run.current,
+      });
+      if (role === "front") worldCoord.frontSpan = null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   /** per-sprite speed ratio, read by the frame loop */
   const liveRatio = useRef(new Map<number, number>());
 
@@ -91,11 +143,15 @@ export function PassingSprites({
   useEffect(() => {
     if (art.length === 0) return;
     const pick = () => {
-      let i = Math.floor(Math.random() * art.length);
-      if (art.length > 1 && i === lastArt.current) i = (i + 1 + Math.floor(Math.random() * (art.length - 1))) % art.length;
+      // weighted, never the same asset twice in a row
+      const w = art.map((_, i) => (i === lastArt.current && art.length > 1 ? 0 : weights?.[i] ?? 1));
+      let r = rng.current.next() * w.reduce((a, b) => a + b, 0);
+      let i = 0;
+      while (i < w.length - 1 && r >= w[i]) r -= w[i++];
       lastArt.current = i;
       return i;
     };
+    const sparse = lowPower() && role === "flora" ? 1.6 : 1;
     const spawn = (x: number) => {
       const id = nextId.current++;
       xs.current.set(id, x);
@@ -114,12 +170,12 @@ export function PassingSprites({
       ]);
     };
 
-    let placedInView = !startInView;
+    let placedInView = !startInView || !!kept;
     return worldClock().subscribe((f) => {
       const W = rootRef.current?.offsetWidth || window.innerWidth;
       if (untilSpawn.current === null) {
         const r = first ?? every;
-        untilSpawn.current = rand(r[0], r[1]) * W;
+        untilSpawn.current = rand(r[0], r[1]) * W * sparse;
       }
       if (!placedInView) {
         placedInView = true;
@@ -129,6 +185,8 @@ export function PassingSprites({
       // move + retire (only once fully past the left edge)
       const gone: number[] = [];
       let onScreen = 0;
+      let spanL = Infinity;
+      let spanR = -Infinity;
       xs.current.forEach((x, id) => {
         const el = els.current.get(id);
         const r = liveRatio.current.get(id) ?? ratio[0];
@@ -138,7 +196,11 @@ export function PassingSprites({
           el.style.transform = `translate3d(${nx.toFixed(2)}px,0,0)`;
           const w = el.offsetWidth;
           if (w > 0 && nx + w < -2) gone.push(id);
-          else if (nx < W) onScreen++;
+          else if (nx < W) {
+            onScreen++;
+            spanL = Math.min(spanL, nx);
+            spanR = Math.max(spanR, nx + w);
+          }
         }
       });
       if (gone.length) {
@@ -150,10 +212,21 @@ export function PassingSprites({
         setLive((l) => l.filter((s) => !gone.includes(s.id)));
       }
 
+      if (role === "front") worldCoord.frontSpan = onScreen ? { left: spanL, right: spanR } : null;
+
       untilSpawn.current -= f.groundDelta;
-      if (untilSpawn.current <= 0 && f.walking && onScreen < max && xs.current.size < max + 1) {
+      const held =
+        (role === "front" || role === "flora") && worldCoord.holdForeground
+          ? true // Sísí is talking / about to look up: nothing new passes
+          : role === "flora" && !!worldCoord.frontSpan; // no flowers under a passing tree
+      if (untilSpawn.current <= 0 && f.walking && !held && onScreen < max && xs.current.size < max + 1) {
         spawn(W + 2); // fully outside the right edge
-        untilSpawn.current = rand(every[0], every[1]) * W;
+        untilSpawn.current = rand(every[0], every[1]) * W * sparse;
+        if (role === "flora" && ++run.current >= 3) {
+          // after a few patches: a stretch of open meadow
+          run.current = 0;
+          untilSpawn.current = rand(1.4, 2.4) * W;
+        }
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,7 +280,7 @@ export function PassingSprites({
       })}
       <style jsx global>{`
         .passing-sprites { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-        .ps-item { position: absolute; left: 0; overflow: hidden; will-change: transform; transition: filter 3s ease; }
+        .ps-item { position: absolute; left: 0; overflow: hidden; will-change: transform; }
         .ps-item > div { position: absolute; inset: 0; transform-origin: 50% 100%; }
         .ps-item img { position: absolute; max-width: none; display: block; user-select: none; -webkit-user-drag: none; }
         .ps-sway { animation: ps-sway ease-in-out infinite alternate; }

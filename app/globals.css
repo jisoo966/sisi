@@ -405,6 +405,7 @@ textarea:focus-visible {
    stay exactly where they are (lib/worldHandoff.ts). */
 .journey-stage-v2.jl-handoff { animation: none; }
 .journey-stage-v2.jl-quiet .jw-path,
+.journey-stage-v2.jl-quiet .jw-strip,
 .journey-stage-v2.jl-quiet .jw-fore,
 .journey-stage-v2.jl-quiet .passing-trees,
 .journey-stage-v2.jl-quiet .jl-fade,
@@ -415,6 +416,7 @@ textarea:focus-visible {
 .journey-stage-v2.jl-quiet .jl-fade,
 .journey-stage-v2.jl-quiet .jl-fade * { pointer-events: none !important; }
 .journey-stage-v2.jl-handoff .jw-path,
+.journey-stage-v2.jl-handoff .jw-strip,
 .journey-stage-v2.jl-handoff .jw-fore,
 .journey-stage-v2.jl-handoff .passing-trees,
 .journey-stage-v2.jl-handoff .jl-fade,
@@ -427,9 +429,13 @@ textarea:focus-visible {
    never graded) */
 .tod-grade {
   filter: brightness(var(--tod-b, 1)) saturate(var(--tod-s, 1));
-  transition: filter 3s ease;
 }
-.jw-hills .parallax-layer { transition: filter 3s ease; }
+/* the grade drifts with the sky (15s) — only after the first frame */
+html.tod-ready .tod-grade,
+html.tod-ready .jw-hills .parallax-layer,
+html.tod-ready .ps-item,
+html.tod-ready .mw-band,
+html.tod-ready .cf-cloud { transition: filter 15s ease; }
 
 /* Sky Dock while the camera travels: faint (≈25%), still on screen, and
    locked so a second tap can't start another move. */

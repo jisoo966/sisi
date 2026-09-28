@@ -142,6 +142,25 @@ class WorldClock {
     this.dur = Math.max(durationMs ? 120 : 250, full * Math.abs(this.to - this.from));
   }
 
+  /**
+   * Ease toward a partial speed (0…1) over `durationMs` — e.g. 35% while
+   * Sísí is talking, so the world slows instead of stopping.
+   */
+  setTarget(target: number, durationMs: number) {
+    this.init();
+    const t = Math.max(0, Math.min(1, target));
+    if (this.walking === t > 0 && Math.abs(this.to - t) < 0.001) return;
+    this.walking = t > 0;
+    this.from = this.factor;
+    this.to = t;
+    this.tStart = performance.now();
+    this.dur = Math.max(120, durationMs);
+  }
+
+  getFactor() {
+    return this.factor;
+  }
+
   /** Back to a standstill (e.g. leaving the Journey page). */
   reset() {
     this.walking = false;

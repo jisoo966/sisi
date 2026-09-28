@@ -13,11 +13,14 @@ Use the user's local time. Crossfade sky layers over 2.5–4 seconds; never hard
 ## Parallax layers
 
 1. Sky: fixed, no horizontal movement.
-2. Far trees (`tree-far-*`): 0.12–0.18× world speed; 35–55% opacity.
-3. Ground/current meadow: 1× world speed.
-4. Grass accents (`grass-*`): 1.15–1.35× world speed.
-5. Foreground trees (`tree-front-*`): 1.55–1.9× world speed.
-6. SiSi: fixed screen anchor.
+2. Far clouds (`cloud-01` to `cloud-03`): 0.05–0.09× world speed; 45–70% opacity.
+3. Mid clouds (`cloud-04` to `cloud-06`): 0.10–0.16× world speed; 60–85% opacity.
+4. Accent clouds (`cloud-07` to `cloud-09`): 0.18–0.25× world speed; use rarely.
+5. Far trees (`tree-far-*`): 0.12–0.18× world speed; 35–55% opacity.
+6. Continuous meadow (`meadow-strip-*`): 1× world speed. Use the matching time-of-day strip as the always-present looping ground.
+7. Grass accents (`grass-*`): 1.15–1.35× world speed. These are optional foreground details, not the base ground.
+8. Foreground trees (`tree-front-*`): 1.55–1.9× world speed.
+9. SiSi: fixed screen anchor.
 
 ## Rhythm
 
@@ -25,6 +28,8 @@ Use the user's local time. Crossfade sky layers over 2.5–4 seconds; never hard
 - A foreground tree should pass only every 5–8 viewport widths.
 - Leave long empty intervals between foreground objects.
 - Do not show more than one foreground tree at once on mobile.
+- Keep only 1–3 clouds visible at once. Leave some screens with no cloud near the center.
+- Do not repeat the same cloud consecutively or mirror clouds mechanically.
 - Randomize assets without repeating the same tree or grass cluster consecutively.
 - Preserve aspect ratio and keep the walking baseline unchanged.
 - Foreground objects may briefly occlude part of SiSi, but never the entire character or UI.
@@ -35,6 +40,7 @@ Use the user's local time. Crossfade sky layers over 2.5–4 seconds; never hard
 - Morning grass may be 8–12% lighter.
 - Afternoon uses the original colors.
 - Evening may be 10–16% darker and 5–8% less saturated.
+- Morning clouds may remain warm ivory. Afternoon clouds use the native colors. Evening clouds should be 10–18% darker with slightly more dusty-periwinkle shadow; never recolor them orange.
 - Never recolor the SiSi character or ivory UI surfaces.
 
 ## Performance
@@ -42,3 +48,4 @@ Use the user's local time. Crossfade sky layers over 2.5–4 seconds; never hard
 - Export sky backgrounds to WebP for runtime if desired; retain PNG masters.
 - Keep transparent tree and grass PNGs individually reusable.
 - Recycle parallax nodes only after they are fully outside the viewport.
+- Join repeated meadow strips with a 1–2px overlap if subpixel seams appear. Never stretch them vertically or change the shared walking baseline.

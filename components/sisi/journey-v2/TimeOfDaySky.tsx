@@ -16,7 +16,8 @@ import { SKY_SRC, type SkyPhase, type TimeOfDay } from "@/lib/timeOfDay";
  * Keeps the `journey-sky-fixed` class so existing layer rules still apply.
  */
 
-const FADE_MS = 3200;
+/** A change of time during the walk: a slow 15s crossfade (never a swap). */
+const FADE_MS = 15000;
 
 /** Each painting's horizon colour (its last rows), continued below the
  *  painting so the sky never ends in a hard edge — e.g. while the land
@@ -119,7 +120,7 @@ export function TimeOfDaySky({ tod }: { tod: TimeOfDay | null }) {
           inset: 0 0 -200% 0;
           z-index: 5;
           background: #0b1a33;
-          transition: opacity 3s ease-in-out;
+          transition: opacity 15s ease-in-out;
         }
         @media (prefers-reduced-motion: reduce) {
           .tod-sky-layer { transition-duration: 1200ms; }

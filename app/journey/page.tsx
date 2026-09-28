@@ -18,9 +18,12 @@ import { ParallaxLayer } from "@/components/sisi/journey-v2/ParallaxLayer";
 // on disk; the world now uses the distance-based PassingSprites.
 import { PassingSprites } from "@/components/sisi/journey-v2/PassingSprites";
 import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
+import { CloudField } from "@/components/sisi/journey-v2/CloudField";
+import { MeadowStrip } from "@/components/sisi/journey-v2/MeadowStrip";
 import { FAR_TREES, FRONT_TREES, GRASS, TOD_GRADE } from "@/lib/worldArt";
 import { useTimeOfDay } from "@/lib/timeOfDay";
-import { CloudDrift } from "@/components/sisi/journey-v2/CloudDrift";
+import { occludingSisi, worldCoord } from "@/lib/journeyWorld";
+// CloudDrift (earlier clouds cut from slow-clouds.png) stays on disk, unused.
 import { LAYER_SPEED, worldClock } from "@/lib/worldMotion";
 // LEGACY — kept on disk for future use / recoverability:
 //   LandscapeTrack, PanoramaBackground — earlier single-layer scrollers.
@@ -113,10 +116,6 @@ const ASCENT_LAYERS = {
   rearClouds: "/V2/ascent/cloud-bank-rear-v3.png",
 };
 
-/** Single clouds cut (pixels untouched) from slow-clouds.png. */
-const CLOUDS = [1, 2, 3, 4, 5, 6].map((n) => ({
-  src: `/V2/parallax/clouds/cloud-${n}.png`,
-}));
 
 
 /**
@@ -296,8 +295,26 @@ export default function JourneyPage() {
   const { busy, env, starRevealed, landing, descendToGate } = useStarAscent(isStarView);
   const leavingRef = useRef(false);
   const goToStars = () => {
-    if (busy || !isWalking) return;
-    enterStarView();
+    if (busy || !isWalking || ascentPending) return;
+    // Don't rise while a big foreground tree covers Sísí: stop new ones,
+    // let the one passing clear her, then look up.
+    const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
+    const cat = document.querySelector<HTMLElement>(".walking-cat");
+    const sisiX = (stage?.offsetWidth ?? window.innerWidth) * 0.37;
+    const half = (cat?.offsetWidth ?? 117) / 2;
+    if (!occludingSisi(sisiX, half)) {
+      enterStarView();
+      return;
+    }
+    setAscentPending(true);
+    const t0 = performance.now();
+    const wait = () => {
+      if (!occludingSisi(sisiX, half) || performance.now() - t0 > 3500) {
+        setAscentPending(false);
+        enterStarView();
+      } else setTimeout(wait, 90);
+    };
+    wait();
   };
 
   // ── Sky Dock (the same tabs over the Star World, quieter) ──
@@ -482,7 +499,8 @@ export default function JourneyPage() {
 
   // The world walks only in the meadow, with no sheet open and no camera
   // move in progress (after a return, walking resumes once we've landed).
-  const worldPaused = !isWalking || chatOpen || practiceOpen || momentOpen || eveningOpen || busy || leavingTo !== null;
+  // (the conversation slows the world instead of stopping it — see below)
+  const worldPaused = !isWalking || practiceOpen || momentOpen || eveningOpen || busy || leavingTo !== null;
 
   // Offer the evening reflection once, a little after arriving at night.
   useEffect(() => {
@@ -496,8 +514,21 @@ export default function JourneyPage() {
   // Drive the shared world clock: ease in (0 → 32px/s over 1.2s); when the
   // camera is about to look up, decelerate over 450ms.
   useEffect(() => {
-    worldClock().setWalking(!worldPaused, isStarView ? 450 : leavingTo ? 420 : undefined);
-  }, [worldPaused, isStarView, leavingTo]);
+    const clock = worldClock();
+    if (worldPaused) clock.setWalking(false, isStarView ? 450 : leavingTo ? 420 : undefined);
+    else if (chatOpen) clock.setTarget(0.35, 650); // talking: slow to 35% over ~0.65s
+    else if (clock.getFactor() > 0.2) clock.setTarget(1, 850); // back from a talk: ~0.85s
+    else clock.setWalking(true); // starting to walk: the usual soft 1.2s ease
+  }, [worldPaused, isStarView, leavingTo, chatOpen]);
+
+  // Nothing new passes in front while Sísí talks or is about to look up.
+  const [ascentPending, setAscentPending] = useState(false);
+  useEffect(() => {
+    worldCoord.holdForeground = chatOpen || ascentPending || isStarView || busy;
+  }, [chatOpen, ascentPending, isStarView, busy]);
+  useEffect(() => () => {
+    worldCoord.holdForeground = false;
+  }, []);
 
   const goToMoments = () => {
     if (leavingTo) return;
@@ -645,7 +676,8 @@ export default function JourneyPage() {
           {/* Sky follows the local time (morning / afternoon / evening),
               crossfading slowly; fixed, no horizontal movement. */}
           <TimeOfDaySky tod={tod} />
-          <CloudDrift clouds={CLOUDS} zIndex={1} />
+          {/* clouds from the time-of-day pool — seeded, varied, continuous */}
+          <CloudField zIndex={1} />
           {skyStar && (
             <SkyStarV2
               star={skyStar}
@@ -671,6 +703,8 @@ export default function JourneyPage() {
         <div className="jw-group jw-hills">
           {/* Far trees — 0.12–0.18×, faint, one every 2–4 widths of walking */}
           <PassingSprites
+            layer="far-trees"
+            role="far"
             art={FAR_TREES}
             ratio={[0.12, 0.18]}
             every={[2, 4]}
@@ -708,6 +742,8 @@ export default function JourneyPage() {
             bottom={GROUND_BOTTOM}
             seamOverlap={2}
           />
+          {/* the continuous time-of-day grass line, just behind the path */}
+          <MeadowStrip phase={tod?.phase ?? null} zIndex={2} />
           <ParallaxLayer
             className="jw-path tod-grade"
             src={PARALLAX_LAYERS.walkingPath}
@@ -734,6 +770,10 @@ export default function JourneyPage() {
         <div className="jw-group jw-fore">
           {/* Grass accents — 1.15–1.35×, over the paws, changing often */}
           <PassingSprites
+            layer="grass"
+            role="flora"
+            // coral flowers stay a rare accent
+            weights={[1, 0.8, 1, 1, 1, 0.3]}
             art={GRASS}
             ratio={[1.15, 1.35]}
             every={[0.5, 1.3]}
@@ -749,6 +789,8 @@ export default function JourneyPage() {
               two at once; the trunk may cross Sísí, the canopy stays clear of
               the header and the CTA */}
           <PassingSprites
+            layer="front-trees"
+            role="front"
             art={FRONT_TREES}
             ratio={[1.55, 1.9]}
             every={[5, 8]}
