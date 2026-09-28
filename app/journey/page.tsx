@@ -41,7 +41,7 @@ import { StarTrail } from "@/components/sisi/journey-v2/StarTrail";
 import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
 // CaptureFAB superseded by the quiet camera disc in JourneyHeader; kept on disk.
 import { DailyPractice } from "@/components/sisi/journey-v2/DailyPractice";
-import { SpendTimeCTA } from "@/components/sisi/journey-v2/SpendTimeCTA";
+// SpendTimeCTA (the old home button) stays on disk, unused.
 import { SatchelDrawer } from "@/components/sisi/journey-v2/SatchelDrawer";
 import { MomentCapture } from "@/components/sisi/journey-v2/MomentCapture";
 import { CreateStarFlow } from "@/components/sisi/journey-v2/CreateStarFlow";
@@ -790,7 +790,8 @@ export default function JourneyPage() {
             onSatchelClick={() => !busy && setSatchelOpen(true)}
           />
           {/* The one primary action on the home screen. */}
-          <SpendTimeCTA onClick={() => !busy && setPracticeOpen(true)} />
+          {/* "Spend time with your Star" removed from the Journey: guidance
+              now comes from Sísí as speech bubbles (CompanionCues). */}
         </div>
 
         {/* Tabs — in both worlds; hidden while the camera travels.

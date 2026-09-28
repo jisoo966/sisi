@@ -23,6 +23,25 @@ export async function keepThought(t: Thought): Promise<void> {
   await createMoment({ source: "sisi_note", type: "companion_note", text: t.text });
 }
 
+/** three short strokes beside Sísí's face — she is saying this */
+function SpeakLines() {
+  return (
+    <motion.span
+      className="cc-lines"
+      aria-hidden
+      // just in front of her face (she faces right), on the sky
+      style={{ left: "calc(var(--cat-width) * 0.5)", bottom: "calc(var(--cat-width) * -0.3)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1, transition: { delay: 1.6, duration: 0.4 } }}
+      exit={{ opacity: 0 }}
+    >
+      <span style={{ transform: "translate(0, -9px) rotate(-28deg)" }} />
+      <span style={{ transform: "translate(2px, 0) rotate(0deg)" }} />
+      <span style={{ transform: "translate(0, 9px) rotate(28deg)" }} />
+    </motion.span>
+  );
+}
+
 export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (opening?: string) => void }) {
   const [talkHint, setTalkHint] = useState(false);
   const [thought, setThought] = useState<Thought | null>(null);
@@ -55,29 +74,28 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
     <div className="cc-root" aria-live="polite">
       <AnimatePresence>
         {visible && talkHint && (
-          <motion.div
+          <motion.button
             key="talk"
-            className="cc-note paper-bg"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 1.4, duration: 0.5 } }}
+            type="button"
+            className="cc-bubble"
+            // the hint itself is a way in: tapping it starts the talk
+            onClick={() => {
+              markHint("talk");
+              setTalkHint(false);
+              onTalk();
+            }}
+            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: 1.4, duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
             exit={{ opacity: 0, transition: { duration: 0.25 } }}
           >
-            <button
-              type="button"
-              className="cc-x"
-              aria-label="Got it"
-              onClick={() => {
-                markHint("talk");
-                setTalkHint(false);
-              }}
-            >
-              ×
-            </button>
-            <p className="cc-text cc-text--hint">
-              Tap <em>Sísí</em> whenever you want to talk.
-            </p>
-          </motion.div>
+            <span className="cc-bubble-text">
+              Tap <em>Sísí</em> whenever
+              <br />
+              you want to talk.
+            </span>
+          </motion.button>
         )}
+        {visible && (talkHint || (thought && openThought)) && <SpeakLines key="lines" />}
 
         {visible && !talkHint && thought && !openThought && (
           <motion.button
@@ -98,7 +116,7 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
         {visible && thought && openThought && (
           <motion.div
             key="thought"
-            className="cc-note cc-note--thought paper-bg"
+            className="cc-bubble cc-bubble--thought"
             role="dialog"
             aria-label="A thought for your walk"
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -110,7 +128,7 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
               ×
             </button>
             <p className="cc-kicker">A thought for your walk</p>
-            <p className="cc-text">{thought.text}</p>
+            <p className="cc-bubble-text cc-bubble-text--thought">{thought.text}</p>
             <div className="cc-actions">
               <button
                 type="button"
@@ -143,20 +161,29 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
       <style jsx global>{`
         .cc-root {
           position: absolute; z-index: 6; pointer-events: none;
-          left: max(12px, calc(var(--companion-x, 37%) - var(--cat-width) * 0.3));
-          bottom: calc(var(--walking-baseline) + var(--cat-width) * 0.86);
-          width: min(76vw, 300px);
+          left: max(12px, calc(var(--companion-x, 37%) - var(--cat-width) * 0.05));
+          bottom: calc(var(--walking-baseline) + var(--cat-width) * 0.9);
+          width: min(62vw, 270px);
         }
         .cc-root > * { pointer-events: auto; }
-        .cc-note {
-          position: relative; padding: 12px 40px 12px 14px; color: #2b2f45; border-radius: 2px;
-          box-shadow: 0 8px 18px rgba(10, 18, 30, 0.22);
+        .cc-root > .cc-bubble:not(.cc-bubble--thought) { width: max-content; max-width: 100%; }
+        /* a speech bubble from Sísí: warm ivory, rounded, tail down to her */
+        .cc-bubble {
+          position: relative; display: block; margin: 0; padding: 12px 20px 13px; text-align: center; cursor: pointer;
+          border: 1px solid rgba(43, 47, 69, 0.08); border-radius: 18px; background: #f8f1e2; color: #2b2f45;
+          box-shadow: 0 6px 16px rgba(10, 18, 30, 0.18);
         }
-        .cc-note::after {
-          content: ""; position: absolute; left: 34px; bottom: -7px; width: 14px; height: 14px;
-          background: inherit; transform: rotate(45deg); box-shadow: 3px 3px 6px rgba(10, 18, 30, 0.08);
+        .cc-bubble::after {
+          content: ""; position: absolute; left: 30%; bottom: -11px; width: 18px; height: 16px; background: #f8f1e2;
+          clip-path: polygon(0 0, 100% 0, 18% 100%);
+          filter: drop-shadow(0 2px 1px rgba(10, 18, 30, 0.06));
         }
-        .cc-note--thought { padding: 14px 40px 10px 16px; }
+        .cc-bubble--thought { cursor: default; padding: 14px 40px 10px 18px; text-align: left; }
+        .cc-bubble-text { display: block; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; line-height: 1.32; }
+        .cc-bubble-text em { font-style: italic; }
+        .cc-bubble-text--thought { font-family: var(--font-fraunces), Georgia, serif; font-size: 16.5px; margin: 0; }
+        .cc-lines { position: absolute; pointer-events: none; }
+        .cc-lines span { position: absolute; left: 0; top: 0; width: 11px; height: 2px; border-radius: 2px; background: rgba(247, 241, 227, 0.9); transform-origin: 0 50%; }
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(43, 47, 69, 0.6); }
         .cc-text { margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-size: 16.5px; line-height: 1.34; }
         .cc-text--hint { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; }
