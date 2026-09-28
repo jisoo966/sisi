@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createMoment } from "@/lib/momentStore";
 import { hintDone, markHint } from "@/lib/hints";
+import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 import { finishTodaysThought, isKept, markKept, thoughtForToday, type Thought } from "@/lib/sisiThoughts";
 
 /**
@@ -30,7 +31,11 @@ function SpeakLines() {
       className="cc-lines"
       aria-hidden
       // just in front of her face (she faces right), on the sky
-      style={{ left: "calc(var(--cat-width) * 0.5)", bottom: "calc(var(--cat-width) * -0.3)" }}
+      style={{
+        left: "calc(var(--companion-x, 37%) + var(--cat-width) * 0.45)",
+        bottom: "calc(var(--walking-baseline) + var(--cat-width) * 0.6)",
+        zIndex: 6,
+      }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, transition: { delay: 1.6, duration: 0.4 } }}
       exit={{ opacity: 0 }}
@@ -71,31 +76,32 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
   };
 
   return (
+    <>
+    <AnimatePresence>
+      {visible && (talkHint || (thought && openThought)) && <SpeakLines key="lines" />}
+    </AnimatePresence>
     <div className="cc-root" aria-live="polite">
       <AnimatePresence>
         {visible && talkHint && (
-          <motion.button
+          <SisiSpeechBubble
             key="talk"
-            type="button"
-            className="cc-bubble"
+            tailPosition="bottom-right"
+            align="center"
+            delay={1.4}
+            ariaLabel="Tap Sísí whenever you want to talk."
             // the hint itself is a way in: tapping it starts the talk
             onClick={() => {
               markHint("talk");
               setTalkHint(false);
               onTalk();
             }}
-            initial={{ opacity: 0, y: 6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1, transition: { delay: 1.4, duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
-            exit={{ opacity: 0, transition: { duration: 0.25 } }}
-          >
-            <span className="cc-bubble-text">
-              Tap <em>Sísí</em> whenever
-              <br />
-              you want to talk.
-            </span>
-          </motion.button>
+            message={
+              <>
+                Tap <em>Sísí</em> whenever you want to talk.
+              </>
+            }
+          />
         )}
-        {visible && (talkHint || (thought && openThought)) && <SpeakLines key="lines" />}
 
         {visible && !talkHint && thought && !openThought && (
           <motion.button
@@ -114,21 +120,19 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
         )}
 
         {visible && thought && openThought && (
-          <motion.div
+          <SisiSpeechBubble
             key="thought"
-            className="cc-bubble cc-bubble--thought"
-            role="dialog"
-            aria-label="A thought for your walk"
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, transition: { duration: 0.2 } }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            tailPosition="bottom-right"
+            align="left"
+            className="cc-thought"
+            corner={
+              <button type="button" className="cc-x" aria-label="Dismiss" onClick={dismissThought}>
+                ×
+              </button>
+            }
           >
-            <button type="button" className="cc-x" aria-label="Dismiss" onClick={dismissThought}>
-              ×
-            </button>
             <p className="cc-kicker">A thought for your walk</p>
-            <p className="cc-bubble-text cc-bubble-text--thought">{thought.text}</p>
+            <p className="cc-thought-text">{thought.text}</p>
             <div className="cc-actions">
               <button
                 type="button"
@@ -154,19 +158,28 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
                 Talk to Sísí
               </button>
             </div>
-          </motion.div>
+          </SisiSpeechBubble>
         )}
       </AnimatePresence>
 
       <style jsx global>{`
         .cc-root {
+          /* the bubble grows to the left and upward; its bottom-right tail
+             (≈29px from its right edge) points down at Sísí's head */
+          --cc-anchor: calc(var(--companion-x, 37%) + var(--cat-width) * 0.3 + 29px);
           position: absolute; z-index: 6; pointer-events: none;
-          left: max(12px, calc(var(--companion-x, 37%) - var(--cat-width) * 0.05));
-          bottom: calc(var(--walking-baseline) + var(--cat-width) * 0.9);
-          width: min(62vw, 270px);
+          right: calc(100% - var(--cc-anchor));
+          bottom: calc(var(--walking-baseline) + var(--cat-width) * 0.92);
+          max-width: calc(var(--cc-anchor) - 12px);
+          display: flex; flex-direction: column; align-items: flex-end;
         }
         .cc-root > * { pointer-events: auto; }
-        .cc-root > .cc-bubble:not(.cc-bubble--thought) { width: max-content; max-width: 100%; }
+        .cc-thought.sisi-speech { padding: 14px 38px 10px 18px; }
+        .cc-thought-text { margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-size: clamp(15px, 4vw, 16.5px); line-height: 1.34; }
+        .cc-thought .cc-actions { justify-content: flex-start; gap: 14px; white-space: nowrap; }
+        .cc-thought .cc-link { font-size: 15px; }
+        .cc-thought .cc-kicker { color: rgba(24, 51, 58, 0.6); }
+        .cc-thought .cc-x { color: rgba(24, 51, 58, 0.5); }
         /* a speech bubble from Sísí: warm ivory, rounded, tail down to her */
         .cc-bubble {
           position: relative; display: block; margin: 0; padding: 12px 20px 13px; text-align: center; cursor: pointer;
@@ -206,5 +219,6 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
         @media (prefers-reduced-motion: reduce) { .cc-spark { animation: none; } }
       `}</style>
     </div>
+    </>
   );
 }

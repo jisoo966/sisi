@@ -1,0 +1,49 @@
+.sisi-speech {
+  --paper: #f5efdd;
+  --ink: #18333a;
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  min-width: 150px;
+  max-width: min(72vw, 290px);
+  padding: 14px 18px 16px;
+  box-sizing: border-box;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: url("./paper-grain.webp");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  border-radius: 15px 13px 17px 12px;
+  box-shadow: 0 3px 8px rgba(9,35,42,.12), inset 0 0 14px rgba(120,98,63,.05);
+  font-family: var(--font-editorial, Georgia, serif);
+  font-size: clamp(14px,3.8vw,17px);
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: break-word;
+  white-space: normal;
+  animation: sisi-speech-in 320ms cubic-bezier(.22,1,.36,1) both;
+  transition: width 320ms cubic-bezier(.22,1,.36,1), height 320ms cubic-bezier(.22,1,.36,1);
+}
+
+.sisi-speech[data-tail]:not([data-tail="none"])::after {
+  content: "";
+  position: absolute;
+  bottom: -13px;
+  width: 22px;
+  height: 18px;
+  background: var(--paper);
+  clip-path: polygon(0 0,100% 0,32% 100%);
+  filter: drop-shadow(0 3px 2px rgba(9,35,42,.08));
+}
+.sisi-speech[data-tail="right"]::after { right: 22px; }
+.sisi-speech[data-tail="left"]::after { left: 22px; transform: scaleX(-1); }
+.sisi-speech[data-tail="center"]::after { left: 50%; transform: translateX(-50%); }
+
+@keyframes sisi-speech-in {
+  from { opacity: 0; transform: translateY(6px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sisi-speech { animation: none; transition: none; }
+}
