@@ -175,7 +175,7 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
         }
         .cc-root > * { pointer-events: auto; }
         .cc-thought.sisi-speech { padding: 14px 38px 10px 18px; }
-        .cc-thought-text { margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-size: clamp(15px, 4vw, 16.5px); line-height: 1.34; }
+        .cc-thought-text { margin: 0; font-family: var(--font-editorial), Georgia, serif; font-size: clamp(15px, 4vw, 16.5px); line-height: 1.34; }
         .cc-thought .cc-actions { justify-content: flex-start; gap: 14px; white-space: nowrap; }
         .cc-thought .cc-link { font-size: 15px; }
         .cc-thought .cc-kicker { color: rgba(24, 51, 58, 0.6); }
@@ -203,7 +203,7 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
         .cc-actions { display: flex; gap: 16px; margin-top: 6px; }
         .cc-link {
           min-height: 40px; padding: 0; border: 0; background: transparent; cursor: pointer;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; color: #3d74d8;
+          font-family: var(--font-editorial), Georgia, serif; font-size: 15.5px; color: #3d74d8;
         }
         .cc-link:disabled { color: rgba(43, 47, 69, 0.55); cursor: default; }
         .cc-x {

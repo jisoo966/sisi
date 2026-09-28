@@ -487,3 +487,8 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
   -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 30%, rgba(0, 0, 0, 0.55) 48%, transparent 66%);
   mask-image: radial-gradient(circle at 50% 50%, #000 30%, rgba(0, 0, 0, 0.55) 48%, transparent 66%);
 }
+
+/* Editorial voice for Sísí's speech — Sentient (Fontshare, loaded in the
+   layout), falling back to Fraunces while it loads. */
+:root { --font-editorial: "Sentient", var(--font-fraunces), Georgia, serif; }
+.sisi-speech { font-weight: 400; letter-spacing: -0.01em; }
