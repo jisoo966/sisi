@@ -34,13 +34,20 @@ export type Star = {
 
 /**
  * Entries on a Star after its wish (never new wishes):
- *   good  "Something good" — a hopeful thing, gratitude, a kind word,
- *         a small opportunity, a meaningful coincidence
- *   step  "A step I took" — a real action toward the wish
+ *   something_good  "Something good" — a hopeful thing, gratitude, a kind
+ *                   word, a small opportunity, a meaningful coincidence
+ *   step_taken      "A step I took" — a real action toward the wish
  * Older entries (reflections, captured moments) have no kind.
  * The same record is the Star's timeline entry AND the Moment — never copied.
  */
-export type EntryKind = "good" | "step";
+export type EntryKind = "something_good" | "step_taken";
+
+/** Read older saved entries ("good" / "step") in the current form. */
+export function normalizeKind(k: unknown): EntryKind | undefined {
+  if (k === "something_good" || k === "good") return "something_good";
+  if (k === "step_taken" || k === "step") return "step_taken";
+  return undefined;
+}
 
 export type Sign = {
   id: string;
@@ -48,6 +55,8 @@ export type Sign = {
   text: string;
   createdAt: string; // ISO
   kind?: EntryKind;
+  /** owner (null on this device before sign-in) */
+  userId?: string | null;
 };
 
 const STARS_KEY = "sisi:stars";
@@ -374,7 +383,11 @@ export async function loadSigns(): Promise<Sign[]> {
 
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(SIGNS_KEY) ?? "[]");
+    const raw: Sign[] = JSON.parse(localStorage.getItem(SIGNS_KEY) ?? "[]");
+    return raw.map((s) => {
+      const kind = normalizeKind(s.kind);
+      return kind ? { ...s, kind } : { ...s, kind: undefined };
+    });
   } catch {
     return [];
   }
@@ -424,6 +437,8 @@ export async function addSign(
   };
 
   const user = await getCurrentUser();
+  sign.userId = user?.id ?? null;
+
 
   if (user) {
     const supabase = createClient();
@@ -433,6 +448,8 @@ export async function addSign(
       user_id: user.id,
       text: sign.text,
       source,
+      // needs a `kind` column on signs (see supabase/migrations/004)
+      ...(sign.kind ? { kind: sign.kind } : {}),
     });
     if (error) console.error("addSign error:", error);
     return sign;

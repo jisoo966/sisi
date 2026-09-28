@@ -476,8 +476,11 @@ export function StarWorld({
         /* A star is open: the others and the sky dim slightly. */
         .sw-root.has-selection .sw-sky { opacity: 0.72; }
         .sw-root.has-selection .sw-path { opacity: 0.08; transition-delay: 0ms; }
+        /* One Star at a time: while a Star is open the others step back
+           completely (no second star hovering above the paper). */
         .sw-root.has-selection .sw-star:not(.is-selected) {
-          opacity: 0.4;
+          opacity: 0;
+          pointer-events: none;
         }
         /* "Let this star rest": it drifts gently down the path and fades,
            leaving a short fall of light. */

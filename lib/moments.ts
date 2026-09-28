@@ -8,7 +8,7 @@
  *   rest    a Star at Rest — its moments stay here, it can return to the sky
  */
 
-import type { Sign, Star } from "@/lib/myStars";
+import type { EntryKind, Sign, Star } from "@/lib/myStars";
 import { loadSigns, loadStars } from "@/lib/myStars";
 import type { Postcard } from "@/lib/postcards";
 import { loadPostcards } from "@/lib/postcards";
@@ -24,7 +24,7 @@ export type MomentItem = {
   postcardId?: string;
   signId?: string;
   /** "Something good" / "A step I took" entry on a Star */
-  kind?: "good" | "step";
+  kind?: EntryKind;
 };
 export type StarItem = { type: "star"; key: string; at: string; star: Star };
 export type RestItem = {
@@ -119,7 +119,7 @@ export function rangeLabel(first?: string, last?: string): string {
 }
 
 /** The label an entry carries on its Star and in Moments. */
-export const ENTRY_LABEL: Record<"good" | "step", string> = {
-  good: "Something good",
-  step: "A step I took",
+export const ENTRY_LABEL: Record<EntryKind, string> = {
+  something_good: "Something good",
+  step_taken: "A step I took",
 };

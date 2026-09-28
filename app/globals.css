@@ -439,7 +439,7 @@ textarea:focus-visible {
 .journey-dock.is-transit * { pointer-events: none !important; }
 
 /* A Star brightens once, gently, when something is added to it. */
-.sw-star-pulse.is-brighten { animation: sw-brighten 1.3s ease-in-out 1 !important; }
+.sw-star-pulse.is-brighten { animation: sw-brighten 0.8s ease-in-out 1 !important; }
 @keyframes sw-brighten {
   0% { filter: brightness(1); transform: scale(1); }
   40% { filter: brightness(1.35); transform: scale(1.08); }
@@ -469,3 +469,15 @@ textarea:focus-visible {
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 .stars-new:hover, .stars-new:focus-visible { background: rgba(247, 241, 227, 0.12); border-color: rgba(247, 241, 227, 0.5); outline: none; }
+
+/* Star World stars: no square focus box on tap; a soft round ring only for
+   keyboard focus. The painted aura is softened into a round glow (render-time
+   mask — the PNG is untouched) so it never reads as a box around the Star. */
+.sw-star { -webkit-tap-highlight-color: transparent; }
+.sw-star:focus { outline: none; }
+.sw-star:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.75); outline-offset: 6px; border-radius: 50%; }
+.sw-star .sisi-star__aura,
+.ns-star .sisi-star__aura {
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 30%, rgba(0, 0, 0, 0.55) 48%, transparent 66%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 30%, rgba(0, 0, 0, 0.55) 48%, transparent 66%);
+}
