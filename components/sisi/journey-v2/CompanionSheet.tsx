@@ -4,46 +4,54 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
-import { createMoment, type MomentType } from "@/lib/momentStore";
+import { createMoment, loadMoments, type MomentType } from "@/lib/momentStore";
 import { tornEdge } from "@/lib/tornEdge";
 
+/**
+ * CompanionSheet — sitting with Sísí, inside the same landscape.
+ *
+ *   1 open     a tall ivory paper rises above the tabs; Sísí peeks over its
+ *              top edge. "I’m here. / What’s on your mind?" with three gentle
+ *              ways to begin (I want to talk · Help me with a Star · I’m not sure)
+ *   2 listen   the user's words in a soft blue note; Sísí answers on a paper
+ *              note. Once per talk, gentle directions:
+ *              Just keep talking · See my journey · Find a small step
+ *   3 keep?    when Sísí marks the user's words as worth keeping ([SAVE:…]):
+ *              Keep this · Add to a Star · Keep talking —
+ *              "Nothing is saved unless you choose."
+ *   4a         Save as a Moment — an editable quote, "A conversation with Sísí"
+ *   4b         Add to a Star — which Star, what kind of note
+ *   5 return   "Kept safely in Moments." — Keep talking · Back to Journey
+ *
+ * The conversation itself is never saved; only the words the user chooses
+ * (source sisi_conversation, one canonical Moment).
+ */
+
 const PAPER_EDGE = tornEdge(51, 30, 0.9);
+const NOTE_EDGE = tornEdge(61, 14, 2.4);
+const PEEK_SRC = "/V2/sisi/sisi-peek.png"; // front-facing peek pose (optional art slot)
+const FOX_FALLBACK = "/V2/fox-walk/fox-walk-preview.png";
 
-/**
- * CompanionSheet — the small conversation with Sísí.
- *
- * Opens when the user taps the cat. Slides up over the walking world;
- * the world remains subtly visible behind (soft backdrop dim, not black).
- * Sísí greets first, the user responds.
- *
- * Uses the existing /api/chat streaming endpoint. Session persistence
- * (chatSessions) can be layered in a later phase; for now the sheet is
- * ephemeral — each open starts a fresh short conversation.
- *
- * Cat pauses (via the parent) while the sheet is open, matching the
- * "we stopped and talked" feeling.
- */
-
-/**
- * offer    Sísí marked the user's words as worth keeping ([SAVE:…]) — offer
- *          Save as a Moment · Add to a Star · Keep talking. Never automatic.
- * choices  once per talk, a gentle direction: See my journey · Find a small
- *          step · Just keep talking (ignoring it is fine too).
- */
-type Msg = { id: string; from: "sisi" | "user"; text: string; offer?: string; choices?: boolean };
-/** An explicit keep, previewed and editable before anything is saved. */
+type Pill = { label: string; act: () => void; quiet?: boolean };
+type Msg = {
+  id: string;
+  from: "sisi" | "user" | "saved";
+  text: string;
+  /** the user's words Sísí marked as worth keeping */
+  offer?: string;
+  /** once per talk: gentle directions */
+  choices?: boolean;
+  /** after a save: keep talking · back to Journey */
+  after?: boolean;
+};
 type Keep = { mode: "moment" | "star"; text: string; starId: string | null; type: MomentType };
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  /**
-   * Fired once per open when the talk becomes meaningful (the user has
-   * shared at least two real messages). Used to grant one Little Light —
-   * never per message.
-   */
+  /** Fired once per open when the talk becomes meaningful. */
   onMeaningful?: () => void;
-  /** The Current Star — SiSi remembers it in the conversation. */
+  /** The Current Star — Sísí remembers it in the conversation. */
   star?: Star | null;
   /** "See my journey" — rise to this Star's journey */
   onSeeJourney?: (star: Star) => void;
@@ -51,90 +59,65 @@ type Props = {
   opening?: string | null;
 };
 
-const OPENING = "What's on your mind?";
+const STARTERS: { label: string; say: string }[] = [
+  { label: "I want to talk", say: "I want to talk." },
+  { label: "Help me with a Star", say: "Can you help me with one of my Stars?" },
+  { label: "I’m not sure", say: "I’m not sure what I want to say." },
+];
 
 export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSeeJourney, opening = null }: Props) {
-  const [savedNote, setSavedNote] = useState<string | null>(null);
-  const [keep, setKeep] = useState<Keep | null>(null);
-  const [keepBusy, setKeepBusy] = useState(false);
-  const [stars, setStars] = useState<Star[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [manualOffer, setManualOffer] = useState<string | null>(null);
-  const choicesShown = useRef(false);
-  useEffect(() => {
-    if (!open) return;
-    setSavedNote(null);
-    setKeep(null);
-    setDismissed(new Set());
-    setManualOffer(null);
-    choicesShown.current = false;
-    loadStars().then((s) => setStars(walkingStars(s)));
-  }, [open]);
-
-  const startKeep = (mode: Keep["mode"], text: string) =>
-    setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "something_good" });
-  const confirmKeep = async () => {
-    if (!keep || keepBusy || !keep.text.trim()) return;
-    if (keep.mode === "star" && !keep.starId) return;
-    setKeepBusy(true);
-    try {
-      // only the chosen words — never the conversation
-      await createMoment({
-        source: "sisi_conversation",
-        type: keep.mode === "star" ? keep.type : "general",
-        text: keep.text,
-        starId: keep.mode === "star" ? keep.starId : null,
-      });
-      const wish = stars.find((s) => s.id === keep.starId)?.wish;
-      setSavedNote(keep.mode === "star" ? `Added to “${wish ?? "your Star"}”. It’s in Moments too.` : "Kept in your Moments.");
-      setKeep(null);
-      setManualOffer(null);
-    } finally {
-      setKeepBusy(false);
-    }
-  };
-  const sharedChars = useRef(0);
-  const sharedCount = useRef(0);
-  const meaningfulSent = useRef(false);
-  useEffect(() => {
-    if (open) {
-      sharedChars.current = 0;
-      sharedCount.current = 0;
-      meaningfulSent.current = false;
-    }
-  }, [open]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [keep, setKeep] = useState<Keep | null>(null);
+  const [keepBusy, setKeepBusy] = useState(false);
+  const [stars, setStars] = useState<Star[]>([]);
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [peek, setPeek] = useState(PEEK_SRC);
+  const choicesShown = useRef(false);
+  const sharedChars = useRef(0);
+  const sharedCount = useRef(0);
+  const meaningfulSent = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Seed with Sísí's opening when the sheet first opens (once per open).
+  // A fresh, private conversation each time.
   useEffect(() => {
-    if (open && messages.length === 0) {
-      setMessages([{ id: "greet", from: "sisi", text: opening ?? OPENING }]);
-      setTimeout(() => inputRef.current?.focus(), 350);
+    if (open) {
+      setMessages([]);
+      setDraft("");
+      setKeep(null);
+      setDismissed(new Set());
+      choicesShown.current = false;
+      sharedChars.current = 0;
+      sharedCount.current = 0;
+      meaningfulSent.current = false;
+      loadStars().then((s) => setStars(walkingStars(s)));
+      // a small picture for each Star: its latest photo Moment, if any
+      loadMoments().then((ms) => {
+        const t: Record<string, string> = {};
+        for (const m of ms) if (m.starId && m.image && !t[m.starId]) t[m.starId] = m.image;
+        setThumbs(t);
+      });
     }
-    if (!open) {
-      // Reset when closed so next open starts fresh
-      setTimeout(() => {
-        setMessages([]);
-        setDraft("");
-      }, 400);
-    }
-  }, [open, messages.length]);
+  }, [open]);
 
-  // Auto-scroll to latest
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [messages, keep]);
+
+  const hasTalked = messages.some((m) => m.from === "user");
 
   async function send(preset?: string) {
     const text = (preset ?? draft).trim();
     if (!text || sending) return;
-    setSavedNote(null);
     const userMsg: Msg = { id: `u-${Date.now()}`, from: "user", text };
+    const history = [...messages, userMsg]
+      .filter((x) => x.from !== "saved" && !x.after)
+      .map((x) => ({ role: x.from === "user" ? "user" : "assistant", content: x.text }));
+    if (opening) history.unshift({ role: "assistant", content: opening });
     setMessages((m) => [...m, userMsg]);
     sharedCount.current += 1;
     sharedChars.current += text.length;
@@ -144,23 +127,17 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     }
     setDraft("");
     setSending(true);
-    // Placeholder Sísí bubble while streaming
     const sisiId = `s-${Date.now()}`;
     setMessages((m) => [...m, { id: sisiId, from: "sisi", text: "" }]);
 
     try {
-      const history = [...messages, userMsg]
-        .filter((x) => x.id !== "greet" || x.text !== OPENING)
-        .map((x) => ({ role: x.from === "user" ? "user" : "assistant", content: x.text }));
-
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, currentStar: star?.wish ?? null }),
       });
       if (!resp.ok || !resp.body) throw new Error("chat failed");
-
-      // The route streams Server-Sent Events: `data: {"text": "..."}` lines.
+      // Server-Sent Events: `data: {"text": "..."}` lines.
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let acc = "";
@@ -178,15 +155,17 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
           try {
             acc += JSON.parse(payload).text ?? "";
           } catch {
-            // ignore partial lines
+            // partial line
           }
         }
         const shown = acc.replace(/\[SAVE:[a-z]+\]/g, "").trim();
         setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: shown } : x)));
       }
-      // Sísí thought these words were worth keeping → offer (never save).
+      // Sísí thought the user's words were worth keeping → offer, never save.
       const worth = /\[SAVE:[a-z]+\]/.test(acc);
-      const giveChoices = !!star && sharedCount.current >= 2 && !choicesShown.current && !worth;
+      // directions come after something real was shared (not a starter tap)
+      const isStarter = STARTERS.some((st) => st.say === text);
+      const giveChoices = !!star && !isStarter && !choicesShown.current && !worth;
       if (giveChoices) choicesShown.current = true;
       if (worth || giveChoices) {
         setMessages((m) =>
@@ -194,23 +173,78 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         );
       }
     } catch {
-      setMessages((m) =>
-        m.map((x) =>
-          x.id === sisiId
-            ? { ...x, text: "let's try that again in a moment." }
-            : x,
-        ),
-      );
+      setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: "Let’s try that again in a moment." } : x)));
     } finally {
       setSending(false);
     }
   }
 
+  const startKeep = (mode: Keep["mode"], text: string) =>
+    setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "something_good" });
+
+  const confirmKeep = async () => {
+    if (!keep || keepBusy || !keep.text.trim()) return;
+    if (keep.mode === "star" && !keep.starId) return;
+    setKeepBusy(true);
+    try {
+      // only the chosen words — never the conversation
+      await createMoment({
+        source: "sisi_conversation",
+        type: keep.mode === "star" ? keep.type : "general",
+        text: keep.text,
+        starId: keep.mode === "star" ? keep.starId : null,
+      });
+      const wish = stars.find((s) => s.id === keep.starId)?.wish;
+      const note = keep.mode === "star" ? `Added to “${wish ?? "your Star"}”. It’s in Moments too.` : "Kept safely in Moments.";
+      const t = Date.now();
+      setMessages((m) => [
+        ...m.map((x) => ({ ...x, offer: undefined })),
+        { id: `k-${t}`, from: "saved", text: note },
+        { id: `a-${t}`, from: "sisi", text: "We can keep talking, or return to our walk.", after: true },
+      ]);
+      setKeep(null);
+    } finally {
+      setKeepBusy(false);
+    }
+  };
+
+  // Only the newest Sísí note carries choices.
+  const lastSisi = [...messages].reverse().find((m) => m.from === "sisi");
+  const pillsFor = (m: Msg): { pills: Pill[]; lock?: boolean } | null => {
+    if (!lastSisi || m.id !== lastSisi.id || sending || dismissed.has(m.id)) return null;
+    const hide = () => setDismissed((d) => new Set(d).add(m.id));
+    if (m.offer)
+      return {
+        lock: true,
+        pills: [
+          { label: "Keep this", act: () => startKeep("moment", m.offer!) },
+          { label: "Add to a Star", act: () => startKeep("star", m.offer!) },
+          { label: "Keep talking", act: hide, quiet: true },
+        ],
+      };
+    if (m.after)
+      return {
+        pills: [
+          { label: "Keep talking", act: () => { hide(); inputRef.current?.focus(); } },
+          { label: "Back to Journey", act: onClose, quiet: true },
+        ],
+      };
+    if (m.choices && star)
+      return {
+        pills: [
+          { label: "Just keep talking", act: hide, quiet: true },
+          { label: "See my journey", act: () => onSeeJourney?.(star) },
+          { label: "Find a small step", act: () => { hide(); send("Could you help me find one very small next step?"); } },
+        ],
+      };
+    return null;
+  };
+
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop — soft dim, world still visible */}
+          {/* The world stays visible; the tabs below stay usable. */}
           <motion.button
             type="button"
             aria-label="Close conversation"
@@ -222,105 +256,73 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             transition={{ duration: 0.3 }}
           />
 
-          {/* Sheet — slides up */}
           <motion.aside
             role="dialog"
-            aria-label="Talk with SiSi"
+            aria-label="Talk with Sísí"
             className="companion-sheet"
-            initial={{ y: "100%" }}
+            initial={{ y: "105%" }}
             animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ y: "108%" }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            {/* SiSi stops and rests against the top edge of the paper. */}
+            {/* Sísí peeks over the top edge of the paper. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="sisi-rest" src="/V2/fox-walk/fox-walk-preview.png" alt="" aria-hidden />
+            <img
+              className={`sisi-peek${peek === FOX_FALLBACK ? " is-side" : ""}`}
+              src={peek}
+              alt=""
+              aria-hidden
+              onError={() => setPeek(FOX_FALLBACK)}
+            />
             <div className="paper paper-bg" aria-hidden />
-            {/* Drag handle */}
-            <div className="handle" />
 
-            {/* Header — close */}
-            <div className="header">
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                className="close-btn"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div className="scroll" ref={scrollRef}>
-              {messages.map((m, i) => (
-                <div key={m.id} className={`turn turn-${m.from}`}>
-                  <p className={`line line-${m.from}`}>
-                    {m.text || (sending && i === messages.length - 1 ? "…" : "")}
-                  </p>
-                  {m.offer && !dismissed.has(m.id) && !keep && (
-                    <div className="offer" role="group" aria-label="Keep this?">
-                      <button type="button" className="keep-btn" onClick={() => startKeep("moment", m.offer!)}>Save as a Moment</button>
-                      <span className="keep-dot" aria-hidden>·</span>
-                      <button type="button" className="keep-btn" onClick={() => startKeep("star", m.offer!)}>Add to a Star</button>
-                      <span className="keep-dot" aria-hidden>·</span>
-                      <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setDismissed((d) => new Set(d).add(m.id))}>Keep talking</button>
-                    </div>
-                  )}
-                  {m.choices && !dismissed.has(`c-${m.id}`) && star && (
-                    <div className="offer" role="group" aria-label="Where would you like to go?">
-                      <button type="button" className="chip" onClick={() => onSeeJourney?.(star)}>See my journey</button>
-                      <button
-                        type="button"
-                        className="chip"
-                        onClick={() => {
-                          setDismissed((d) => new Set(d).add(`c-${m.id}`));
-                          send("Could you help me find one very small next step?");
-                        }}
-                      >
-                        Find a small step
-                      </button>
-                      <button type="button" className="chip chip--quiet" onClick={() => setDismissed((d) => new Set(d).add(`c-${m.id}`))}>
-                        Just keep talking
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Keep something — only when the user asks, with an editable
-                preview; only the chosen words are saved. */}
             {keep ? (
-              <div className="keep-panel">
-                <p className="keep-h">{keep.mode === "star" ? "Add to a Star" : "Save as a Moment"}</p>
-                <textarea
-                  className="keep-text"
-                  rows={2}
-                  maxLength={240}
-                  value={keep.text}
-                  aria-label="What to keep"
-                  onChange={(e) => setKeep({ ...keep, text: e.target.value })}
-                />
-                {keep.mode === "star" && (
+              /* ── 4a / 4b: keep, with an editable preview ── */
+              <div className="keep" role="group" aria-label={keep.mode === "star" ? "Add to a Star" : "Save as a Moment"}>
+                <div className="keep-head">
+                  <p className="keep-title">{keep.mode === "star" ? "Which Star does this belong to?" : "Save as a Moment"}</p>
+                  <button type="button" className="icon-btn" aria-label="Cancel" onClick={() => setKeep(null)}>
+                    <CloseIcon />
+                  </button>
+                </div>
+                <div className="quote">
+                  <span className="quote-mark" aria-hidden>“</span>
+                  <textarea
+                    rows={3}
+                    maxLength={240}
+                    value={keep.text}
+                    aria-label="What to keep"
+                    onChange={(e) => setKeep({ ...keep, text: e.target.value })}
+                  />
+                </div>
+
+                {keep.mode === "moment" ? (
+                  <p className="keep-source">
+                    <BubbleIcon /> A conversation with Sísí
+                  </p>
+                ) : (
                   <>
-                    <div className="keep-stars">
-                      {stars.map((s2) => (
+                    <div className="star-list" role="radiogroup" aria-label="Which Star">
+                      {stars.map((s) => (
                         <button
-                          key={s2.id}
+                          key={s.id}
                           type="button"
-                          className={`chip${keep.starId === s2.id ? " is-on" : ""}`}
-                          onClick={() => setKeep({ ...keep, starId: s2.id })}
+                          role="radio"
+                          aria-checked={keep.starId === s.id}
+                          className="star-row"
+                          onClick={() => setKeep({ ...keep, starId: s.id })}
                         >
-                          {s2.wish}
+                          <span className="star-thumb">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={thumbs[s.id] ?? "/assets/sisi-star-mark-painted-512.png"} alt="" className={thumbs[s.id] ? "" : "is-mark"} />
+                          </span>
+                          <span className="star-wish">{s.wish}</span>
+                          <span className={`radio${keep.starId === s.id ? " is-on" : ""}`} aria-hidden />
                         </button>
                       ))}
                     </div>
-                    <div className="keep-types">
+                    <p className="keep-q">What kind of note is this?</p>
+                    <div className="seg">
                       {([
                         ["something_good", "Something good"],
                         ["small_step", "A small step"],
@@ -328,7 +330,8 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
                         <button
                           key={t}
                           type="button"
-                          className={`chip${keep.type === t ? " is-on" : ""}`}
+                          aria-pressed={keep.type === t}
+                          className={`seg-btn${keep.type === t ? " is-on" : ""}`}
                           onClick={() => setKeep({ ...keep, type: t })}
                         >
                           {label}
@@ -337,250 +340,237 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
                     </div>
                   </>
                 )}
-                <div className="keep-actions">
-                  <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setKeep(null)}>Keep talking</button>
-                  <button
-                    type="button"
-                    className="keep-save"
-                    disabled={keepBusy || !keep.text.trim() || (keep.mode === "star" && !keep.starId)}
-                    onClick={confirmKeep}
-                  >
-                    {keep.mode === "star" ? "Add to this Star" : "Save as a Moment"}
-                  </button>
-                </div>
-              </div>
-            ) : manualOffer ? (
-              <div className="keep-row">
-                <button type="button" className="keep-btn" onClick={() => startKeep("moment", manualOffer)}>Save as a Moment</button>
-                <span className="keep-dot" aria-hidden>·</span>
-                <button type="button" className="keep-btn" onClick={() => startKeep("star", manualOffer)}>Add to a Star</button>
-                <span className="keep-dot" aria-hidden>·</span>
-                <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setManualOffer(null)}>Keep talking</button>
-              </div>
-            ) : savedNote ? (
-              <div className="keep-row"><span className="keep-done">{savedNote}</span></div>
-            ) : lastUserText(messages) && !sending ? (
-              <div className="keep-row">
-                <button type="button" className="keep-btn keep-btn--quiet" onClick={() => setManualOffer(lastUserText(messages))}>
-                  Keep something from this talk
+
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={keepBusy || !keep.text.trim() || (keep.mode === "star" && !keep.starId)}
+                  onClick={confirmKeep}
+                >
+                  {keep.mode === "star" ? "Save to my Star" : "Save Moment"}
+                </button>
+                <button type="button" className="pill pill--quiet" onClick={() => setKeep(null)}>
+                  Cancel
                 </button>
               </div>
-            ) : null}
+            ) : (
+              <>
+                <div className="scroll" ref={scrollRef}>
+                  {/* 1 · Sísí welcomes you */}
+                  <div className="greet">
+                    <p className="greet-h">I’m here.</p>
+                    {opening ? (
+                      <p className="note note-sisi" style={{ clipPath: NOTE_EDGE }}>{opening}</p>
+                    ) : (
+                      <p className="greet-q">What’s on your mind?</p>
+                    )}
+                  </div>
+                  {!hasTalked && (
+                    <div className="pills">
+                      {STARTERS.map((s) => (
+                        <button key={s.label} type="button" className="pill" onClick={() => send(s.say)}>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-            {/* Input pill */}
-            <form
-              className="input-row"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send();
-              }}
-            >
-              <input
-                ref={inputRef}
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Tell SiSi…"
-                disabled={sending}
-                className="input"
-              />
-              <button
-                type="submit"
-                disabled={!draft.trim() || sending}
-                aria-label="Send"
-                className="send-btn"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-              </button>
-            </form>
+                  {messages.map((m, i) => {
+                    if (m.from === "saved")
+                      return (
+                        <p key={m.id} className="saved-chip">
+                          <CheckIcon /> {m.text}
+                        </p>
+                      );
+                    if (m.from === "user")
+                      return (
+                        <p key={m.id} className="note note-user">
+                          {m.text}
+                        </p>
+                      );
+                    const p = pillsFor(m);
+                    const isLast = lastSisi?.id === m.id;
+                    return (
+                      <div key={m.id} className="turn">
+                        <div className="note note-sisi" style={{ clipPath: NOTE_EDGE }}>
+                          {m.text || (sending && i === messages.length - 1 ? "…" : "")}
+                        </div>
+                        {isLast && m.text && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className="coral" src="/V2/moments/coral-star-stamp.png" alt="" aria-hidden />
+                        )}
+                        {p && (
+                          <div className="pills">
+                            {p.pills.map((b) => (
+                              <button key={b.label} type="button" className={`pill${b.quiet ? " pill--quiet" : ""}`} onClick={b.act}>
+                                {b.label}
+                              </button>
+                            ))}
+                            {p.lock && (
+                              <p className="lock">
+                                <LockIcon /> Nothing is saved unless you choose.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <form
+                  className="input-row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    send();
+                  }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Share anything…"
+                    aria-label="Share anything"
+                    disabled={sending}
+                    className="input"
+                  />
+                  <button type="submit" disabled={!draft.trim() || sending} aria-label="Send" className="send-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 19V5M6 11l6-6 6 6" />
+                    </svg>
+                  </button>
+                </form>
+              </>
+            )}
           </motion.aside>
 
-          <style jsx>{`
-            :global(.companion-backdrop) {
-              position: fixed;
-              inset: 0;
-              background: rgba(28, 35, 64, 0.14);
-              z-index: 30;
-              border: 0;
-              padding: 0;
+          <style jsx global>{`
+            .companion-backdrop {
+              position: fixed; left: 0; right: 0; top: 0;
+              /* the tabs stay reachable */
+              bottom: var(--nav-total, 84px);
+              background: rgba(20, 28, 52, 0.12); z-index: 30; border: 0; padding: 0;
             }
-            :global(.companion-sheet) {
-              position: fixed;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              height: 56dvh;
-              max-height: 600px;
-              background: transparent;
-              filter: drop-shadow(0 -8px 22px rgba(0, 0, 0, 0.22));
-              z-index: 31;
-              display: flex;
-              flex-direction: column;
+            .companion-sheet {
+              position: fixed; z-index: 31;
+              left: max(10px, var(--safe-left, 0px)); right: max(10px, var(--safe-right, 0px));
+              top: max(24%, calc(var(--safe-top, 0px) + 150px));
+              bottom: calc(var(--nav-total, 84px) + 6px);
+              display: flex; flex-direction: column;
+              filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.25));
             }
-            /* Warm-ivory torn paper behind the conversation. */
-            .paper {
-              position: absolute;
-              inset: 0;
-              z-index: 1;
-              clip-path: ${PAPER_EDGE};
+            @media (min-width: 500px) {
+              .companion-sheet { left: 50%; right: auto; width: 410px; margin-left: -205px; }
             }
-            /* SiSi rests against the paper's top edge (lower half tucked
-               behind the paper). */
-            .sisi-rest {
-              position: absolute;
-              top: -64px;
-              left: 22px;
-              width: 104px;
-              height: auto;
-              z-index: 0;
-              pointer-events: none;
-              user-select: none;
+            .companion-sheet .paper { position: absolute; inset: 0; z-index: 1; clip-path: ${PAPER_EDGE}; }
+            .companion-sheet .sisi-peek {
+              position: absolute; z-index: 0; left: 50%; top: -86px; width: 118px; margin-left: -59px;
+              pointer-events: none; user-select: none;
             }
-            .handle, .header, .scroll, .keep-row, .keep-panel, .input-row { position: relative; z-index: 2; }
-            .line {
-              margin: 0;
-              max-width: 88%;
-              line-height: 1.45;
-            }
-            .line-sisi {
-              align-self: flex-start;
-              font-family: var(--font-fraunces), Georgia, serif;
-              font-size: 17px;
-              color: #2b2f45;
-            }
-            .line-user {
-              align-self: flex-end;
-              text-align: right;
-              font-family: var(--font-eb-garamond), Georgia, serif;
-              font-style: italic;
-              font-size: 16px;
-              color: rgba(43, 47, 69, 0.7);
-            }
-            .keep-row {
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              gap: 8px;
-              padding: 0 var(--stage-padding) 6px;
-            }
-            .keep-btn {
-              border: 0;
-              background: transparent;
-              font-family: var(--font-eb-garamond), Georgia, serif;
-              font-size: 14px;
-              color: #3d74d8;
-              cursor: pointer;
-              padding: 4px 2px;
-            }
-            .keep-dot { color: rgba(43, 47, 69, 0.35); }
-            .keep-btn--quiet { color: rgba(43, 47, 69, 0.55); }
-            .turn { display: flex; flex-direction: column; gap: 6px; }
-            .turn-user { align-items: flex-end; }
-            .offer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-            .chip {
-              min-height: 36px; padding: 0 12px; border-radius: 999px; cursor: pointer;
-              border: 1px solid rgba(61, 116, 216, 0.35); background: rgba(255, 255, 255, 0.5);
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; color: #2b4f9e;
-              max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-            }
-            .chip.is-on { background: #3d74d8; border-color: #3d74d8; color: #f7f2e3; }
-            .chip--quiet { border-color: rgba(43, 47, 69, 0.15); color: rgba(43, 47, 69, 0.6); }
-            .keep-panel { position: relative; z-index: 2; margin: 0 var(--stage-padding) 8px; padding: 12px 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(43, 47, 69, 0.1); }
-            .keep-h { margin: 0 0 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 16px; color: #2b2f45; }
-            .keep-text { width: 100%; resize: none; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43, 47, 69, 0.15); background: #fffdf8; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; color: #2b2f45; outline: none; }
-            .keep-stars, .keep-types { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-            .keep-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-            .keep-save { min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; cursor: pointer; }
-            .keep-save:disabled { opacity: 0.45; }
-            .keep-done {
-              font-family: var(--font-eb-garamond), Georgia, serif;
-              font-style: italic;
-              font-size: 14px;
-              color: rgba(43, 47, 69, 0.6);
-            }
+            .companion-sheet .sisi-peek.is-side { width: 128px; margin-left: -64px; top: -78px; }
+            .companion-sheet .scroll, .companion-sheet .input-row, .companion-sheet .keep { position: relative; z-index: 2; }
 
-              .handle {
-                margin: 8px auto 6px;
-                width: 42px;
-                height: 4px;
-                border-radius: 9999px;
-                background: rgba(31, 42, 68, 0.2);
-              }
-              .header {
-                display: flex;
-                justify-content: flex-end;
-                padding: 0 var(--stage-padding) 4px;
-              }
-              .close-btn {
-                width: 32px;
-                height: 32px;
-                border-radius: 9999px;
-                border: 0;
-                background: transparent;
-                color: rgba(31, 42, 68, 0.55);
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-              }
-              .close-btn svg { width: 16px; height: 16px; }
+            .companion-sheet .scroll {
+              flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain;
+              padding: 26px 18px 10px; display: flex; flex-direction: column; gap: 12px;
+            }
+            .companion-sheet .greet { text-align: center; padding: 6px 0 4px; }
+            .companion-sheet .greet-h { margin: 0 0 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 27px; color: #1d2744; }
+            .companion-sheet .greet-q { margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; color: #2b2f45; }
+            .companion-sheet .greet .note-sisi { margin: 8px auto 0; text-align: left; }
 
-              .scroll {
-                flex: 1;
-                overflow-y: auto;
-                padding: 8px var(--stage-padding) 12px;
-                display: flex;
-                flex-direction: column;
-                gap: 14px;
-                min-height: 0;
-              }
-              .row-sisi { align-self: flex-start; }
-              .row-user { align-self: flex-end; }
+            .companion-sheet .note { margin: 0; padding: 12px 14px; font-size: 16px; line-height: 1.42; }
+            .companion-sheet .note-user {
+              align-self: flex-end; max-width: 82%; border-radius: 3px;
+              background: rgba(143, 172, 224, 0.3); color: #243157;
+              font-family: var(--font-eb-garamond), Georgia, serif;
+            }
+            .companion-sheet .turn { position: relative; display: flex; flex-direction: column; gap: 10px; }
+            .companion-sheet .note-sisi {
+              align-self: flex-start; max-width: 88%; background: #efe5d0; color: #2b2f45;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16.5px;
+              box-shadow: 0 2px 6px rgba(43, 47, 69, 0.08);
+            }
+            .companion-sheet .coral { position: absolute; top: 44px; right: 4px; width: 22px; height: 22px; opacity: 0.9; pointer-events: none; }
 
-              .input-row {
-                flex-shrink: 0;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 10px var(--stage-padding) calc(var(--safe-bottom) + 14px);
-                background: transparent;
-                border-top: 1px solid rgba(31, 42, 68, 0.08);
-              }
-              .input {
-                flex: 1;
-                height: 44px;
-                border-radius: 9999px;
-                border: 1px solid rgba(31, 42, 68, 0.12);
-                background: white;
-                padding: 0 18px;
-                font-family: var(--font-sentient), Georgia, serif;
-                font-size: 15px;
-                color: var(--journey-navy);
-                outline: none;
-              }
-              .input:focus {
-                border-color: rgba(31, 42, 68, 0.3);
-              }
-              .send-btn {
-                width: 44px;
-                height: 44px;
-                border-radius: 9999px;
-                border: 0;
-                background: var(--journey-purple);
-                color: var(--journey-navy);
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                transition: filter 0.2s ease;
-              }
-              .send-btn:hover:enabled { filter: brightness(1.06); }
-              .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-              .send-btn svg { width: 16px; height: 16px; }
+            .companion-sheet .pills { display: flex; flex-direction: column; gap: 8px; padding: 2px 8px; }
+            .companion-sheet .pill {
+              min-height: 44px; border-radius: 999px; cursor: pointer;
+              border: 1px solid rgba(43, 47, 69, 0.1); background: #f8f2e4; color: #2b2f45;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
+              box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 5px rgba(43, 47, 69, 0.08);
+            }
+            .companion-sheet .pill:hover { background: #fbf7ee; }
+            .companion-sheet .pill--quiet { color: rgba(43, 47, 69, 0.7); }
+            .companion-sheet .lock {
+              display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px 0 0;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; color: rgba(43, 47, 69, 0.55);
+            }
+            .companion-sheet .lock svg { width: 12px; height: 12px; }
+            .companion-sheet .saved-chip {
+              display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0;
+              padding: 10px 12px; border-radius: 3px; background: rgba(143, 163, 140, 0.22); color: #3d4d3b;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
+            }
+            .companion-sheet .saved-chip svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
+            .companion-sheet .input-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px 16px; }
+            .companion-sheet .input {
+              flex: 1; min-width: 0; height: 46px; border-radius: 999px; padding: 0 18px; outline: none;
+              border: 1px solid rgba(43, 47, 69, 0.14); background: #fffdf7; color: #2b2f45;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
+            }
+            .companion-sheet .input::placeholder { color: rgba(43, 47, 69, 0.45); font-style: italic; }
+            .companion-sheet .send-btn {
+              flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
+              background: #9aa0ad; color: #fff; display: inline-flex; align-items: center; justify-content: center;
+            }
+            .companion-sheet .send-btn:enabled { background: #3d74d8; }
+            .companion-sheet .send-btn:disabled { opacity: 0.6; cursor: default; }
+            .companion-sheet .send-btn svg { width: 18px; height: 18px; }
+
+            /* keep panels */
+            .companion-sheet .keep { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+            .companion-sheet .keep-head { display: flex; align-items: center; justify-content: center; position: relative; min-height: 44px; }
+            .companion-sheet .keep-title { margin: 0; padding: 0 40px; text-align: center; font-family: var(--font-fraunces), Georgia, serif; font-size: 19px; color: #1d2744; }
+            .companion-sheet .icon-btn {
+              position: absolute; right: -6px; top: 0; width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer;
+              color: rgba(43, 47, 69, 0.6); display: inline-flex; align-items: center; justify-content: center;
+            }
+            .companion-sheet .icon-btn svg { width: 18px; height: 18px; }
+            .companion-sheet .quote { position: relative; background: #efe5d0; padding: 12px 14px 10px 26px; box-shadow: 0 2px 6px rgba(43, 47, 69, 0.08); }
+            .companion-sheet .quote-mark { position: absolute; left: 10px; top: 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 22px; color: rgba(43, 47, 69, 0.45); }
+            .companion-sheet .quote textarea {
+              width: 100%; resize: none; border: 0; background: transparent; outline: none; color: #2b2f45;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; line-height: 1.42;
+            }
+            .companion-sheet .keep-source { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 6px; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; color: rgba(43, 47, 69, 0.7); }
+            .companion-sheet .keep-source svg { width: 16px; height: 16px; }
+            .companion-sheet .star-list { display: flex; flex-direction: column; gap: 6px; }
+            .companion-sheet .star-row {
+              display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 6px; border: 0; border-radius: 6px;
+              background: transparent; cursor: pointer; text-align: left;
+            }
+            .companion-sheet .star-row:hover { background: rgba(255, 255, 255, 0.4); }
+            .companion-sheet .star-thumb { flex: 0 0 60px; width: 60px; height: 42px; border-radius: 3px; overflow: hidden; background: #0b1b38; display: flex; align-items: center; justify-content: center; }
+            .companion-sheet .star-thumb img { width: 100%; height: 100%; object-fit: cover; }
+            .companion-sheet .star-thumb img.is-mark { width: 26px; height: 26px; object-fit: contain; }
+            .companion-sheet .star-wish { flex: 1; min-width: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; color: #2b2f45; }
+            .companion-sheet .radio { flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(61, 116, 216, 0.6); position: relative; }
+            .companion-sheet .radio.is-on::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #3d74d8; }
+            .companion-sheet .keep-q { margin: 6px 0 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; color: rgba(43, 47, 69, 0.7); }
+            .companion-sheet .seg { display: flex; gap: 8px; }
+            .companion-sheet .seg-btn {
+              flex: 1; min-height: 40px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(43, 47, 69, 0.14);
+              background: #f8f2e4; color: #2b2f45; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
+            }
+            .companion-sheet .seg-btn.is-on { background: #3d74d8; border-color: #3d74d8; color: #f7f2e3; }
+            .companion-sheet .primary {
+              min-height: 48px; margin-top: 6px; border: 0; border-radius: 999px; cursor: pointer; background: #3d74d8; color: #f7f2e3;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px;
+            }
+            .companion-sheet .primary:disabled { opacity: 0.45; cursor: default; }
           `}</style>
         </>
       )}
@@ -588,9 +578,33 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
   );
 }
 
-function lastUserText(messages: { from: string; text: string }[]): string | null {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].from === "user" && messages[i].text.trim()) return messages[i].text.trim();
-  }
-  return null;
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12 3 3 5-6" />
+    </svg>
+  );
+}
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+function BubbleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1 1 20 12z" />
+    </svg>
+  );
 }

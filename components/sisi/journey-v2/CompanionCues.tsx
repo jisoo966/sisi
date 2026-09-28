@@ -73,7 +73,9 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
             >
               ×
             </button>
-            <p className="cc-text cc-text--hint">Tap Sísí whenever you want to talk.</p>
+            <p className="cc-text cc-text--hint">
+              Tap <em>Sísí</em> whenever you want to talk.
+            </p>
           </motion.div>
         )}
 

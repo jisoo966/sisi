@@ -778,7 +778,7 @@ export default function JourneyPage() {
       <UILayer>
         {/* Meadow UI (header + camera) — stays mounted; fades out over
             300ms (0.5–0.8s into the ascent), back in after the return lands. */}
-        <div className={`journey-walk-ui jl-fade${isWalking && !busy && !panelOpen ? "" : " is-hidden"}`}>
+        <div className={`journey-walk-ui jl-fade${isWalking && !busy && !panelOpen && !chatOpen ? "" : " is-hidden"}`}>
           <JourneyHeader
             dateStr={dateStr}
             greeting={tod?.greeting ?? greeting}
@@ -817,6 +817,12 @@ export default function JourneyPage() {
             onWake={wakeDock}
             onStarsSelect={() => {
               if (isLocked()) return;
+              if (chatOpen) {
+                // leave the talk first, then rise
+                setChatOpen(false);
+                setTimeout(() => goToStars(), 420);
+                return;
+              }
               if (isStarView) reselectStars();
               else if (isWalking && !busy) {
                 lockRef.current = true;
@@ -825,6 +831,10 @@ export default function JourneyPage() {
               }
             }}
             onJourneySelect={() => {
+              if (chatOpen) {
+                setChatOpen(false); // back to the walk
+                return;
+              }
               if (isLocked() || !isStarView) return;
               if (!okToLeaveStar()) return;
               lockRef.current = true;
@@ -833,6 +843,11 @@ export default function JourneyPage() {
             }}
             onMomentsSelect={() => {
               if (isLocked()) return;
+              if (chatOpen) {
+                setChatOpen(false);
+                setTimeout(() => goToMoments(), 420);
+                return;
+              }
               if (isStarView && !okToLeaveStar()) return;
               lockRef.current = true;
               setAriaIntent("moments");
