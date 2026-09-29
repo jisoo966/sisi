@@ -4,38 +4,34 @@ import { useEffect, useRef, useState } from "react";
 import { worldClock } from "@/lib/worldMotion";
 
 /**
- * WalkingCat — the companion. Horizontally anchored (0px/s); the world moves.
+ * WalkingCat — the companion. Horizontally anchored; the world moves.
  *
- * Walk cycle: fox-walk-cycle900.webp — the original walk frames re-timed to
- * ~900ms per full cycle (2 steps ≈ 450ms each). Pixels are unchanged. (The
- * older fox-walk.webp is kept on disk; it blended frames without clearing,
- * which left faint ghost legs.)
+ * Walk cycle: the approved walk frames (fox-walk-cycle900.webp) laid out as
+ * a 6×5 sheet (every other frame, full resolution), so the cadence can
+ * follow the world instead of playing at one fixed speed:
  *
- * Driven by the shared world clock:
- *   start — the ground begins easing in; the walk cycle starts ~150ms later
- *   stop  — the ground eases out; once it has mostly slowed, the fox
- *           finishes its current step, then settles into the idle pose
- *   bob   — 2–3px lift synchronized to each step; amplitude drifts slightly
- *           so it never reads as a robotic bounce; fades with the speed
- *   reduced motion — always idle
+ *   cadence  = the world's speed factor — 100% walking, 40% while Sísí
+ *              talks as you walk (Slow Walk), and so on; never a sudden change
+ *   stopping when the world has slowed right down, she finishes the step
+ *            she is in, then settles into the idle pose (never slides idle)
+ *   rest     `rest` = writing / a focused moment: no walk cycle, a quiet
+ *            breathing idle (the world may still drift very slowly)
+ *   poses    look up at the Star / look toward the user, as before
+ *   bob      2–3px lift synced to each step, fading with the speed
  */
 
-const WALK_SRC = "/V2/fox-walk/fox-walk-cycle900.webp";
+const SPRITE = "/V2/fox-walk/fox-walk-sprite30-full.webp";
 const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.png";
-/**
- * Optional pose for the star moment (storyboard frame 2): the fox sits and
- * looks up toward the star. Drop a transparent PNG at this path and it is
- * used automatically; until then the idle pose is shown.
- */
+/** Optional pose for the star moment (falls back to idle until the PNG exists). */
 const LOOK_UP_SRC = "/V2/fox-walk/fox-look-up.png";
-/** Optional pose after returning from the Star World: a brief look toward
- *  the user. Falls back to the idle pose until the PNG exists. */
+/** Optional pose after returning from the Star World. */
 const LOOK_AT_YOU_SRC = "/V2/fox-walk/fox-look-at-you.png";
-const CYCLE_MS = 900;
-const STEP_MS = CYCLE_MS / 2;
-const START_DELAY_MS = 150;
-/** The fox keeps stepping until the ground has slowed below this factor. */
-const STOP_AT_FACTOR = 0.3;
+const COLS = 6;
+const ROWS = 5;
+const FRAMES = 30;
+const CYCLES_PER_S = 1000 / 900; // one full cycle (two steps) per 900ms at 100%
+/** below this speed factor she finishes her step and stands */
+const STOP_AT_FACTOR = 0.2;
 
 type Props = {
   onTap?: () => void;
@@ -49,20 +45,25 @@ type Props = {
   facing?: "left" | "right";
   /** Walk cycle started / settled into the idle pose. */
   onWalkingChange?: (walking: boolean) => void;
+  /** Writing / a focused moment: breathing idle instead of the walk cycle. */
+  rest?: boolean;
 };
 
-export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, facing = "right", onWalkingChange }: Props) {
+export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, facing = "right", onWalkingChange, rest = false }: Props) {
   const [walking, setWalking] = useState(false);
   const onChangeRef = useRef(onWalkingChange);
   onChangeRef.current = onWalkingChange;
   useEffect(() => {
     onChangeRef.current?.(walking);
   }, [walking]);
-  const walkingRef = useRef(false);
   const lookingUpRef = useRef(lookingUp);
   lookingUpRef.current = lookingUp;
+  const restRef = useRef(rest);
+  restRef.current = rest;
   const [hasLookUpPose, setHasLookUpPose] = useState(false);
   const [hasLookAtYouPose, setHasLookAtYouPose] = useState(false);
+  const bobRef = useRef<HTMLDivElement>(null);
+  const spriteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const a = new Image();
@@ -71,59 +72,60 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
     const b = new Image();
     b.onload = () => setHasLookAtYouPose(true);
     b.src = LOOK_AT_YOU_SRC;
+    const c = new Image();
+    c.src = SPRITE;
   }, []);
-  const bobRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let walkRequestedAt = -1;
-    let walkStartedAt = 0;
-    let stopAt = -1;
+    let phase = 0; // 0…1 through the cycle (steps at 0 and 0.5)
+    let isWalking = false;
+    let finishing = false;
+    let frame = -1;
     let env = 0;
 
     return worldClock().subscribe((f) => {
-      const now = f.now;
-
-      if (f.walking && !f.reducedMotion) {
-        stopAt = -1;
-        if (!walkingRef.current) {
-          if (walkRequestedAt < 0) walkRequestedAt = now;
-          if (now - walkRequestedAt >= START_DELAY_MS) {
-            walkingRef.current = true;
-            walkStartedAt = now;
-            setWalking(true);
-          }
+      const wantWalk = !f.reducedMotion && !restRef.current && f.factor >= STOP_AT_FACTOR && !lookingUpRef.current;
+      if (wantWalk) {
+        finishing = false;
+        if (!isWalking) {
+          isWalking = true;
+          setWalking(true);
         }
-      } else {
-        walkRequestedAt = -1;
-        if (walkingRef.current) {
-          if (f.reducedMotion) {
-            walkingRef.current = false;
-            setWalking(false);
-          } else if (stopAt < 0) {
-            if (lookingUpRef.current) {
-              // Star moment: 2–3 small steps more (≈0.7–1.1s), then stop
-              // on a step boundary and look up.
-              const t = now - walkStartedAt + STEP_MS * 1.5;
-              stopAt = walkStartedAt + Math.ceil(t / STEP_MS) * STEP_MS;
-            } else if (f.factor < STOP_AT_FACTOR) {
-              // finish the current step, then idle
-              const t = now - walkStartedAt;
-              stopAt = walkStartedAt + Math.ceil(t / STEP_MS) * STEP_MS;
-            }
-          } else if (now >= stopAt) {
-            walkingRef.current = false;
-            stopAt = -1;
-            setWalking(false);
-          }
+      } else if (isWalking && !finishing) {
+        if (f.reducedMotion) {
+          isWalking = false;
+          setWalking(false);
+        } else finishing = true; // complete this step, then stand
+      }
+
+      if (isWalking) {
+        // cadence follows the world (at least a slow step while finishing)
+        const rate = CYCLES_PER_S * Math.max(finishing ? 0.45 : 0, f.factor);
+        const prevStep = Math.floor(phase * 2);
+        phase = (phase + rate * f.dt) % 1;
+        if (finishing && Math.floor(phase * 2) !== prevStep) {
+          phase = Math.floor(phase * 2) / 2;
+          isWalking = false;
+          finishing = false;
+          setWalking(false);
+        }
+      }
+
+      const fr = isWalking ? Math.floor(phase * FRAMES) % FRAMES : -1;
+      if (fr !== frame && spriteRef.current) {
+        frame = fr;
+        if (fr >= 0) {
+          const c = fr % COLS;
+          const r = Math.floor(fr / COLS);
+          spriteRef.current.style.backgroundPosition = `${(c / (COLS - 1)) * 100}% ${(r / (ROWS - 1)) * 100}%`;
         }
       }
 
       // Step-synced bob (lift only, so paws never sink below the path).
-      const target = walkingRef.current ? Math.min(1, f.factor / 0.6) : 0;
+      const target = isWalking ? Math.min(1, f.factor / 0.6) : 0;
       env += (target - env) * Math.min(f.dt * 6, 1);
-      const t = now - walkStartedAt;
-      const amp = 2.5 + 0.5 * Math.sin(now / 2300); // 2–3px, slowly varying
-      const y = -amp * env * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / STEP_MS));
+      const amp = 2.5 + 0.5 * Math.sin(f.now / 2300); // 2–3px, slowly varying
+      const y = -amp * env * (0.5 - 0.5 * Math.cos(4 * Math.PI * phase));
       const el = bobRef.current;
       if (el) {
         el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
@@ -131,6 +133,9 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
       }
     });
   }, []);
+
+  const idleSrc =
+    lookingUp && hasLookUpPose ? LOOK_UP_SRC : lookingAtYou && hasLookAtYouPose ? LOOK_AT_YOU_SRC : IDLE_SRC;
 
   return (
     <button
@@ -141,26 +146,18 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
       style={{ pointerEvents: onTap ? "auto" : "none" }}
     >
       <div ref={bobRef} className="bob-wrap">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={
-            walking
-              ? WALK_SRC
-              : lookingUp && hasLookUpPose
-                ? LOOK_UP_SRC
-                : lookingAtYou && hasLookAtYouPose
-                  ? LOOK_AT_YOU_SRC
-                  : IDLE_SRC
-          }
-          alt=""
-          className="cat-media"
-          draggable={false}
-          style={facing === "left" ? { transform: "scaleX(-1)" } : undefined}
-        />
+        <div className="flip" style={facing === "left" ? { transform: "scaleX(-1)" } : undefined}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={idleSrc}
+            alt=""
+            className={`cat-media${rest && !walking ? " is-resting" : ""}`}
+            draggable={false}
+            style={{ visibility: walking ? "hidden" : "visible" }}
+          />
+          <div ref={spriteRef} className="cat-sprite" style={{ visibility: walking ? "visible" : "hidden" }} />
+        </div>
       </div>
-      {/* Preload both so the swap is instantaneous */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={walking ? IDLE_SRC : WALK_SRC} alt="" aria-hidden style={{ display: "none" }} />
 
       <style jsx>{`
         .walking-cat {
@@ -180,15 +177,25 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
           cursor: ${onTap ? "pointer" : "default"};
           -webkit-tap-highlight-color: transparent;
         }
-        .bob-wrap {
-          width: 100%;
-          height: auto;
-        }
-        .cat-media {
-          width: 100%;
-          height: auto;
-          display: block;
+        .bob-wrap, .flip { position: relative; width: 100%; height: auto; }
+        .cat-media { width: 100%; height: auto; display: block; pointer-events: none; transform-origin: 50% 100%; }
+        .cat-sprite {
+          position: absolute;
+          inset: 0;
+          background-image: url(${SPRITE});
+          background-size: ${COLS * 100}% ${ROWS * 100}%;
+          background-repeat: no-repeat;
+          background-position: 0% 0%;
           pointer-events: none;
+        }
+        /* resting while the user writes: a slow, barely-there breath */
+        .cat-media.is-resting { animation: cat-breathe 4.2s ease-in-out infinite; }
+        @keyframes cat-breathe {
+          0%, 100% { transform: scale(1, 1); }
+          50% { transform: scale(1.006, 1.014); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .cat-media.is-resting { animation: none; }
         }
       `}</style>
     </button>

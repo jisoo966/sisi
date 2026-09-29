@@ -492,3 +492,14 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
    layout), falling back to Fraunces while it loads. */
 :root { --font-editorial: "Sentient", var(--font-fraunces), Georgia, serif; }
 .sisi-speech { font-weight: 400; letter-spacing: -0.01em; }
+
+/* "Walk with it": a quiet way to finish, just above the tabs */
+.walk-finish {
+  position: absolute; z-index: 9; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--nav-total) + 14px);
+  min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(245, 239, 221, 0.18); color: rgba(247, 241, 227, 0.92);
+  font-family: var(--font-editorial), Georgia, serif; font-size: 15px; letter-spacing: -0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+.walk-finish:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.7); outline-offset: 3px; }

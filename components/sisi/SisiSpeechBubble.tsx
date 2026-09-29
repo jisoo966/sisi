@@ -74,7 +74,8 @@ export function SisiSpeechBubble({
       className={`sisi-speech sisi-speech--${tailPosition} sisi-speech--${align} ${className}`}
       initial={{ opacity: 0, y: 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 4, transition: { duration: 0.2 } }}
+      // closing: fade and lift slightly
+      exit={{ opacity: 0, y: -6, transition: { duration: 0.22, ease: "easeOut" } }}
       transition={{ duration: 0.32, ease: EASE, delay }}
     >
       <motion.div

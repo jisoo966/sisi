@@ -7,7 +7,7 @@ import { NewStarSky } from "@/components/sisi/stars/NewStarSky";
 import { CompanionCues } from "@/components/sisi/journey-v2/CompanionCues";
 import { markHint } from "@/lib/hints";
 import { LOCAL_ONLY } from "@/lib/dataMode";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   JourneyStage,
   WorldLayer,
@@ -224,6 +224,7 @@ export default function JourneyPage() {
   const [catFacing, setCatFacing] = useState<"left" | "right">("right");
   const catWalking = useRef(false);
   const pendingMoments = useRef(false);
+  const introShown = useRef<string | null>(null);
   // Talking with Sísí (optionally starting from a thought).
   const [chatOpening, setChatOpening] = useState<string | null>(null);
   const openChat = (opening?: string) => {
@@ -263,7 +264,9 @@ export default function JourneyPage() {
   const [meadowToast, setMeadowToast] = useState<string | null>(null);
   // Stars load async; until then (or if none exist) show a waiting star.
   const [starsLoaded, setStarsLoaded] = useState(false);
-  const skyStar: Star | null = featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
+  // "Walk with it": the wish Sísí is carrying stays visible in the sky.
+  const [carried, setCarried] = useState<Star | null>(null);
+  const skyStar: Star | null = carried ?? featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
   const isPlaceholderStar = !featuredStar;
   /** Stars in the Star World, newest first (a waiting star if none yet). */
   const worldStars: Star[] = pathStars.length > 0 ? pathStars : skyStar ? [skyStar] : [];
@@ -454,6 +457,8 @@ export default function JourneyPage() {
   // /journey?to=stars&star=ID (from a Moment) also opens that Star on arrival.
   const deepLink = useRef<"stars" | "create" | "none" | null>(null);
   const [arriveStarId, setArriveStarId] = useState<string | null>(null);
+  /** how a Star's paper opens on arrival (e.g. straight to "Reflect on today") */
+  const [starMode, setStarMode] = useState<"quick" | "reflect">("quick");
   useEffect(() => {
     if (deepLink.current === null) {
       const q = new URLSearchParams(window.location.search);
@@ -500,7 +505,14 @@ export default function JourneyPage() {
   // The world walks only in the meadow, with no sheet open and no camera
   // move in progress (after a return, walking resumes once we've landed).
   // (the conversation slows the world instead of stopping it — see below)
-  const worldPaused = !isWalking || practiceOpen || momentOpen || eveningOpen || busy || leavingTo !== null;
+  // Sísí fully stops only for: Star creation, the rise into the Star World,
+  // a focused moment and a particularly meaningful line. Writing slows the
+  // world to ~12% while she rests; talking as you walk slows it to ~40%.
+  const [speaking, setSpeaking] = useState(false);
+  const [walkLine, setWalkLine] = useState<null | "intro" | "finish-ask" | "done">(null);
+  const stillLine = walkLine === "done";
+  const worldPaused = !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine);
+  const writing = chatOpen || momentOpen || eveningOpen;
 
   // Offer the evening reflection once, a little after arriving at night.
   useEffect(() => {
@@ -515,17 +527,52 @@ export default function JourneyPage() {
   // camera is about to look up, decelerate over 450ms.
   useEffect(() => {
     const clock = worldClock();
-    if (worldPaused) clock.setWalking(false, isStarView ? 450 : leavingTo ? 420 : undefined);
-    else if (chatOpen) clock.setTarget(0.35, 650); // talking: slow to 35% over ~0.65s
-    else if (clock.getFactor() > 0.2) clock.setTarget(1, 850); // back from a talk: ~0.85s
-    else clock.setWalking(true); // starting to walk: the usual soft 1.2s ease
-  }, [worldPaused, isStarView, leavingTo, chatOpen]);
+    if (worldPaused) clock.setWalking(false, isStarView ? 450 : leavingTo ? 420 : stillLine ? 900 : undefined);
+    else if (writing) clock.setTarget(0.12, 800); // writing: the world barely drifts, Sísí rests
+    else if (speaking) clock.setTarget(0.4, 800); // Slow Walk: talking as we walk
+    // back to walking, gently (from a slow walk ~1s; from a standstill ~1.2s)
+    else clock.setTarget(1, clock.getFactor() > 0.05 ? 1000 : 1200);
+  }, [worldPaused, isStarView, leavingTo, writing, speaking, stillLine]);
+
+  // ── "Walk with it" ──
+  const startWalkWith = (s: Star) => {
+    setCarried(s);
+    setWalkLine(null);
+    backToMeadow();
+  };
+  // once we've landed, Sísí says a few words, then lets you simply walk
+  useEffect(() => {
+    if (!carried || isStarView || busy || walkLine) return;
+    if (introShown.current === carried.id) return;
+    const id = carried.id;
+    const t = setTimeout(() => {
+      introShown.current = id; // only once it has actually been said
+      setWalkLine("intro");
+    }, 600);
+    return () => clearTimeout(t);
+  }, [carried, isStarView, busy, walkLine]);
+  useEffect(() => {
+    if (walkLine !== "intro") return;
+    const t = setTimeout(() => setWalkLine(null), 7500);
+    return () => clearTimeout(t);
+  }, [walkLine]);
+  const endCarry = () => {
+    setWalkLine(null);
+    setCarried(null);
+    introShown.current = null;
+  };
+  const riseToStar = (id: string, mode: "quick" | "reflect") => {
+    endCarry();
+    setStarMode(mode);
+    setArriveStarId(id);
+    setTimeout(() => goToStars(), 380);
+  };
 
   // Nothing new passes in front while Sísí talks or is about to look up.
   const [ascentPending, setAscentPending] = useState(false);
   useEffect(() => {
-    worldCoord.holdForeground = chatOpen || ascentPending || isStarView || busy;
-  }, [chatOpen, ascentPending, isStarView, busy]);
+    worldCoord.holdForeground = writing || ascentPending || isStarView || busy;
+  }, [writing, ascentPending, isStarView, busy]);
   useEffect(() => () => {
     worldCoord.holdForeground = false;
   }, []);
@@ -757,6 +804,7 @@ export default function JourneyPage() {
           <WalkingCat
             onTap={isWalking && !busy ? () => openChat() : undefined}
             lookingUp={isStarView}
+            rest={writing && !isStarView}
             lookingAtYou={landing}
             facing={catFacing}
             onWalkingChange={(w) => {
@@ -908,7 +956,19 @@ export default function JourneyPage() {
               star={openStar.star}
               anchor={openStar.at}
               placeholder={openStar.star.id === PLACEHOLDER_STAR.id}
-              onClose={() => setOpenStar(null)}
+              initialMode={starMode}
+              onClose={() => {
+                setOpenStar(null);
+                setStarMode("quick");
+              }}
+              onWalkWith={(s) => {
+                setStarMode("quick");
+                startWalkWith(s);
+              }}
+              onReturnToJourney={() => {
+                setStarMode("quick");
+                backToMeadow();
+              }}
               onRest={letStarRest}
               onEdited={starEdited}
               onCreateStar={startNewStar}
@@ -949,10 +1009,66 @@ export default function JourneyPage() {
           }}
         />
 
+        {/* walking with a wish: a quiet way to finish (no timers, no counts) */}
+        <AnimatePresence>
+          {carried && isWalking && !busy && !chatOpen && walkLine !== "finish-ask" && walkLine !== "done" && (
+            <motion.button
+              key="finish-walk"
+              type="button"
+              className="walk-finish"
+              onClick={() => setWalkLine("finish-ask")}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 1.2, duration: 0.6 } }}
+              exit={{ opacity: 0, transition: { duration: 0.25 } }}
+            >
+              Finish when you’re ready
+            </motion.button>
+          )}
+        </AnimatePresence>
+
         {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
         <CompanionCues
           visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && env === "day" && !quiet}
           onTalk={(opening) => openChat(opening)}
+          onSpeaking={setSpeaking}
+          line={
+            !carried || !walkLine
+              ? null
+              : walkLine === "intro"
+                ? {
+                    key: "walk-intro",
+                    text: (
+                      <>
+                        You don’t need to solve everything today.
+                        <br />
+                        Let’s carry this wish with us.
+                      </>
+                    ),
+                  }
+                : walkLine === "finish-ask"
+                  ? {
+                      key: "walk-note",
+                      text: "Would you like to leave a small note for this Star?",
+                      actions: [
+                        { label: "Reflect on today", act: () => riseToStar(carried.id, "reflect") },
+                        { label: "Not now", act: () => setWalkLine("done"), quiet: true },
+                      ],
+                    }
+                  : {
+                      key: "walk-done",
+                      text: (
+                        <>
+                          That was enough for today.
+                          <br />
+                          Your Star is still here.
+                        </>
+                      ),
+                      actions: [
+                        { label: "Return to Journey", act: endCarry },
+                        { label: "Stay with my Star", act: () => riseToStar(carried.id, "quick"), quiet: true },
+                      ],
+                    }
+          }
         />
 
         <PaperToast message={isStarView ? toast : meadowToast} />

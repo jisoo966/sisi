@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createMoment } from "@/lib/momentStore";
 import { hintDone, markHint } from "@/lib/hints";
 import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
@@ -15,7 +15,26 @@ import { finishTodaysThought, isKept, markKept, thoughtForToday, type Thought } 
  *   thought     some days: a tiny star near Sísí. Opening it shows
  *               "A thought for your walk" — Keep this · Talk to Sísí · ×.
  *               Never a modal, never on every open.
+ *   line        anything else Sísí says on the walk (e.g. "Walk with it")
+ *
+ * Slow Walk: Sísí doesn't stop to talk. When a line opens, `onSpeaking(true)`
+ * lets the world ease down (to ~40%) and the bubble appears ~300ms later;
+ * when it closes, the bubble fades and lifts out first, then ~150ms later
+ * `onSpeaking(false)` lets the walk ease back. (The one-time "Tap Sísí"
+ * hint is guidance, not conversation — the walk doesn't slow for it.)
  */
+
+export type SpokenLine = {
+  key: string;
+  text: React.ReactNode;
+  kicker?: string;
+  actions?: { label: string; act: () => void; quiet?: boolean }[];
+  onDismiss?: () => void;
+};
+
+const REVEAL_AFTER_MS = 300;
+const EXIT_MS = 220;
+const RESUME_AFTER_MS = 150;
 
 /** Save a thought as one Moment ("A note from Sísí") — once, however many taps. */
 export async function keepThought(t: Thought): Promise<void> {
@@ -47,7 +66,18 @@ function SpeakLines() {
   );
 }
 
-export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (opening?: string) => void }) {
+export function CompanionCues({
+  visible,
+  onTalk,
+  line = null,
+  onSpeaking,
+}: {
+  visible: boolean;
+  onTalk: (opening?: string) => void;
+  /** a line Sísí says right now (takes the place of hints and thoughts) */
+  line?: SpokenLine | null;
+  onSpeaking?: (speaking: boolean) => void;
+}) {
   const [talkHint, setTalkHint] = useState(false);
   const [thought, setThought] = useState<Thought | null>(null);
   const [openThought, setOpenThought] = useState(false);
@@ -69,6 +99,48 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
     if (visible && talkHint && hintDone("talk")) setTalkHint(false);
   }, [visible, talkHint]);
 
+  // ── the Slow Walk rhythm ──
+  const wanted: SpokenLine | null =
+    visible && line
+      ? line
+      : visible && !talkHint && thought && openThought
+        ? { key: `thought-${thought.id}`, text: thought.text, kicker: "A thought for your walk" }
+        : null;
+  const [shown, setShown] = useState<SpokenLine | null>(null);
+  const speakingRef = useRef(false);
+  const onSpeakingRef = useRef(onSpeaking);
+  onSpeakingRef.current = onSpeaking;
+  const wantedKey = wanted?.key ?? null;
+  const wantedRef = useRef(wanted);
+  wantedRef.current = wanted;
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (wantedKey) {
+      if (!speakingRef.current) {
+        speakingRef.current = true;
+        onSpeakingRef.current?.(true); // start slowing…
+        timers.push(setTimeout(() => setShown(wantedRef.current), REVEAL_AFTER_MS)); // …then speak
+      } else setShown(wantedRef.current); // another line while already slow
+    } else {
+      setShown(null); // the bubble fades and lifts out first…
+      if (speakingRef.current)
+        timers.push(
+          setTimeout(() => {
+            speakingRef.current = false;
+            onSpeakingRef.current?.(false); // …then the walk picks up again
+          }, EXIT_MS + RESUME_AFTER_MS),
+        );
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [wantedKey]);
+  // keep the shown line's actions current (e.g. "Kept" state)
+  useEffect(() => {
+    if (shown && wanted && shown.key === wanted.key && shown !== wanted) setShown(wanted);
+  }, [shown, wanted]);
+  useEffect(() => () => {
+    if (speakingRef.current) onSpeakingRef.current?.(false);
+  }, []);
+
   const dismissThought = () => {
     finishTodaysThought();
     setOpenThought(false);
@@ -78,11 +150,11 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
   return (
     <>
     <AnimatePresence>
-      {visible && (talkHint || (thought && openThought)) && <SpeakLines key="lines" />}
+      {visible && (talkHint || !!shown) && <SpeakLines key="lines" />}
     </AnimatePresence>
     <div className="cc-root" aria-live="polite">
       <AnimatePresence>
-        {visible && talkHint && (
+        {visible && talkHint && !line && (
           <SisiSpeechBubble
             key="talk"
             tailPosition="bottom-right"
@@ -103,7 +175,7 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
           />
         )}
 
-        {visible && !talkHint && thought && !openThought && (
+        {visible && !line && !talkHint && thought && !openThought && (
           <motion.button
             key="spark"
             type="button"
@@ -119,45 +191,62 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
           </motion.button>
         )}
 
-        {visible && thought && openThought && (
+        {shown && (
           <SisiSpeechBubble
-            key="thought"
+            key={shown.key}
             tailPosition="bottom-right"
             align="left"
             className="cc-thought"
             corner={
-              <button type="button" className="cc-x" aria-label="Dismiss" onClick={dismissThought}>
-                ×
-              </button>
+              shown.key.startsWith("thought-") || shown.onDismiss ? (
+                <button
+                  type="button"
+                  className="cc-x"
+                  aria-label="Dismiss"
+                  onClick={shown.key.startsWith("thought-") ? dismissThought : shown.onDismiss}
+                >
+                  ×
+                </button>
+              ) : undefined
             }
           >
-            <p className="cc-kicker">A thought for your walk</p>
-            <p className="cc-thought-text">{thought.text}</p>
-            <div className="cc-actions">
-              <button
-                type="button"
-                className="cc-link"
-                disabled={kept}
-                onClick={async () => {
-                  setKept(true);
-                  await keepThought(thought);
-                }}
-              >
-                {kept ? "Kept in your Moments" : "Keep this"}
-              </button>
-              <button
-                type="button"
-                className="cc-link"
-                onClick={() => {
-                  finishTodaysThought();
-                  setOpenThought(false);
-                  setThought(null);
-                  onTalk(thought.text);
-                }}
-              >
-                Talk to Sísí
-              </button>
-            </div>
+            {shown.kicker && <p className="cc-kicker">{shown.kicker}</p>}
+            <p className="cc-thought-text">{shown.text}</p>
+            {shown.key.startsWith("thought-") && thought ? (
+              <div className="cc-actions">
+                <button
+                  type="button"
+                  className="cc-link"
+                  disabled={kept}
+                  onClick={async () => {
+                    setKept(true);
+                    await keepThought(thought);
+                  }}
+                >
+                  {kept ? "Kept in your Moments" : "Keep this"}
+                </button>
+                <button
+                  type="button"
+                  className="cc-link"
+                  onClick={() => {
+                    finishTodaysThought();
+                    setOpenThought(false);
+                    setThought(null);
+                    onTalk(thought.text);
+                  }}
+                >
+                  Talk to Sísí
+                </button>
+              </div>
+            ) : shown.actions?.length ? (
+              <div className="cc-actions cc-actions--wrap">
+                {shown.actions.map((a) => (
+                  <button key={a.label} type="button" className={`cc-link${a.quiet ? " cc-link--quiet" : ""}`} onClick={a.act}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </SisiSpeechBubble>
         )}
       </AnimatePresence>
@@ -177,6 +266,8 @@ export function CompanionCues({ visible, onTalk }: { visible: boolean; onTalk: (
         .cc-thought.sisi-speech { padding: 14px 38px 10px 18px; }
         .cc-thought-text { margin: 0; font-family: var(--font-editorial), Georgia, serif; font-size: clamp(15px, 4vw, 16.5px); line-height: 1.34; }
         .cc-thought .cc-actions { justify-content: flex-start; gap: 14px; white-space: nowrap; }
+        .cc-thought .cc-actions--wrap { flex-wrap: wrap; row-gap: 0; }
+        .cc-link--quiet { color: rgba(24, 51, 58, 0.6) !important; }
         .cc-thought .cc-link { font-size: 15px; }
         .cc-thought .cc-kicker { color: rgba(24, 51, 58, 0.6); }
         .cc-thought .cc-x { color: rgba(24, 51, 58, 0.5); }
