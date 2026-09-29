@@ -124,7 +124,7 @@
   padding: var(--space-1);
   margin: 0;
   list-style: none;
-  background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat;
+  background: var(--sisi-paper);
   border-radius: 12px;
   box-shadow: var(--paper-shadow);
   animation: ds-bubble-in var(--motion-bubble) var(--ease-sisi) both;
@@ -204,15 +204,23 @@
 .ds-chip-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
 /* ── Paper ───────────────────────────────────────────────────────────── */
+/* Paper surfaces. The grain is multiplied onto Sísí Paper; it repeats
+   seamlessly (never a stretched full-card image).
+     .ds-paper                 Focus Paper grain (~4%) — conversation, writing, practice
+     .ds-paper--memory         Memory Paper grain (~6%) — Moments, Star notes, affirmations
+     .ds-paper--speech         Speech Paper grain (~4.5%) — Sísí's bubbles */
 .ds-paper {
   position: relative;
   color: var(--sisi-ink);
   background-color: var(--sisi-paper);
-  background-image: var(--paper-grain);
+  background-image: var(--grain-focus);
   background-repeat: repeat;
-  background-size: 180px 180px;
+  background-size: var(--grain-size);
+  background-blend-mode: multiply;
   overflow-wrap: break-word;
 }
+.ds-paper--memory, .ds-memory-sheet.ds-paper { background-image: var(--grain-memory); }
+.ds-paper--speech { background-image: var(--grain-speech); }
 
 /* MemoryPaper — torn horizontal edges, content-driven height.
    Outer element carries the shadow; the inner sheet is masked (a mask would
@@ -362,7 +370,10 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   min-height: 44px;
   padding: 0 18px;
   border-radius: 40% / 50%;
-  background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat;
+  background-color: var(--sisi-paper);
+  background-image: var(--grain-focus);
+  background-size: var(--grain-size);
+  background-blend-mode: multiply;
   color: var(--ink-80);
   font-family: var(--font-editorial);
   font-weight: 500;
@@ -412,7 +423,7 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   display: flex;
   flex-direction: column;
 }
-.ds-screen--paper { background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat; color: var(--sisi-ink); }
+.ds-screen--paper { background: var(--sisi-paper) var(--grain-focus) 0 0 / var(--grain-size) repeat; background-blend-mode: multiply; color: var(--sisi-ink); }
 .ds-screen--night { background: var(--sisi-ink); color: var(--sisi-paper); }
 .ds-screen--sky { background: var(--sisi-blue); color: var(--sisi-ink); }
 .ds-screen-head { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; margin-bottom: var(--space-4); }

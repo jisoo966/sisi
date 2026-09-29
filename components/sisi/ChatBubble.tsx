@@ -16,9 +16,9 @@ export function ChatBubble({ from, text, time }: Props) {
       <div className="flex items-start gap-3 max-w-[85%]">
         <FoxAvatar size={48} />
         <div className="flex flex-col pt-1">
-          {/* Glass morphic bubble — 시스템 통일 */}
-          <div className="rounded-[20px] bg-paper/60 backdrop-blur-md border border-paper/50 px-[18px] py-[14px] shadow-sm">
-            <p className="t-body text-journey-navy">
+          {/* Sísí speaks on Speech Paper (the shared grain) */}
+          <div className="ds-paper ds-paper--speech px-[18px] py-[14px]" style={{ borderRadius: "var(--paper-radius)", boxShadow: "var(--paper-shadow-soft)" }}>
+            <p className="t-dialogue text-ink">
               {text}
             </p>
           </div>

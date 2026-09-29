@@ -27,6 +27,20 @@ One visual language for every screen. Page files compose these pieces; they don'
 | SisiConversationPanel | `components/sisi/journey-v2/CompanionSheet.tsx` (on FocusPaper) |
 | SisiCompanion | `components/sisi/journey-v2/WalkingCat.tsx`, `SisiChatCharacter.tsx` |
 
+## Paper (a core material)
+
+Warm textured paper holds wishes, memories and conversations. The five-colour palette is about colour only — paper surfaces are never flat beige cards.
+
+| Surface | Class | Grain (multiplied onto #F5EFDD) | Edge | Used for |
+|---|---|---|---|---|
+| Speech Paper | `.sisi-speech`, `.ds-paper--speech` | ≈ 4.5% (`--grain-speech`) | gently irregular rounded corners + tail | Sísí's bubbles, Sísí's lines on older chat screens, the Messages check-in |
+| Memory Paper | `MemoryPaper`, `.ds-paper--memory` | ≈ 6% (`--grain-memory`) | slightly torn top and bottom | Moment cards, Moment detail, Star notes, saved affirmations/toasts |
+| Focus Paper | `FocusPaper`, `.ds-paper` | ≈ 4% (`--grain-focus`) | calm, rounded top | conversation, writing, Star practice, Star wish paper |
+
+- One grain source (`public/assets/ui/paper-grain.svg`, the supplied texture), rendered seamless (`stitchTiles`) and baked into three tiles: `paper-grain-speech.webp`, `paper-grain-memory.webp`, `paper-grain-focus.webp`. It repeats at 180px; never a stretched full-card image.
+- Only very soft shadows (`--paper-shadow`, `--paper-shadow-soft`).
+- Buttons, chips, icon buttons, menus, validation messages and navigation labels stay flat: no torn edges. (The navigation stickers carry the calm focus grain only.)
+
 ## Rules in one place
 
 - Colours: `--sisi-blue`, `--sisi-ink`, `--sisi-paper`, `--sisi-gold` (Stars only), `--sisi-coral` (rare accents only). Variations are opacity only. Tailwind: `ink`, `paper`, `sisi-blue`, `star`, `coral` (legacy names map to these).

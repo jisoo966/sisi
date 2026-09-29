@@ -868,7 +868,7 @@ export const MomentsWorld = forwardRef<
 
         .mw-empty {
           position: absolute; left: 12%; width: 46%; bottom: calc(var(--walking-baseline) + 48px); z-index: 4;
-          padding: 12px 14px; background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat; color: var(--sisi-ink); border-radius: 3px;
+          padding: 12px 14px; background: var(--sisi-paper) var(--grain-memory) 0 0 / var(--grain-size) repeat; background-blend-mode: multiply; color: var(--sisi-ink); border-radius: 3px;
           box-shadow: var(--paper-shadow-soft);
           font-family: var(--font-editorial); font-style: italic; font-size: var(--text-dialogue); line-height: var(--leading-dialogue);
         }
@@ -896,7 +896,7 @@ export const MomentsWorld = forwardRef<
         .mw-today {
           position: absolute; z-index: 8; right: var(--stage-padding); top: calc(var(--header-top) + 58px);
           min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
-          background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat; color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12);
+          background: var(--sisi-paper); color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12);
           font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-button);
           animation: mw-hint-in var(--motion-bubble) var(--ease-sisi) both;
         }

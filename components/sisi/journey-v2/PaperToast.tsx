@@ -12,7 +12,7 @@ export function PaperToast({ message }: { message: string | null }) {
       {message && (
         <motion.div
           key={message}
-          className="paper-toast ds-paper"
+          className="paper-toast ds-paper ds-paper--memory"
           role="status"
           initial={{ opacity: 0, y: 24, rotate: -1.2 }}
           animate={{ opacity: 1, y: 0, rotate: -0.8 }}

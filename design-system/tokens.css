@@ -43,9 +43,19 @@
   --overlay-dark: rgba(16, 45, 50, 0.42);
 
   /* surfaces */
-  --paper-grain: url("/assets/ui/paper-grain.webp");
-  --paper-shadow: 0 3px 8px rgba(16, 45, 50, 0.12), 0 12px 28px rgba(16, 45, 50, 0.08);
-  --paper-shadow-soft: 0 2px 6px rgba(16, 45, 50, 0.1);
+  /* Paper — warm textured paper is a core material. One grain (the supplied
+     paper-grain source, rendered seamless), baked at three strengths and
+     multiplied onto Sísí Paper (#F5EFDD):
+       speech ≈ 4.5% · memory ≈ 6% · focus ≈ 4%
+     Functional controls (buttons, chips, menus, messages) stay flat; the
+     navigation stickers carry only the calm focus grain, never torn edges. */
+  --grain-speech: url("/assets/ui/paper-grain-speech.webp");
+  --grain-memory: url("/assets/ui/paper-grain-memory.webp");
+  --grain-focus: url("/assets/ui/paper-grain-focus.webp");
+  --grain-size: 180px 180px;
+  --paper-grain: var(--grain-focus); /* legacy name */
+  --paper-shadow: 0 2px 6px rgba(16, 45, 50, 0.1), 0 10px 24px rgba(16, 45, 50, 0.06);
+  --paper-shadow-soft: 0 2px 5px rgba(16, 45, 50, 0.09);
   --paper-radius: 15px 13px 17px 12px;
 
   /* spacing — 4px system */

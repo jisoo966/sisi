@@ -44,7 +44,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
   }, [placed, q]);
 
   return (
-    <section className="ml-sheet ds-paper" style={{ clipPath: EDGE }} aria-label="Moments list">
+    <section className="ml-sheet ds-paper ds-paper--memory" style={{ clipPath: EDGE }} aria-label="Moments list">
       <div className="ml-scroll ds-scroll">
         <label className="ml-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>

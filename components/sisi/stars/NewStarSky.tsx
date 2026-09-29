@@ -226,7 +226,7 @@ export function NewStarSky({
                 />
               </svg>
               <motion.div
-                className="ns-note ds-paper"
+                className="ns-note ds-paper ds-paper--memory"
                 style={{ left: sx, top: noteY }}
                 initial={{ opacity: 0, y: -6, rotate: -3 }}
                 animate={{ opacity: 1, y: 0, rotate: -1.2 }}

@@ -92,7 +92,7 @@ export default function MessagesDashboardPage() {
           transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="mb-[20px]"
         >
-          <div className="rounded-[20px] bg-paper/60 backdrop-blur-md border border-paper/50 px-[24px] py-[20px] text-center shadow-sm">
+          <div className="ds-paper ds-paper--speech px-[24px] py-[20px] text-center" style={{ borderRadius: "var(--paper-radius)", boxShadow: "var(--paper-shadow-soft)" }}>
             <p className="t-meta text-journey-navy/50 mb-[10px]">
               Today&apos;s check-in
             </p>

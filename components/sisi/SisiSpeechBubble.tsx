@@ -111,7 +111,8 @@ export function SisiSpeechBubble({
           color: var(--sisi-ink);
           background-color: var(--sisi-paper);
           /* the supplied paper tile (seamless, 256px) repeats — never stretched */
-          background-image: var(--paper-grain);
+          background-image: var(--grain-speech);
+          background-blend-mode: multiply;
           background-repeat: repeat;
           background-size: 180px 180px;
           border-radius: 15px 13px 17px 12px;
@@ -142,7 +143,8 @@ export function SisiSpeechBubble({
           bottom: -13px;
           width: 22px;
           height: 18px;
-          background: var(--sisi-paper) url("/assets/ui/paper-grain.webp") 0 0 / 180px 180px repeat;
+          background: var(--sisi-paper) var(--grain-speech) 0 0 / 180px 180px repeat;
+          background-blend-mode: multiply;
           filter: drop-shadow(0 3px 2px rgba(16, 45, 50, 0.08));
         }
         .sisi-speech--bottom-right { transform-origin: calc(100% - 30px) 100%; }

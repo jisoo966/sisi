@@ -184,7 +184,7 @@ export function MomentDetail({
     <>
       <ModalPortal open onClose={mode === "edit" ? () => { setDraft(text); setMode("view"); } : onClose} labelledBy={titleId}>
         <ModalDialog
-          className={style ? "ds-dialog--from" : ""}
+          className={`ds-paper--memory${style ? " ds-dialog--from" : ""}`}
           style={style}
           onClose={onClose}
           title={
@@ -303,7 +303,7 @@ export function RestDetail({
   return (
     <ModalPortal open onClose={onClose} labelledBy={titleId}>
       <ModalDialog
-        className={style ? "ds-dialog--from" : ""}
+        className={`ds-paper--memory${style ? " ds-dialog--from" : ""}`}
         style={style}
         onClose={onClose}
         title={<p id={titleId} className="t-meta" style={{ margin: 0, color: "var(--ink-60)" }}>A Star at rest</p>}
