@@ -219,11 +219,37 @@ export function StarMemoryCard({
     else if (id === "reflect") openReflect("practice");
     else onWalkWith?.(star);
   };
+  /** the chosen card settles (0.98), the others fade, then the practice begins */
+  const [picked, setPicked] = useState<string | null>(null);
+  const pick = (id: (typeof PRACTICES)[number]["id"]) => {
+    if (picked) return;
+    setPicked(id);
+    setTimeout(() => {
+      choosePractice(id);
+      setPicked(null);
+    }, 240);
+  };
 
   // journey + completion use the three-zone screen (header · scroll · controls)
   // Every step of the Star detail uses the same three-zone screen.
   const onScreen = true;
   const hasHeader = mode === "journey" || mode === "saved" || mode === "done";
+  // A focused choice: the paper is a bottom sheet, the Star and Sísí's words
+  // share the rest of the screen, and the global tabs step aside.
+  const focus = mode === "practice";
+  useEffect(() => {
+    const el = document.documentElement;
+    if (focus) {
+      el.classList.add("sms-focus");
+      return;
+    }
+    // the paper begins to close first, then the tabs return
+    const t = setTimeout(() => el.classList.remove("sms-focus"), 120);
+    return () => clearTimeout(t);
+  }, [focus]);
+  useEffect(() => () => document.documentElement.classList.remove("sms-focus"), []);
+  const hasControls =
+    mode === "journey" || mode === "saved" || mode === "done" || (mode === "invite" && !placeholder) || mode === "picture-intro" || mode === "reflect";
   // each step starts with its Star in view (not wherever the last one scrolled)
   useLayoutEffect(() => {
     listRef.current?.scrollTo({ top: 0 });
@@ -262,7 +288,8 @@ export function StarMemoryCard({
         {onScreen && (
           <motion.div
             key="sms"
-            className="sms-screen"
+            className={`sms-screen${focus ? " is-focus" : ""}`}
+            style={{ ["--star-top" as string]: `${Math.max(8, anchor.y - 44)}px` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
@@ -318,7 +345,7 @@ export function StarMemoryCard({
               className="sms-scroll"
               ref={listRef}
               // without a header, the Star sits where it was in the sky
-              style={hasHeader ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
+              style={hasHeader || focus ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
               onClick={(e) => {
                 // a tap on the open sky puts the paper away (not mid-visualization)
                 const t = e.target as HTMLElement;
@@ -392,9 +419,14 @@ export function StarMemoryCard({
                 {mode === "practice" && (
                   <motion.div key="practice" className="smc-content" {...fade}>
                     <NavRow onBack={() => setMode("invite")} onClose={onClose} />
-                    <div className="smc-choices" role="list">
+                    <ChoiceList>
                       {PRACTICES.map((p) => (
-                        <button key={p.id} type="button" role="listitem" className="smc-choice" onClick={() => choosePractice(p.id)}>
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={`smc-choice${picked === p.id ? " is-picked" : picked ? " is-faded" : ""}`}
+                          onClick={() => pick(p.id)}
+                        >
                           <span className="smc-choice-icon" aria-hidden>
                             {p.id === "picture" ? <EyeIcon /> : p.id === "walk" ? <PathIcon /> : <LeafIcon />}
                           </span>
@@ -404,7 +436,7 @@ export function StarMemoryCard({
                           </span>
                         </button>
                       ))}
-                    </div>
+                    </ChoiceList>
                   </motion.div>
                 )}
 
@@ -539,7 +571,7 @@ export function StarMemoryCard({
               )}
             </div>
 
-            <div className="sms-controls">
+            {hasControls && <div className="sms-controls">
               {mode === "journey" ? (
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("practice")}>
                   Spend a moment with this Star
@@ -561,7 +593,7 @@ export function StarMemoryCard({
                   Save to my Star
                 </button>
               ) : null}
-            </div>
+            </div>}
 
             <ConfirmationDialog
               open={overlay === "confirm-rest"}
@@ -668,6 +700,78 @@ export function StarMemoryCard({
         .smc-choice-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title); }
         .smc-choice-desc { font-family: var(--font-editorial); font-size: var(--text-body); line-height: 1.3; color: var(--ink-60); }
 
+        /* ── focused choice (practice): Star + words above, a bottom sheet below ── */
+        html.sms-focus .ds-nav { opacity: 0 !important; pointer-events: none !important; transition: opacity 320ms var(--ease-sisi) !important; }
+        html.sms-focus .ds-nav * { pointer-events: none !important; }
+        .sms-screen.is-focus { height: 100dvh; }
+        .sms-screen.is-focus .sms-scroll {
+          display: flex; flex-direction: column; overflow: hidden; padding: 0;
+        }
+        .sms-screen.is-focus .sms-path { flex: 1 1 auto; min-height: 0; gap: 0; }
+        /* the Star keeps its place in the sky, but never pushes the sheet off screen */
+        .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 12dvh); flex: none; }
+        .sms-screen.is-focus .sms-stage {
+          flex: 1 1 auto; min-height: 150px; width: 100%; justify-content: flex-end;
+        }
+        .sms-screen.is-focus .sms-say--card {
+          --sisi-w: clamp(82px, 24vw, 112px);
+          padding: 0 43px 0 16px; margin-bottom: calc(var(--sisi-w) * 0.7 + 4px);
+        }
+        .sms-screen.is-focus .sms-say--card .sisi-speech {
+          max-width: min(68vw, 290px); min-width: 0; padding: 12px 16px;
+          font-size: clamp(14px, 3.8vw, 17px);
+        }
+        .sms-screen.is-focus .sms-paper-wrap { flex: 0 0 auto; }
+        .sms-screen.is-focus .smc-sisi { transform: none; }
+        .sms-screen.is-focus .smc-sisi .scc-stage { width: clamp(82px, 24vw, 112px); }
+        .sms-screen.is-focus .sms-paper {
+          display: flex; flex-direction: column;
+          max-height: calc(100dvh - var(--safe-top) - 170px);
+          padding: 0 14px calc(16px + var(--safe-bottom));
+          border-radius: 20px 18px 0 0;
+          box-shadow: 0 -6px 26px rgba(16, 45, 50, 0.3);
+        }
+        .sms-screen.is-focus .sms-paper > * { min-height: 0; display: flex; flex-direction: column; }
+        .sms-screen.is-focus .smc-content { min-height: 0; flex: 1 1 auto; }
+        .sms-screen.is-focus .smc-navrow { flex: none; height: 44px; margin: 0 -8px; align-items: center; }
+        .smc-choice-list {
+          display: flex; flex-direction: column; gap: 8px; min-height: 0;
+          overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+          padding-bottom: 2px;
+        }
+        .smc-choice-list::-webkit-scrollbar { display: none; }
+        /* a quiet paper-coloured edge, only while there is more below */
+        .smc-choice-list.has-more {
+          -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+        }
+        .sms-screen.is-focus .smc-choice {
+          min-height: 68px; max-height: 76px; padding: 11px 14px; gap: 12px; border-radius: 14px; flex: none;
+          transition: transform var(--motion-instant) var(--ease-sisi), opacity 200ms ease, border-color var(--motion-instant) ease;
+        }
+        .smc-choice.is-picked { transform: scale(0.98); border-color: var(--sisi-ink); }
+        .smc-choice.is-faded { opacity: 0.35; }
+        .sms-screen.is-focus .smc-choice-icon { flex: 0 0 32px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+        .sms-screen.is-focus .smc-choice-icon svg { width: 22px; height: 22px; }
+        .sms-screen.is-focus .smc-choice-text { gap: 3px; min-width: 0; }
+        .sms-screen.is-focus .smc-choice-title { font-size: 17.5px; line-height: 1.15; }
+        .sms-screen.is-focus .smc-choice-desc {
+          font-size: 13px; line-height: 1.25;
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        @media (max-height: 640px) {
+          .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 6dvh); transform: scale(0.82); }
+          .sms-screen.is-focus .sms-stage { min-height: 120px; }
+          .sms-screen.is-focus .sms-say--card { --sisi-w: clamp(78px, 24vw, 88px); }
+          .sms-screen.is-focus .smc-sisi .scc-stage { width: clamp(78px, 24vw, 88px); }
+          .sms-screen.is-focus .sms-paper { padding: 0 12px calc(12px + var(--safe-bottom)); }
+          .sms-screen.is-focus .smc-choice { min-height: 64px; max-height: 68px; padding: 9px 12px; }
+          .sms-screen.is-focus .smc-choice-desc { font-size: 12px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .smc-choice.is-picked { transform: none; }
+        }
+
         /* ── full journey header ── */
         .smj-icon { flex: 0 0 44px; width: 44px; height: 44px; }
         .smj-titles { flex: 1; min-width: 0; padding-top: 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -689,6 +793,29 @@ const fade = {
   animate: { opacity: 1, transition: { duration: 0.3, delay: 0.08 } },
   exit: { opacity: 0, transition: { duration: 0.12 } },
 };
+
+/** The practice choices; scrolls only as a last resort on very short screens. */
+function ChoiceList({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 2);
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      el.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, []);
+  return (
+    <div ref={ref} className={`smc-choice-list${more ? " has-more" : ""}`} role="group" aria-label="Ways to be with your Star">
+      {children}
+    </div>
+  );
+}
 
 function NavRow({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
   return (
