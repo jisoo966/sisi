@@ -1,5 +1,6 @@
 "use client";
 
+import { parseMeta, visibleText, type ConversationMeta } from "@/lib/sisiConversation";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect, Suspense } from "react";
@@ -37,13 +38,9 @@ function parseSaveMarker(text: string): {
   clean: string;
   reason: SaveReason | null;
 } {
-  text = text.replace(/\[MOOD:[a-z]+\]/gi, ""); // expression hint for the Journey companion
   const match = text.match(/\[SAVE:(special|shift|insight|intention)\]/i);
-  if (!match) return { clean: text.trim(), reason: null };
-  return {
-    clean: text.replace(match[0], "").trim(),
-    reason: match[1].toLowerCase() as SaveReason,
-  };
+  // markers + Sísí's hidden §META line are never shown (lib/sisiConversation)
+  return { clean: visibleText(text), reason: match ? (match[1].toLowerCase() as SaveReason) : null };
 }
 
 const SAVE_LABELS: Record<SaveReason, string> = {
@@ -108,6 +105,10 @@ function ChatPage() {
   const [step, setStep] = useState<Step>("chatting");
   const [draftInput, setDraftInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  // always the latest thread (never a stale render's copy) + Sísí's running understanding
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
+  const metaRef = useRef<ConversationMeta | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
   const [showNudge, setShowNudge] = useState(false);
@@ -231,7 +232,7 @@ function ChatPage() {
     setStep("chatting");
 
     // 대화 history — greeting은 skip (client-only, API 안 보냄)
-    const history = [...messages, userMsg]
+    const history = [...messagesRef.current, userMsg]
       .filter((m) => !m.greeting)
       .map((m) => ({
         role: m.from === "sisi" ? ("assistant" as const) : ("user" as const),
@@ -245,6 +246,11 @@ function ChatPage() {
         body: JSON.stringify({
           messages: history,
           sessionId: activeSessionId,
+          conversationId: activeSessionId ?? "guest",
+          summary: metaRef.current?.summary ?? "",
+          entities: metaRef.current?.entities ?? [],
+          topic: metaRef.current?.topic ?? "",
+          stage: metaRef.current?.stage ?? "opening",
         }),
       });
 
@@ -290,6 +296,7 @@ function ChatPage() {
       }
 
       const { clean, reason } = parseSaveMarker(accumulated);
+      metaRef.current = parseMeta(accumulated) ?? metaRef.current;
       setMessages((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];

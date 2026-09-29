@@ -4,7 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment, loadMoments, type MomentType } from "@/lib/momentStore";
-import { FilterChip, FocusPaper, IconButton, IconSend, PrimaryButton, ReplyChip, StarGlyph, TextAction } from "@/components/ds";
+import { FilterChip, FocusPaper, IconButton, IconSend, OverflowMenu, PrimaryButton, ReplyChip, StarGlyph, TextAction } from "@/components/ds";
+import {
+  actionAllowed,
+  activeConversation,
+  addTurn,
+  newConversation,
+  parseMeta,
+  requestPayload,
+  setMeta,
+  visibleText,
+  type Conversation,
+} from "@/lib/sisiConversation";
 import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
 
 /**
@@ -25,14 +36,16 @@ import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/jo
  *
  * The conversation itself is never saved; only the words the user chooses
  * (source sisi_conversation, one canonical Moment).
+ *
+ * Continuity (lib/sisiConversation): one conversation stays active while
+ * the talk continues — closing and reopening the paper resumes it. Each
+ * request carries the ordered history, Sísí's rolling summary, the people /
+ * pets / places she is tracking, the topic and the stage. The user's words
+ * are stored in the thread before the request is made.
  */
 
 /** A reply is prepared with a thoughtful look, held at least this long. */
 const MIN_THINK_MS = 700;
-/** Invisible markers Sísí may add (see app/api/chat): stripped from the text. */
-const MARKERS = /\[(?:SAVE|MOOD|ACTION|VISIT):[a-z0-9]+\]|\[CHIPS:[^\]]*\]/gi;
-/** a marker still arriving mid-stream ("[CHIPS:I don…") is never shown */
-const PARTIAL = /\[[A-Z]{0,6}(?::[^\]]*)?$/;
 
 type Pill = { label: string; act: () => void; quiet?: boolean };
 type Msg = {
@@ -87,19 +100,33 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
   const meaningfulSent = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** the thread itself — the single source for every request (never stale React state) */
+  const conv = useRef<Conversation | null>(null);
+  const shownId = useRef<string | null>(null);
 
-  // A fresh, private conversation each time.
+  /** Rebuild what's on the paper from the stored thread. */
+  const showThread = (c: Conversation) => {
+    shownId.current = c.id;
+    setMessages(c.turns.map((t, i) => ({ id: `${c.id}-${i}`, from: t.role === "user" ? "user" : "sisi", text: t.content })));
+    setDismissed(new Set());
+    sharedChars.current = 0;
+    sharedCount.current = 0;
+    meaningfulSent.current = false;
+  };
+
+  // Opening the paper resumes the active conversation (a new one begins
+  // only after a long pause, or when the person chooses to start fresh).
   useEffect(() => {
     if (open) {
-      setMessages([]);
+      let c = activeConversation();
+      // a thought the person wanted to talk about: Sísí's line joins the thread
+      if (opening && c.turns[c.turns.length - 1]?.content !== opening) c = addTurn(c, "assistant", opening);
+      conv.current = c;
+      if (shownId.current !== c.id || opening) showThread(c);
       setDraft("");
       setKeep(null);
-      // a first welcome: seated; opening from a thought: already listening
-      setExpr(opening ? "listening" : "seated");
-      setDismissed(new Set());
-      sharedChars.current = 0;
-      sharedCount.current = 0;
-      meaningfulSent.current = false;
+      // a first welcome: seated; resuming or opening from a thought: listening
+      setExpr(opening || c.turns.length ? "listening" : "seated");
       loadStars().then((s) => setStars(walkingStars(s)));
       // a small picture for each Star: its latest photo Moment, if any
       loadMoments().then((ms) => {
@@ -117,14 +144,26 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
 
   const hasTalked = messages.some((m) => m.from === "user");
 
+  const startFresh = () => {
+    const c = newConversation();
+    conv.current = c;
+    showThread(c);
+    setKeep(null);
+    setExpr("seated");
+  };
+
   async function send(preset?: string) {
     const text = (preset ?? draft).trim();
     if (!text || sending) return;
+    // the user's words join the thread BEFORE the request is built
+    let c = addTurn(conv.current ?? activeConversation(), "user", text);
+    conv.current = c;
+    const payload = requestPayload(c, {
+      currentStar: star?.wish ?? null,
+      // numbered, so Sísí can suggest visiting one by name ([VISIT:n])
+      stars: stars.map((st) => st.wish).slice(0, 8),
+    });
     const userMsg: Msg = { id: `u-${Date.now()}`, from: "user", text };
-    const history = [...messages, userMsg]
-      .filter((x) => x.from !== "saved" && !x.after)
-      .map((x) => ({ role: x.from === "user" ? "user" : "assistant", content: x.text }));
-    if (opening) history.unshift({ role: "assistant", content: opening });
     setMessages((m) => [...m, userMsg]);
     sharedCount.current += 1;
     sharedChars.current += text.length;
@@ -143,12 +182,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: history,
-          currentStar: star?.wish ?? null,
-          // numbered, so Sísí can suggest visiting one by name ([VISIT:n])
-          stars: stars.map((st) => st.wish).slice(0, 8),
-        }),
+        body: JSON.stringify(payload),
       });
       if (!resp.ok || !resp.body) throw new Error("chat failed");
       // Server-Sent Events: `data: {"text": "..."}` lines.
@@ -172,9 +206,16 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             // partial line
           }
         }
-        const shown = acc.replace(MARKERS, "").replace(PARTIAL, "").trim();
+        const shown = visibleText(acc);
         setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: shown } : x)));
       }
+      // the reply joins the thread once, with Sísí's updated understanding
+      const reply = visibleText(acc);
+      const meta = parseMeta(acc);
+      c = addTurn(conv.current ?? c, "assistant", reply);
+      c = setMeta(c, meta);
+      conv.current = c;
+      const stage = meta?.stage;
       // Explicit mood from the reply (never guessed from keywords):
       // a clearly supportive answer → eyes closed; otherwise listening.
       const mood: SisiChatExpression = /\[MOOD:comfort\]/i.test(acc) ? "comfort" : "listening";
@@ -183,17 +224,18 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       // Listen first, guide second: actions come only from Sísí's own reply,
       // never on the first message (she doesn't understand yet), and never
       // more than one. A clarifying question may carry two reply chips.
-      const firstTurn = sharedCount.current <= 1;
+      // Sísí's own stage decides: nothing is offered while she is still understanding.
+      const firstTurn = c.turns.filter((t) => t.role === "user").length <= 1;
       const chipsM = /\[CHIPS:([^\]]+)\]/i.exec(acc);
-      const chips = chipsM ? chipsM[1].split("|").map((c) => c.trim()).filter(Boolean).slice(0, 2) : undefined;
-      const worth = !firstTurn && /\[SAVE:[a-z]+\]/i.test(acc);
+      const chips = chipsM ? chipsM[1].split("|").map((x) => x.trim()).filter(Boolean).slice(0, 2) : undefined;
+      const worth = !firstTurn && /\[SAVE:[a-z]+\]/i.test(acc) && actionAllowed("save", stage);
       let action: Msg["action"];
       if (!firstTurn && !worth && !chips) {
         const visit = /\[VISIT:(\d+)\]/i.exec(acc);
         const kind = /\[ACTION:(step|walk)\]/i.exec(acc)?.[1] as "step" | "walk" | undefined;
         const target = visit ? stars[Number(visit[1]) - 1] : undefined;
-        if (target) action = { kind: "visit", star: target };
-        else if (kind) action = { kind };
+        if (target && actionAllowed("visit", stage)) action = { kind: "visit", star: target };
+        else if (kind && actionAllowed(kind, stage)) action = { kind };
       }
       if (chips || worth || action) {
         setMessages((m) =>
@@ -201,6 +243,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         );
       }
     } catch {
+      // (not added to the thread: the next request retries from the user's words)
       setExpr("listening");
       setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: "Let’s try that again in a moment." } : x)));
     } finally {
@@ -233,6 +276,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         { id: `k-${t}`, from: "saved", text: note },
         { id: `a-${t}`, from: "sisi", text: "We can keep talking, or return to our walk.", after: true },
       ]);
+      if (conv.current) conv.current = addTurn(conv.current, "assistant", "We can keep talking, or return to our walk.");
       setKeep(null);
       setExpr("comfort"); // a meaningful thought, kept
     } finally {
@@ -278,6 +322,11 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       title={<h2 id={titleId} className="cs-sr">Talk with Sísí</h2>}
       titleId={titleId}
       closeLabel="Close conversation"
+      headerExtra={
+        hasTalked && !keep ? (
+          <OverflowMenu label="Conversation options" items={[{ label: "Start a new conversation", destructive: false, onSelect: startFresh }]} />
+        ) : undefined
+      }
       tall
       className="companion-sheet"
       bodyRef={keep ? undefined : scrollRef}
