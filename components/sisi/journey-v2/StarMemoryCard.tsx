@@ -65,15 +65,20 @@ type Props = {
   onDirty?: (dirty: boolean) => void;
   /** A reflection was saved to this Star. */
   onEntrySaved?: (entry: Sign) => void;
-  /** where to begin (e.g. "reflect" after walking with this Star) */
-  initialMode?: "quick" | "reflect";
+  /** where to begin:
+   *   journey    the Star's timeline (default for every visit)
+   *   quick      Sísí's invitation (an occasional later visit)
+   *   reflect    straight to "Reflect on today" (after walking with this Star)
+   *   celebrate  a quiet "Your Star is here." right after creating it */
+  initialMode?: StarEntry;
   /** "Walk with it": carry this wish down into the Journey */
   onWalkWith?: (star: Star) => void;
   /** "Return to Journey" */
   onReturnToJourney?: () => void;
 };
 
-type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey";
+export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
+type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate";
 type Overlay = null | "confirm-rest";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -102,6 +107,7 @@ const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpressio
   reflect: { text: "What would you like your Star to remember about today?", face: "listening" },
   saved: { text: "I’ll keep this close to your Star.", face: "comfort" },
   done: { text: <>That was enough for today.<br />Your Star is still here.</>, face: "comfort" },
+  celebrate: { text: "Your Star is here.", face: "comfort" },
 };
 const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort" };
 
@@ -116,12 +122,20 @@ export function StarMemoryCard({
   onCreateStar,
   onDirty,
   onEntrySaved,
-  initialMode = "quick",
+  initialMode = "journey",
   onWalkWith,
   onReturnToJourney,
 }: Props) {
-  const [mode, setMode] = useState<Mode>(initialMode === "reflect" ? "reflect" : "invite");
-  const [reflectBack, setReflectBack] = useState<Mode>(initialMode === "reflect" ? "invite" : "practice");
+  const [mode, setMode] = useState<Mode>(
+    placeholder ? "invite" : initialMode === "reflect" ? "reflect" : initialMode === "celebrate" ? "celebrate" : initialMode === "quick" ? "invite" : "journey",
+  );
+  const [reflectBack, setReflectBack] = useState<Mode>(initialMode === "reflect" ? "journey" : "practice");
+  /** where "back" from the activity choice returns (the timeline, or the invitation) */
+  const [practiceBack, setPracticeBack] = useState<Mode>("journey");
+  const startPractice = (from: Mode) => {
+    setPracticeBack(from);
+    setMode("practice");
+  };
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [kind, setKind] = useState<EntryKind>("something_good");
   const [text, setText] = useState("");
@@ -233,23 +247,27 @@ export function StarMemoryCard({
   // journey + completion use the three-zone screen (header · scroll · controls)
   // Every step of the Star detail uses the same three-zone screen.
   const onScreen = true;
-  const hasHeader = mode === "journey" || mode === "saved" || mode === "done";
+  const hasHeader = mode === "journey";
+  /** completion moments: one clear way on, then back to this Star */
+  const completion = mode === "saved" || mode === "done" || mode === "celebrate";
   // A focused choice: the paper is a bottom sheet, the Star and Sísí's words
   // share the rest of the screen, and the global tabs step aside.
   const focus = mode === "practice";
+  /** the global tabs step aside during the choice and the completion moments */
+  const hideNav = focus || completion;
   useEffect(() => {
     const el = document.documentElement;
-    if (focus) {
+    if (hideNav) {
       el.classList.add("sms-focus");
       return;
     }
     // the paper begins to close first, then the tabs return
     const t = setTimeout(() => el.classList.remove("sms-focus"), 120);
     return () => clearTimeout(t);
-  }, [focus]);
+  }, [hideNav]);
   useEffect(() => () => document.documentElement.classList.remove("sms-focus"), []);
   const hasControls =
-    mode === "journey" || mode === "saved" || mode === "done" || (mode === "invite" && !placeholder) || mode === "picture-intro" || mode === "reflect";
+    mode === "journey" || completion || (mode === "invite" && !placeholder) || mode === "picture-intro" || mode === "reflect";
   // each step starts with its Star in view (not wherever the last one scrolled)
   useLayoutEffect(() => {
     listRef.current?.scrollTo({ top: 0 });
@@ -288,7 +306,7 @@ export function StarMemoryCard({
         {onScreen && (
           <motion.div
             key="sms"
-            className={`sms-screen${focus ? " is-focus" : ""}`}
+            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion ? " is-completion" : ""}`}
             style={{ ["--star-top" as string]: `${Math.max(8, anchor.y - 44)}px` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -298,7 +316,7 @@ export function StarMemoryCard({
             {hasHeader && (
             <header className="sms-header">
               {mode === "journey" ? (
-                <IconButton surface="dark" label="Back to this Star" onClick={() => setMode("invite")}>
+                <IconButton surface="dark" label="Back to My Stars" onClick={onClose}>
                   <IconBack />
                 </IconButton>
               ) : (
@@ -418,7 +436,7 @@ export function StarMemoryCard({
 
                 {mode === "practice" && (
                   <motion.div key="practice" className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode("invite")} onClose={onClose} />
+                    <NavRow onBack={() => setMode(practiceBack)} onClose={onClose} />
                     <ChoiceList>
                       {PRACTICES.map((p) => (
                         <button
@@ -464,6 +482,25 @@ export function StarMemoryCard({
                     <TextAction className="smc-journey-link" onClick={() => setMode("done")}>
                       Not now
                     </TextAction>
+                  </motion.div>
+                )}
+
+                {mode === "saved" && saved && (
+                  <motion.div key="saved" className="smc-content" {...fade}>
+                    <p className="t-meta smc-when">
+                      {dayLabel(saved.createdAt)}
+                      {saved.kind ? ` · ${KIND[saved.kind].label}` : ""}
+                    </p>
+                    <p className="t-dialogue smc-saved-text">{saved.text}</p>
+                    <p className="t-meta smc-saved-also">Also saved in Moments.</p>
+                  </motion.div>
+                )}
+
+                {(mode === "done" || mode === "celebrate") && (
+                  <motion.div key={mode} className="smc-content" {...fade}>
+                    <p className="t-meta smc-when">{mode === "celebrate" ? "Created today" : formatDate(star.createdAt)}</p>
+                    <h2 className="t-card-title smc-title">{star.wish || "Your Star"}</h2>
+                    <StatusChip tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
                   </motion.div>
                 )}
 
@@ -531,58 +568,34 @@ export function StarMemoryCard({
                   </>
                 )}
 
-                {mode === "saved" && saved && (
-                  <motion.article
-                    className="ds-memory sms-card"
-                    style={{ rotate: -1 }}
-                    initial={{ opacity: 0, y: 14, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.5, ease: SOFT }}
-                  >
-                    <div className="ds-memory-sheet ds-paper">
-                      <p className="sms-date">
-                        {dayLabel(saved.createdAt)}
-                        {saved.kind ? ` · ${KIND[saved.kind].label}` : ""}
-                      </p>
-                      <p className="sms-text">{saved.text}</p>
-                    </div>
-                    <span className="sms-bead" aria-hidden />
-                  </motion.article>
-                )}
               </div>
 
-              {(mode === "saved" || mode === "done") && (
-                <div className="sms-completion">
-                  <div className="sms-say">
-                    <SisiSpeechBubble
-                      tailPosition="bottom-right"
-                      align="center"
-                      delay={0.35}
-                      message={mode === "saved" ? SAY.saved!.text : SAY.done!.text}
-                    />
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img className="sms-sisi" src="/assets/sisi-chat/sisi-chat-seated-neutral.webp" alt="" aria-hidden />
-                  {mode === "saved" && <p className="t-meta sms-status">Also saved in Moments.</p>}
-                  <TextAction surface="dark" className="sms-secondary" onClick={onClose}>
-                    Stay with my Star
-                  </TextAction>
-                </div>
-              )}
             </div>
 
             {hasControls && <div className="sms-controls">
               {mode === "journey" ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("practice")}>
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => startPractice("journey")}>
                   Spend a moment with this Star
                 </button>
-              ) : mode === "saved" || mode === "done" ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => onReturnToJourney?.()}>
-                  Return to Journey
-                </button>
+              ) : completion ? (
+                <div className="sms-cta-pair">
+                  <button
+                    type="button"
+                    className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta"
+                    onClick={() => {
+                      setSaved(null);
+                      setMode("journey");
+                    }}
+                  >
+                    {mode === "celebrate" ? "View my Star" : "Stay with my Star"}
+                  </button>
+                  <TextAction surface="dark" className="sms-cta-secondary" onClick={() => onReturnToJourney?.()}>
+                    Return to Journey
+                  </TextAction>
+                </div>
               ) : mode === "invite" && !placeholder ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("practice")}>
-                  Yes, stay with me
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => startPractice("invite")}>
+                  Spend a quiet moment
                 </button>
               ) : mode === "picture-intro" ? (
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("picture")}>
@@ -713,17 +726,13 @@ export function StarMemoryCard({
         .sms-screen.is-focus .sms-stage {
           flex: 1 1 auto; min-height: 150px; width: 100%; justify-content: flex-end;
         }
-        .sms-screen.is-focus .sms-say--card {
-          --sisi-w: clamp(82px, 24vw, 112px);
-          padding: 0 43px 0 16px; margin-bottom: calc(var(--sisi-w) * 0.7 + 4px);
-        }
+        .sms-screen.is-focus .sms-say--card { padding: 0 43px 0 16px; }
         .sms-screen.is-focus .sms-say--card .sisi-speech {
           max-width: min(68vw, 290px); min-width: 0; padding: 12px 16px;
           font-size: clamp(14px, 3.8vw, 17px);
         }
         .sms-screen.is-focus .sms-paper-wrap { flex: 0 0 auto; }
-        .sms-screen.is-focus .smc-sisi { transform: none; }
-        .sms-screen.is-focus .smc-sisi .scc-stage { width: clamp(82px, 24vw, 112px); }
+
         .sms-screen.is-focus .sms-paper {
           display: flex; flex-direction: column;
           max-height: calc(100dvh - var(--safe-top) - 170px);
@@ -762,8 +771,6 @@ export function StarMemoryCard({
         @media (max-height: 640px) {
           .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 6dvh); transform: scale(0.82); }
           .sms-screen.is-focus .sms-stage { min-height: 120px; }
-          .sms-screen.is-focus .sms-say--card { --sisi-w: clamp(78px, 24vw, 88px); }
-          .sms-screen.is-focus .smc-sisi .scc-stage { width: clamp(78px, 24vw, 88px); }
           .sms-screen.is-focus .sms-paper { padding: 0 12px calc(12px + var(--safe-bottom)); }
           .sms-screen.is-focus .smc-choice { min-height: 64px; max-height: 68px; padding: 9px 12px; }
           .sms-screen.is-focus .smc-choice-desc { font-size: 12px; }
@@ -771,6 +778,14 @@ export function StarMemoryCard({
         @media (prefers-reduced-motion: reduce) {
           .smc-choice.is-picked { transform: none; }
         }
+
+        /* tabs stepped aside: the controls sit on the safe area instead */
+        .sms-screen.no-nav { --nav-total: calc(var(--safe-bottom) + 12px); }
+        .sms-screen.is-completion { --cta-height: 100px; }
+        .sms-cta-pair { display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: auto; }
+        .sms-cta-pair .sms-cta { min-height: 52px; height: 52px; }
+        .smc-saved-text { margin: 6px 0 0; white-space: pre-wrap; }
+        .smc-saved-also { margin: 12px 0 0; color: var(--ink-60); }
 
         /* ── full journey header ── */
         .smj-icon { flex: 0 0 44px; width: 44px; height: 44px; }

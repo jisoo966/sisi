@@ -51,6 +51,9 @@ import { CreateStarFlow } from "@/components/sisi/journey-v2/CreateStarFlow";
 import { EveningReflection, eveningDue } from "@/components/sisi/journey-v2/EveningReflection";
 import { earnLight } from "@/lib/littleLights";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
+import { entryForVisit } from "@/lib/starVisits";
+import { ascentOptions } from "@/lib/useStarAscent";
+import type { StarEntry } from "@/components/sisi/journey-v2/StarMemoryCard";
 import { IconPlus, SecondaryButton } from "@/components/ds";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
@@ -384,7 +387,9 @@ export default function JourneyPage() {
     const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
     const w = stage?.offsetWidth ?? window.innerWidth;
     const h = stage?.offsetHeight ?? window.innerHeight;
-    // the new Star sits where the seed was born (the top of the path)
+    // the new Star sits where the seed was born (the top of the path):
+    // first a quiet "Your Star is here." — the practice invitation waits for a later visit
+    setStarMode(entryForVisit(s.id, "created"));
     setTimeout(() => setOpenStar({ star: s, at: { x: w * 0.5, y: h * 0.22 } }), 250);
   };
   // A Star brightens once when something is added to it.
@@ -457,48 +462,60 @@ export default function JourneyPage() {
   // /journey?create=1 (after onboarding) opens Create Star.
   // /journey?to=stars&star=ID (from a Moment) also opens that Star on arrival.
   const deepLink = useRef<"stars" | "create" | "none" | null>(null);
+  const arriveFor = useRef(false);
   const [arriveStarId, setArriveStarId] = useState<string | null>(null);
   /** how a Star's paper opens on arrival (e.g. straight to "Reflect on today") */
-  const [starMode, setStarMode] = useState<"quick" | "reflect">("quick");
+  const [starMode, setStarMode] = useState<StarEntry>("journey");
   useEffect(() => {
     if (deepLink.current === null) {
       const q = new URLSearchParams(window.location.search);
       deepLink.current = q.get("to") === "stars" ? "stars" : q.has("create") ? "create" : "none";
-      if (deepLink.current === "stars" && q.get("star")) setArriveStarId(q.get("star"));
+      if (deepLink.current === "stars" && q.get("star")) {
+        setArriveStarId(q.get("star"));
+        arriveFor.current = true;
+      }
       if (deepLink.current !== "none") window.history.replaceState(null, "", "/journey");
     }
     if (deepLink.current === "none") return;
     const t = setTimeout(() => {
-      if (deepLink.current === "stars") enterStarView();
+      if (deepLink.current === "stars") {
+        // "Visit Star": a short sky transition straight to that Star
+        if (arriveFor.current) ascentOptions.quickNext = true;
+        enterStarView();
+      }
       else if (deepLink.current === "create") startNewStar();
       deepLink.current = "none";
-    }, 1400);
+    }, arriveFor.current ? 500 : 1400); // "Visit Star": straight up, no lingering
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Arrived above after tapping the meadow star → show that star's summary.
   useEffect(() => {
-    if (!viewCurrentOnArrival || !isStarView || busy) return;
+    if (!viewCurrentOnArrival || !isStarView || busy || env !== "night" || !starRevealed) return;
     setViewCurrentOnArrival(false);
     const first = worldStars[0];
     const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
     if (first && stage) {
+      setStarMode(entryForVisit(first.id, "sky"));
       setOpenStar({ star: first, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
     }
-  }, [viewCurrentOnArrival, isStarView, busy]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewCurrentOnArrival, isStarView, busy, env, starRevealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Arrived above from a Moment → open the Star it belongs to.
   useEffect(() => {
-    if (!arriveStarId || !isStarView || busy) return;
+    // wait until the camera has actually landed in the Star World
+    if (!arriveStarId || !isStarView || busy || env !== "night" || !starRevealed) return;
     const star = worldStars.find((s) => s.id === arriveStarId);
     if (!star && worldStars.length === 0) return; // stars still loading
     setArriveStarId(null);
     const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
     const target = star ?? worldStars[0];
     if (target && stage) {
+      if (starMode !== "reflect") setStarMode(entryForVisit(target.id, "visit"));
+      else entryForVisit(target.id, "visit");
       setOpenStar({ star: target, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
     }
-  }, [arriveStarId, isStarView, busy, worldStars]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [arriveStarId, isStarView, busy, worldStars, env, starRevealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Safe-area tint follows the environment actually on screen.
   usePageBg("var(--sisi-ink)");
@@ -564,7 +581,7 @@ export default function JourneyPage() {
   };
   const riseToStar = (id: string, mode: "quick" | "reflect") => {
     endCarry();
-    setStarMode(mode);
+    setStarMode(mode === "reflect" ? "reflect" : "journey");
     setArriveStarId(id);
     setTimeout(() => goToStars(), 380);
   };
@@ -712,7 +729,10 @@ export default function JourneyPage() {
             reserveTop={newStarOpen}
             pulse={starPulse}
             locked={openStar !== null || leavingId !== null || newStarOpen}
-            onSelect={(star, at) => setOpenStar({ star, at })}
+            onSelect={(star, at) => {
+              setStarMode(entryForVisit(star.id, "sky"));
+              setOpenStar({ star, at });
+            }}
             leavingId={leavingId}
             recenter={recenter}
           />
@@ -960,14 +980,14 @@ export default function JourneyPage() {
               initialMode={starMode}
               onClose={() => {
                 setOpenStar(null);
-                setStarMode("quick");
+                setStarMode("journey");
               }}
               onWalkWith={(s) => {
-                setStarMode("quick");
+                setStarMode("journey");
                 startWalkWith(s);
               }}
               onReturnToJourney={() => {
-                setStarMode("quick");
+                setStarMode("journey");
                 backToMeadow();
               }}
               onRest={letStarRest}
@@ -1110,6 +1130,7 @@ export default function JourneyPage() {
           // close the talk, rise to the Stars, and open this Star
           setChatOpen(false);
           setArriveStarId(s.id);
+          ascentOptions.quickNext = true; // a short sky transition
           setTimeout(() => goToStars(), 380);
         }}
         onClose={() => setChatOpen(false)}

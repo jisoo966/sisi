@@ -82,6 +82,14 @@ const RETURN_CAMERA_MS = 3000;
 const RETURN_LOOK_MS = 600;
 export const RETURN_MS = RETURN_CAMERA_MS + RETURN_LOOK_MS;
 const RETURN_TIME_SCALE = (ASCENT_MS - ENTER[0][0]) / RETURN_CAMERA_MS;
+/**
+ * "Visit Star" (from a Moment or a conversation): a short sky transition —
+ * the same camera curve, without the look-up pause and time-compressed.
+ * Set `ascentOptions.quickNext = true` right before entering the Star World.
+ */
+export const ascentOptions = { quickNext: false };
+const QUICK_ASCENT_MS = 1800;
+
 /** When the postcard may rise in (after the arrival settles). */
 export const STAR_CARD_DELAY_S = (ASCENT_MS + SETTLE_MS) / 1000;
 
@@ -291,7 +299,11 @@ export function useStarAscent(isStarView: boolean) {
     let cAt: (t: number) => number;
     let end: number;
     if (isStarView) {
-      if (from < 0.001) {
+      if (from < 0.001 && ascentOptions.quickNext) {
+        const k = (ASCENT_MS - ENTER[0][0]) / QUICK_ASCENT_MS;
+        cAt = (t) => hermite(ENTER, ENTER[0][0] + t * k);
+        end = QUICK_ASCENT_MS;
+      } else if (from < 0.001) {
         cAt = (t) => hermite(ENTER, t);
         end = ASCENT_MS;
       } else {
@@ -306,6 +318,7 @@ export function useStarAscent(isStarView: boolean) {
       end = 1800;
     }
 
+    ascentOptions.quickNext = false;
     let revealed = false;
     const start = performance.now();
     const tick = (now: number) => {
