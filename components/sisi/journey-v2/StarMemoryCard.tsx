@@ -5,26 +5,35 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { addSign, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { tornEdge } from "@/lib/tornEdge";
-import { hintDone, markHint } from "@/lib/hints";
-import { thoughtAfterCheckIn, isKept, type Thought } from "@/lib/sisiThoughts";
-import { keepThought } from "@/components/sisi/journey-v2/CompanionCues";
+import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
+import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
+import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
 
 /**
- * StarMemoryCard — the Star check-in, on torn ivory paper hanging from the
- * selected Star by a thin thread (the black Star World stays around it).
+ * StarMemoryCard — spending a moment with one Star, on torn ivory paper
+ * hanging from it by a thin thread, with Sísí resting on the paper's edge.
+ * The black Star World and the tabs stay around it.
  *
- *   quick    date · wish · Still walking · "Your Star is still here."
- *            → Check in with this Star   ·   View full journey →
- *   choose   the paper grows upward: "What would you like to share with this
- *            Star today?" — Something good | A step I took (one branch only)
- *   write    one short reflection → Save to my Star
- *   saved    the paper folds into a small torn note on the thread, the Star
- *            brightens once; Back to My Stars · View full journey →
- *   journey  the Star's whole path: small notes on its thread, newest
- *            nearest the Star, down to when it was created
+ *   invite         Sísí: "Your Star is still here. Shall we spend a quiet
+ *                  moment with it?" — Yes, stay with me · View its journey
+ *   practice       Sísí: "How would you like to be with your Star today?"
+ *                  Picture it · Walk with it · Reflect on today (choose one)
+ *   picture-intro  Sísí closes her eyes: "Picture this wish as part of an
+ *                  ordinary day…" — Begin
+ *   picture        silence: no words, no timer; only "End quietly"
+ *   note-ask       "Would you like to leave a small note for this Star?"
+ *   reflect        "What would you like your Star to remember about today?"
+ *                  Something good · A small step, one short field, Save
+ *   saved          the paper folds into a note on the thread; the Star
+ *                  brightens once; "I’ll keep this close to your Star."
+ *   done           "That was enough for today. Your Star is still here."
+ *   journey        the Star's whole path (notes on its thread)
  *
- * The wish itself is never edited here (only via the quiet ⋯ menu on the
- * full journey). Back: write → choose → quick. Close → My Stars.
+ * Rhythm: Sísí speaks → the user chooses / rests / writes → the bubble
+ * fades → Sísí returns for the conclusion. Her words are in a speech
+ * bubble; the wish, choices and writing on paper; status in small text.
+ * No streaks, points, badges or progress. "Walk with it" hands over to the
+ * Journey (onWalkWith). A reflection is ONE record (Star + Moments).
  */
 
 type Props = {
@@ -42,46 +51,72 @@ type Props = {
   onCreateStar?: () => void;
   /** Unsaved edits in the card (so leaving can ask first). */
   onDirty?: (dirty: boolean) => void;
-  /** A check-in was saved to this Star. */
+  /** A reflection was saved to this Star. */
   onEntrySaved?: (entry: Sign) => void;
+  /** where to begin (e.g. "reflect" after walking with this Star) */
+  initialMode?: "quick" | "reflect";
+  /** "Walk with it": carry this wish down into the Journey */
+  onWalkWith?: (star: Star) => void;
+  /** "Return to Journey" */
+  onReturnToJourney?: () => void;
 };
 
-type Mode = "quick" | "choose" | "write" | "saved" | "journey";
+type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey";
 type Overlay = null | "menu" | "confirm-rest";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const SOFT = [0.45, 0, 0.25, 1] as const; // soft ease-in-out
 
-const CHOICE: Record<EntryKind, { title: string; desc: string; q: string; sub: string; ph: string }> = {
-  something_good: {
-    title: "Something good",
-    desc: "Something that made you feel hopeful or grateful.",
-    q: "What felt good or meaningful today?",
-    sub: "A kind word, a small opportunity, or anything that gave you hope.",
-    ph: "My friend encouraged me to keep going.",
-  },
-  small_step: {
-    title: "A step I took",
-    desc: "Something you did, however small.",
-    q: "What small step did you take?",
-    sub: "Even a very small step counts.",
-    ph: "I reviewed my plan and took one small action.",
-  },
+/** Journal kinds (the same Star-entry record as before). */
+const KIND: Record<EntryKind, { chip: string; label: string; ph: string }> = {
+  something_good: { chip: "Something good", label: "Something good", ph: "My friend encouraged me to keep going." },
+  small_step: { chip: "A small step", label: "A step I took", ph: "I reviewed my plan and took one small action." },
 };
+const PRACTICES = [
+  { id: "picture", title: "Picture it", desc: "Imagine this wish as part of your life." },
+  { id: "walk", title: "Walk with it", desc: "Let Sísí carry this wish with you." },
+  { id: "reflect", title: "Reflect on today", desc: "Remember something good or a small step." },
+] as const;
+
+/** What Sísí says (and how she looks) in each moment. */
+const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpression }>> = {
+  invite: { text: <>Your Star is still here.<br />Shall we spend a quiet moment with it?</>, face: "listening" },
+  practice: { text: "How would you like to be with your Star today?", face: "listening" },
+  "picture-intro": {
+    text: <>Picture this wish as part of an ordinary day.<br />Where are you? How do you feel?</>,
+    face: "comfort",
+  },
+  "note-ask": { text: "Would you like to leave a small note for this Star?", face: "listening" },
+  reflect: { text: "What would you like your Star to remember about today?", face: "listening" },
+  saved: { text: "I’ll keep this close to your Star.", face: "comfort" },
+  done: { text: <>That was enough for today.<br />Your Star is still here.</>, face: "comfort" },
+};
+const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort" };
+
 const NOTE_EDGE = tornEdge(23, 18, 2.2);
 const JOURNEY_NOTE_EDGES = [tornEdge(31, 16, 3), tornEdge(37, 16, 3), tornEdge(43, 16, 3)];
 
-export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onRest, onEdited, onCreateStar, onDirty, onEntrySaved }: Props) {
-  const [mode, setMode] = useState<Mode>("quick");
+export function StarMemoryCard({
+  star,
+  anchor,
+  placeholder = false,
+  onClose,
+  onRest,
+  onEdited,
+  onCreateStar,
+  onDirty,
+  onEntrySaved,
+  initialMode = "quick",
+  onWalkWith,
+  onReturnToJourney,
+}: Props) {
+  const [mode, setMode] = useState<Mode>(initialMode === "reflect" ? "reflect" : "invite");
+  const [reflectBack, setReflectBack] = useState<Mode>(initialMode === "reflect" ? "invite" : "practice");
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const [kind, setKind] = useState<EntryKind | null>(null);
-  // Typed text is kept per branch for this session (Back never loses it).
-  const [drafts, setDrafts] = useState<Record<EntryKind, string>>({ something_good: "", small_step: "" });
+  const [kind, setKind] = useState<EntryKind>("something_good");
+  const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Sign | null>(null);
-  // under the saved note: the first time, where to find it; otherwise, now
-  // and then, a thought for the walk
-  const [after, setAfter] = useState<{ hint: true } | { thought: Thought; kept: boolean } | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(star.wish);
   const [signs, setSigns] = useState<Sign[] | null>(null);
@@ -92,9 +127,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
   // Unsaved words → the page asks before leaving.
   const onDirtyRef = useRef(onDirty);
   onDirtyRef.current = onDirty;
-  const dirty =
-    (editing && draft.trim() !== star.wish.trim()) ||
-    (mode === "write" && !!kind && drafts[kind].trim().length > 0);
+  const dirty = (editing && draft.trim() !== star.wish.trim()) || (mode === "reflect" && text.trim().length > 0);
   useEffect(() => {
     onDirtyRef.current?.(dirty);
   }, [dirty]);
@@ -127,7 +160,7 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
       clearTimeout(t);
       window.removeEventListener("resize", measure);
     };
-  }, [mode, kind, signs, saved]);
+  }, [mode, signs, saved]);
 
   // Thin, slightly imperfect ivory thread from just under the star to a bead
   // on the paper's top edge.
@@ -141,27 +174,20 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
     return `M ${x0} ${y0} C ${x0 + j(1)} ${y0 + len * 0.3}, ${x0 + j(2)} ${y0 + len * 0.62}, ${x0} ${threadEnd}`;
   }, [anchor.x, anchor.y, threadEnd]);
 
-  const choose = (k: EntryKind) => {
-    setKind(k);
-    setMode("write");
+  const openReflect = (from: Mode) => {
+    setReflectBack(from);
+    setMode("reflect");
   };
   const save = async () => {
-    if (!kind || saving) return;
-    const t = drafts[kind].trim();
-    if (!t) return;
+    const t = text.trim();
+    if (!t || saving) return;
     setSaving(true); // no duplicate submissions
     try {
+      // the same Star-entry record as the check-in: shown on this Star AND in Moments
       const sign = await addSign(star.id, t, "manual", kind);
       setSigns((list) => [sign, ...(list ?? [])]);
       setSaved(sign);
-      if (!hintDone("starSaved")) {
-        markHint("starSaved");
-        setAfter({ hint: true });
-      } else {
-        const t = thoughtAfterCheckIn();
-        setAfter(t ? { thought: t, kept: isKept(t.id) } : null);
-      }
-      setDrafts((d) => ({ ...d, [kind]: "" }));
+      setText("");
       setMode("saved");
       onEntrySaved?.(sign);
     } finally {
@@ -178,9 +204,29 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
     onEdited({ ...star, wish });
     setEditing(false);
   };
+  const choosePractice = (id: (typeof PRACTICES)[number]["id"]) => {
+    if (id === "picture") setMode("picture-intro");
+    else if (id === "reflect") openReflect("practice");
+    else onWalkWith?.(star);
+  };
 
-  const onCard = mode !== "journey";
+  // journey + completion use the three-zone screen (header · scroll · controls)
+  // Every step of the Star detail uses the same three-zone screen.
+  const onScreen = true;
+  const hasHeader = mode === "journey" || mode === "saved" || mode === "done";
+  // each step starts with its Star in view (not wherever the last one scrolled)
+  useLayoutEffect(() => {
+    listRef.current?.scrollTo({ top: 0 });
+  }, [mode]);
+  // the world's own copy of this Star steps aside while the screen draws it
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("sms-open", onScreen);
+    return () => el.classList.remove("sms-open");
+  }, [onScreen]);
   const isNote = mode === "saved";
+  const say = placeholder ? null : SAY[mode];
+  const face: SisiChatExpression = FACE[mode] ?? say?.face ?? "listening";
   // journey: notes hang on the Star's thread, centred under it (kept on screen)
   const colX = Math.min(Math.max(anchor.x, 150), (typeof window !== "undefined" ? window.innerWidth : 390) - 150);
 
@@ -191,205 +237,36 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
         type="button"
         aria-label="Back to My Stars"
         className="smc-backdrop"
-        onClick={onClose}
+        onClick={() => mode !== "picture" && onClose()}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       />
 
-      {onCard && lineD && threadEnd !== null && (
-        <svg className="smc-line" aria-hidden>
-          <motion.path
-            d={lineD}
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1, d: lineD }}
-            exit={{ pathLength: 0, transition: { duration: 0.35, ease: "easeIn" } }}
-            transition={{ pathLength: { duration: 0.55, delay: 0.35, ease: EASE }, d: { duration: 0.45, ease: SOFT } }}
-          />
-          <motion.circle
-            r={3}
-            className="smc-bead"
-            initial={{ opacity: 0, cx: anchor.x, cy: threadEnd }}
-            animate={{ opacity: 1, cx: anchor.x, cy: threadEnd }}
-            exit={{ opacity: 0, transition: { duration: 0.15 } }}
-            transition={{ opacity: { delay: 0.8, duration: 0.25 }, cy: { duration: 0.45, ease: SOFT } }}
-          />
-        </svg>
-      )}
-
+      {/* ── Journey + completion: three zones ──────────────────────────
+          FixedHeader · ScrollableStarContent (only this scrolls) ·
+          BottomControls (CTA above the tabs). Cards and notes sit in
+          normal document flow; only the thread is positioned, and it
+          stretches with the content. */}
       <AnimatePresence>
-        {onCard && (
+        {onScreen && (
           <motion.div
-            key="card"
-            ref={cardRef}
-            layout
-            className={`smc-card${isNote ? " is-note" : ""}`}
-            style={{ rotate: isNote ? -1.2 : -0.5 }}
-            initial={{ y: "115%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "120%", transition: { duration: 0.45, ease: [0.55, 0, 0.75, 0.2] } }}
-            transition={{
-              y: { duration: 0.6, delay: 0.12, ease: EASE },
-              // paper grows ~0.4s; folding into a note ~0.5s
-              layout: { duration: isNote ? 0.52 : 0.4, ease: SOFT },
-            }}
-            role="dialog"
-            aria-label={placeholder ? "Your waiting star" : `Star: ${star.wish}`}
-          >
-            <span className="smc-shadow" aria-hidden />
-            <motion.div layout className="smc-paper paper-bg" style={isNote ? { clipPath: NOTE_EDGE } : undefined}>
-              {!isNote && <span className="smc-handle" aria-hidden />}
-              <AnimatePresence mode="wait" initial={false}>
-                {mode === "quick" && (
-                  <motion.div key="quick" className="smc-content" {...fade}>
-                    <p className="smc-when">{placeholder ? "Tonight" : formatDate(star.createdAt)}</p>
-                    <h2 className="smc-title">{placeholder ? "a star, waiting" : star.wish || "your star"}</h2>
-                    {placeholder ? (
-                      <>
-                        <p className="smc-sentence">this star is waiting for your wish.</p>
-                        <div className="smc-actions">
-                          <button
-                            type="button"
-                            className="smc-link"
-                            onClick={() => {
-                              onClose();
-                              onCreateStar?.();
-                            }}
-                          >
-                            make a wish <span aria-hidden>→</span>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <StatusMark arrived={!!star.fulfilledAt} />
-                        <p className="smc-body">Your Star is still here.</p>
-                        <p className="smc-support">Pause for a moment and reconnect with your wish.</p>
-                        <button type="button" className="smc-primary" onClick={() => setMode("choose")}>
-                          Check in with this Star
-                        </button>
-                        <button type="button" className="smc-journey-link" onClick={() => setMode("journey")}>
-                          View full journey <span aria-hidden>→</span>
-                        </button>
-                      </>
-                    )}
-                  </motion.div>
-                )}
-
-                {mode === "choose" && (
-                  <motion.div key="choose" className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode("quick")} onClose={onClose} />
-                    <h2 className="smc-title smc-q">What would you like to share with this Star today?</h2>
-                    <div className="smc-choices" role="list">
-                      {(Object.keys(CHOICE) as EntryKind[]).map((k) => (
-                        <button key={k} type="button" role="listitem" className="smc-choice" onClick={() => choose(k)}>
-                          <span className="smc-choice-icon" aria-hidden>
-                            {k === "something_good" ? <SunIcon /> : <SproutIcon />}
-                          </span>
-                          <span className="smc-choice-text">
-                            <span className="smc-choice-title">{CHOICE[k].title}</span>
-                            <span className="smc-choice-desc">{CHOICE[k].desc}</span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {mode === "write" && kind && (
-                  <motion.div key={`write-${kind}`} className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode("choose")} onClose={onClose} />
-                    <h2 className="smc-title smc-q">{CHOICE[kind].q}</h2>
-                    <p className="smc-support">{CHOICE[kind].sub}</p>
-                    <textarea
-                      className="smc-entry"
-                      rows={3}
-                      maxLength={240}
-                      autoFocus
-                      value={drafts[kind]}
-                      placeholder={CHOICE[kind].ph}
-                      aria-label={CHOICE[kind].q}
-                      onChange={(e) => setDrafts((d) => ({ ...d, [kind]: e.target.value }))}
-                    />
-                    <button type="button" className="smc-primary" disabled={!drafts[kind].trim() || saving} onClick={save}>
-                      Save to my Star
-                    </button>
-                  </motion.div>
-                )}
-
-                {mode === "saved" && saved && (
-                  <motion.div
-                    key="saved"
-                    className="smc-content smc-saved"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1, transition: { delay: 0.4, duration: 0.3 } }}
-                    exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  >
-                    <p className="smc-saved-text">{saved.text}</p>
-                    <p className="smc-saved-when">{dayLabel(saved.createdAt)}</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* After saving: only these two, below the note (no "reflect again") */}
-      <AnimatePresence>
-        {mode === "saved" && (
-          <motion.div
-            key="saved-actions"
-            className="smc-after"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.55, duration: 0.35 } }}
-            exit={{ opacity: 0, transition: { duration: 0.15 } }}
-          >
-            {after && "hint" in after && (
-              <p className="smc-after-line">Saved to your Star. You can also find this in Moments.</p>
-            )}
-            {after && "thought" in after && (
-              <div className="smc-after-thought">
-                <p className="smc-after-kicker">A thought for your walk</p>
-                <p className="smc-after-line">{after.thought.text}</p>
-                <button
-                  type="button"
-                  className="smc-after-keep"
-                  disabled={after.kept}
-                  onClick={async () => {
-                    setAfter({ ...after, kept: true });
-                    await keepThought(after.thought);
-                  }}
-                >
-                  {after.kept ? "Kept in your Moments" : "Keep this"}
-                </button>
-              </div>
-            )}
-            <button type="button" className="smc-primary" onClick={onClose}>
-              Back to My Stars
-            </button>
-            <button type="button" className="smc-journey-link smc-journey-link--light" onClick={() => setMode("journey")}>
-              View full journey <span aria-hidden>→</span>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Full journey: the Star's path in notes on its thread ── */}
-      <AnimatePresence>
-        {mode === "journey" && (
-          <motion.div
-            key="journey"
-            className="smj-root"
+            key="sms"
+            className="sms-screen"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
             transition={{ duration: 0.35, ease: SOFT }}
           >
-            <header className="smj-head">
-              <button type="button" className="smj-icon" aria-label="Back to this Star" onClick={() => setMode("quick")}>
-                <ArrowLeft />
-              </button>
+            {hasHeader && (
+            <header className="sms-header">
+              {mode === "journey" ? (
+                <button type="button" className="smj-icon" aria-label="Back to this Star" onClick={() => setMode("invite")}>
+                  <ArrowLeft />
+                </button>
+              ) : (
+                <span className="smj-icon" aria-hidden />
+              )}
               <div className="smj-titles">
                 {editing ? (
                   <div className="smj-edit paper-bg">
@@ -418,65 +295,277 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
                   {star.fulfilledAt ? "It arrived" : "Still walking"}
                 </span>
               </div>
-              <button
-                type="button"
-                className="smj-icon"
-                aria-label="Manage this star"
-                aria-expanded={overlay === "menu"}
-                onClick={() => setOverlay(overlay === "menu" ? null : "menu")}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden className="smj-dots">
-                  <circle cx="6" cy="12" r="1.6" />
-                  <circle cx="12" cy="12" r="1.6" />
-                  <circle cx="18" cy="12" r="1.6" />
-                </svg>
-              </button>
-            </header>
-
-            <div className="smj-scroll" ref={listRef} style={{ top: anchor.y + 34 }}>
-              <div className="smj-col" style={{ ["--thread-x" as string]: `${anchor.x - colX}px`, left: colX }}>
-                <span className="smj-thread" aria-hidden />
-                {(signs ?? []).map((s, i) => (
-                  <motion.div
-                    key={s.id}
-                    className="smj-note paper-bg"
-                    style={{ clipPath: JOURNEY_NOTE_EDGES[i % 3], rotate: i % 2 ? 1 : -1.2 }}
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.1 + Math.min(i, 5) * 0.06, ease: SOFT }}
-                  >
-                    <span className="smj-bead" aria-hidden />
-                    {s.kind ? (
-                      <span className="smj-kind">{CHOICE[s.kind].title}</span>
-                    ) : s.momentType === "companion_note" ? (
-                      <span className="smj-kind">A note from Sísí</span>
-                    ) : null}
-                    {s.image && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img className="smj-photo" src={s.image} alt="" loading="lazy" />
-                    )}
-                    <span className="smj-text">{s.text}</span>
-                    <span className="smj-when">{dayLabel(s.createdAt)}</span>
-                  </motion.div>
-                ))}
-                <motion.div
-                  className="smj-note smj-note--origin paper-bg"
-                  style={{ clipPath: JOURNEY_NOTE_EDGES[2], rotate: -0.6 }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.35, delay: 0.15 }}
+              {mode === "journey" ? (
+                <button
+                  type="button"
+                  className="smj-icon"
+                  aria-label="Manage this star"
+                  aria-expanded={overlay === "menu"}
+                  onClick={() => setOverlay(overlay === "menu" ? null : "menu")}
                 >
-                  <span className="smj-bead" aria-hidden />
-                  <span className="smj-text">Created this Star</span>
-                  <span className="smj-when">{formatDate(star.createdAt)}</span>
-                </motion.div>
+                  <svg viewBox="0 0 24 24" aria-hidden className="smj-dots">
+                    <circle cx="6" cy="12" r="1.6" />
+                    <circle cx="12" cy="12" r="1.6" />
+                    <circle cx="18" cy="12" r="1.6" />
+                  </svg>
+                </button>
+              ) : (
+                <span className="smj-icon" aria-hidden />
+              )}
+            </header>
+            )}
+
+            <div
+              className="sms-scroll"
+              ref={listRef}
+              // without a header, the Star sits where it was in the sky
+              style={hasHeader ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
+              onClick={(e) => {
+                // a tap on the open sky puts the paper away (not mid-visualization)
+                const t = e.target as HTMLElement;
+                if (mode !== "picture" && (t === e.currentTarget || t.classList.contains("sms-path"))) onClose();
+              }}
+            >
+              <div className="sms-path">
+                <span className="sms-thread" aria-hidden />
+                <div className="sms-star" aria-hidden>
+                  <span className="sms-star-inner">
+                    <StarLayers staged revealed focused />
+                  </span>
+                </div>
+
+                {!hasHeader && (
+                  <div className="sms-stage">
+                    {/* Sísí's words above her; she rests on the paper's edge */}
+                    {!placeholder && (
+                      <div className="sms-say sms-say--card" aria-live="polite">
+                        <AnimatePresence mode="wait">
+                          {say && (
+                            <SisiSpeechBubble key={mode} tailPosition="bottom-right" align="center" delay={0.2} message={say.text} />
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                    <motion.div
+                      className={`sms-paper-wrap${mode === "picture" ? " is-quiet" : ""}`}
+                      layout
+                      initial={{ y: 40, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ y: { duration: 0.55, ease: EASE }, opacity: { duration: 0.3 }, layout: { duration: 0.4, ease: SOFT } }}
+                      role="dialog"
+                      aria-label={placeholder ? "Your waiting star" : `Star: ${star.wish}`}
+                    >
+                      {!placeholder && (
+                        <div className="smc-sisi" aria-hidden>
+                          <SisiChatCharacter expression={face} />
+                        </div>
+                      )}
+                      <motion.div layout className="sms-paper paper-bg">
+                        <AnimatePresence mode="wait" initial={false}>
+                {mode === "invite" && (
+                  <motion.div key="invite" className="smc-content" {...fade}>
+                    <p className="smc-when">{placeholder ? "Tonight" : formatDate(star.createdAt)}</p>
+                    <h2 className="smc-title">{placeholder ? "a star, waiting" : star.wish || "your star"}</h2>
+                    {placeholder ? (
+                      <>
+                        <p className="smc-sentence">this star is waiting for your wish.</p>
+                        <div className="smc-actions">
+                          <button
+                            type="button"
+                            className="smc-link"
+                            onClick={() => {
+                              onClose();
+                              onCreateStar?.();
+                            }}
+                          >
+                            make a wish <span aria-hidden>→</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <StatusMark arrived={!!star.fulfilledAt} />
+                        <button type="button" className="smc-journey-link smc-mt" onClick={() => setMode("journey")}>
+                          View its journey <span aria-hidden>→</span>
+                        </button>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+
+                {mode === "practice" && (
+                  <motion.div key="practice" className="smc-content" {...fade}>
+                    <NavRow onBack={() => setMode("invite")} onClose={onClose} />
+                    <div className="smc-choices" role="list">
+                      {PRACTICES.map((p) => (
+                        <button key={p.id} type="button" role="listitem" className="smc-choice" onClick={() => choosePractice(p.id)}>
+                          <span className="smc-choice-icon" aria-hidden>
+                            {p.id === "picture" ? <EyeIcon /> : p.id === "walk" ? <PathIcon /> : <LeafIcon />}
+                          </span>
+                          <span className="smc-choice-text">
+                            <span className="smc-choice-title">{p.title}</span>
+                            <span className="smc-choice-desc">{p.desc}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+
+                {mode === "picture-intro" && (
+                  <motion.div key="picture-intro" className="smc-content" {...fade}>
+                    <NavRow onBack={() => setMode("practice")} onClose={onClose} />
+                    <h2 className="smc-title smc-center">{star.wish}</h2>
+                  </motion.div>
+                )}
+
+                {mode === "picture" && (
+                  <motion.div key="picture" className="smc-content smc-center" {...fade}>
+                    {/* silence is intentional: no words, no timer */}
+                    <button type="button" className="smc-quiet-link" onClick={() => setMode("note-ask")}>
+                      End quietly
+                    </button>
+                  </motion.div>
+                )}
+
+                {mode === "note-ask" && (
+                  <motion.div key="note-ask" className="smc-content" {...fade}>
+                    <button type="button" className="smc-primary" onClick={() => openReflect("note-ask")}>
+                      Reflect on today
+                    </button>
+                    <button type="button" className="smc-journey-link" onClick={() => setMode("done")}>
+                      Not now
+                    </button>
+                  </motion.div>
+                )}
+
+                {mode === "reflect" && (
+                  <motion.div key="reflect" className="smc-content" {...fade}>
+                    <NavRow onBack={() => setMode(reflectBack)} onClose={onClose} />
+                    <div className="smc-chips" role="radiogroup" aria-label="What kind of note">
+                      {(Object.keys(KIND) as EntryKind[]).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          role="radio"
+                          aria-checked={kind === k}
+                          className={`smc-chip${kind === k ? " is-on" : ""}`}
+                          onClick={() => setKind(k)}
+                        >
+                          {KIND[k].chip}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      className="smc-entry"
+                      rows={3}
+                      maxLength={240}
+                      autoFocus
+                      value={text}
+                      placeholder={KIND[kind].ph}
+                      aria-label="What would you like your Star to remember about today?"
+                      onChange={(e) => setText(e.target.value)}
+                    />
+                  </motion.div>
+                )}
+
+                        </AnimatePresence>
+                      </motion.div>
+                    </motion.div>
+                  </div>
+                )}
+
+                {mode === "journey" && (
+                  <>
+                    {(signs ?? []).map((s, i) => (
+                      <motion.article
+                        key={s.id}
+                        className="sms-card paper-bg"
+                        style={{ clipPath: JOURNEY_NOTE_EDGES[i % 3], rotate: i % 2 ? 0.8 : -1 }}
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: 0.1 + Math.min(i, 5) * 0.06, ease: SOFT }}
+                      >
+                        <span className="sms-bead" aria-hidden />
+                        {s.kind ? (
+                          <p className="sms-kind">{KIND[s.kind].label}</p>
+                        ) : s.momentType === "companion_note" ? (
+                          <p className="sms-kind">A note from Sísí</p>
+                        ) : null}
+                        {s.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img className="sms-photo" src={s.image} alt="" loading="lazy" />
+                        )}
+                        <p className="sms-text">{s.text}</p>
+                        <p className="sms-date">{dayLabel(s.createdAt)}</p>
+                      </motion.article>
+                    ))}
+                    <article className="sms-card sms-card--origin paper-bg" style={{ clipPath: JOURNEY_NOTE_EDGES[2], transform: "rotate(-0.5deg)" }}>
+                      <span className="sms-bead" aria-hidden />
+                      <p className="sms-text">Created this Star</p>
+                      <p className="sms-date">{formatDate(star.createdAt)}</p>
+                    </article>
+                  </>
+                )}
+
+                {mode === "saved" && saved && (
+                  <motion.article
+                    className="sms-card paper-bg"
+                    style={{ clipPath: NOTE_EDGE, rotate: -1 }}
+                    initial={{ opacity: 0, y: 14, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.5, ease: SOFT }}
+                  >
+                    <span className="sms-bead" aria-hidden />
+                    {saved.kind && <p className="sms-kind">{KIND[saved.kind].label}</p>}
+                    <p className="sms-text">{saved.text}</p>
+                    <p className="sms-date">{dayLabel(saved.createdAt)}</p>
+                  </motion.article>
+                )}
               </div>
+
+              {(mode === "saved" || mode === "done") && (
+                <div className="sms-completion">
+                  <div className="sms-say">
+                    <SisiSpeechBubble
+                      tailPosition="bottom-right"
+                      align="center"
+                      delay={0.35}
+                      message={mode === "saved" ? SAY.saved!.text : SAY.done!.text}
+                    />
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="sms-sisi" src="/assets/sisi-chat/sisi-chat-seated-neutral.webp" alt="" aria-hidden />
+                  {mode === "saved" && <p className="sms-status">Also saved in Moments.</p>}
+                  <button type="button" className="sms-secondary" onClick={onClose}>
+                    Stay with my Star
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="smj-foot">
-              <button type="button" className="smc-primary" onClick={() => setMode("choose")}>
-                Check in with this Star
-              </button>
+            <div className="sms-controls">
+              {mode === "journey" ? (
+                <button type="button" className="smc-primary sms-cta" onClick={() => setMode("practice")}>
+                  Spend a moment with this Star
+                </button>
+              ) : mode === "saved" || mode === "done" ? (
+                <button type="button" className="smc-primary sms-cta" onClick={() => onReturnToJourney?.()}>
+                  Return to Journey
+                </button>
+              ) : mode === "invite" && !placeholder ? (
+                <button type="button" className="smc-primary sms-cta" onClick={() => setMode("practice")}>
+                  Yes, stay with me
+                </button>
+              ) : mode === "picture-intro" ? (
+                <button type="button" className="smc-primary sms-cta" onClick={() => setMode("picture")}>
+                  Begin
+                </button>
+              ) : mode === "reflect" ? (
+                <button type="button" className="smc-primary sms-cta" disabled={!text.trim() || saving} onClick={save}>
+                  Save to my Star
+                </button>
+              ) : null}
             </div>
 
             {/* the quiet ⋯ menu: edit the wish · let this star rest */}
@@ -543,6 +632,103 @@ export function StarMemoryCard({ star, anchor, placeholder = false, onClose, onR
       </AnimatePresence>
 
       <style jsx global>{`
+        /* ── three-zone Star screen ── */
+        .sms-screen {
+          --cta-height: 52px;
+          --bottom-gap: 12px;
+          /* --nav-total = tab height + margin + safe-area (shared with the dock) */
+          --bottom-controls-height: calc(var(--nav-total) + var(--cta-height) + var(--bottom-gap));
+          position: absolute; inset: 0; z-index: 11; /* below the tabs (12) */
+          display: flex; flex-direction: column; overflow: hidden;
+          pointer-events: none;
+        }
+        .sms-screen > * { pointer-events: auto; }
+        .sms-header {
+          flex: none; position: relative; z-index: 3;
+          display: flex; align-items: flex-start; gap: 6px;
+          padding: var(--header-top) max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
+          background: linear-gradient(to bottom, rgba(3, 7, 10, 0.72) 60%, rgba(3, 7, 10, 0));
+        }
+        .sms-scroll {
+          flex: 1; min-height: 0; position: relative; z-index: 1;
+          overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
+          padding: 4px 16px calc(var(--bottom-controls-height) + 32px);
+          scrollbar-width: none;
+        }
+        .sms-scroll::-webkit-scrollbar { display: none; }
+        .sms-path { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        /* the thread runs from the Star down through every note */
+        .sms-thread {
+          position: absolute; z-index: 0; left: 50%; top: 44px; bottom: 28px; width: 1.2px; margin-left: -0.6px;
+          background: rgba(241, 226, 184, 0.8);
+        }
+        .sms-star { position: relative; z-index: 1; width: 88px; height: 88px; display: flex; align-items: center; justify-content: center; }
+        .sms-star-inner { display: block; width: 48px; height: 48px; transform: scale(1.7); }
+        .sms-card {
+          position: relative; z-index: 2; width: min(76vw, 300px); height: auto; margin: 0;
+          padding: 16px 18px 14px; color: #2b2f45; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+        }
+        .sms-card--origin { width: min(60vw, 240px); text-align: center; }
+        .sms-bead { position: absolute; top: 4px; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: #e9b949; }
+        .sms-kind { margin: 0 0 6px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13.5px; line-height: 1.2; color: rgba(43, 47, 69, 0.6); }
+        .sms-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px; margin: 0 0 8px; }
+        .sms-text { margin: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; line-height: 1.35; overflow-wrap: break-word; }
+        .sms-date { margin: 7px 0 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14px; line-height: 1.2; color: rgba(43, 47, 69, 0.6); }
+        .sms-completion { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 28px; }
+        .sms-say { display: flex; justify-content: flex-end; width: min(86vw, 330px); }
+        .sms-sisi { display: block; width: 92px; height: auto; margin: 10px 0 0 min(40vw, 150px); pointer-events: none; user-select: none; }
+        .sms-status { margin: 16px 0 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14px; line-height: 1.3; color: rgba(247, 241, 227, 0.72); }
+        .sms-secondary {
+          margin-top: 24px; min-height: 44px; padding: 0 18px; border: 0; background: transparent; cursor: pointer;
+          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; color: rgba(247, 241, 227, 0.9);
+        }
+        .sms-controls {
+          position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+          height: calc(var(--bottom-controls-height) + 36px);
+          padding: 36px max(22px, var(--safe-right)) 0 max(22px, var(--safe-left));
+          /* a soft dark fade for readability — never an opaque panel */
+          background: linear-gradient(to bottom, rgba(3, 7, 10, 0) 0%, rgba(3, 7, 10, 0.72) 45%, rgba(3, 7, 10, 0.82) 100%);
+          pointer-events: none;
+        }
+        .sms-cta { pointer-events: auto; height: var(--cta-height); min-height: var(--cta-height); }
+        .sms-stage { position: relative; z-index: 2; width: min(100%, 400px); display: flex; flex-direction: column; }
+        /* bubble tail (≈29px in from its right edge) points at Sísí (72px in from the paper's right) */
+        .sms-say--card { width: 100%; justify-content: flex-end; padding-right: 43px; margin-bottom: 72px; min-height: 1px; }
+        .sms-say--card .sisi-speech { max-width: min(76vw, 290px); }
+        .sms-paper-wrap { position: relative; }
+        .sms-paper-wrap.is-quiet { width: min(60%, 220px); margin: 0 auto; }
+        .sms-paper-wrap.is-quiet .smc-sisi { right: 50%; transform: scale(0.74) translateX(50%); }
+        .sms-paper {
+          position: relative; z-index: 1; padding: 20px 22px 18px; color: #2b2f45; clip-path: ${TORN_EDGE};
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+        }
+        .sms-screen .smc-sisi { z-index: 2; } /* paws over the paper edge */
+        .smc-primary:disabled { opacity: 0.5; }
+        /* the world's copy of the open Star steps aside (the screen draws it) */
+        html.sms-open .sw-star.is-selected { opacity: 0 !important; }
+
+        /* Sísí on the paper's edge (right), her words above her */
+        .smc-sisi { position: absolute; top: 0; right: 72px; width: 0; height: 0; z-index: 3; transform: scale(0.74); transform-origin: 0 0; pointer-events: none; }
+        .smc-say { position: absolute; right: 42px; bottom: calc(100% + 84px); z-index: 4; display: flex; justify-content: flex-end; pointer-events: auto; }
+        .smc-say .sisi-speech { max-width: min(78vw, 300px); }
+        .smc-card.is-note .smc-sisi { right: 20px; }
+        .smc-card.is-note .smc-say { right: -8px; }
+        .smc-mt { margin-top: 12px; }
+        .smc-center { text-align: center; }
+        .smc-card.is-quiet { left: 30%; right: 30%; }
+        .smc-card.is-quiet .smc-sisi { right: 50%; transform: scale(0.74) translateX(50%); }
+        .smc-quiet-link {
+          display: block; width: 100%; min-height: 44px; border: 0; background: transparent; cursor: pointer;
+          font-family: var(--font-editorial), Georgia, serif; font-size: 15px; color: rgba(24, 51, 58, 0.62);
+        }
+        .smc-chips { display: flex; gap: 8px; margin: 0 0 10px; }
+        .smc-chip {
+          flex: 1; min-height: 42px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(43, 47, 69, 0.14);
+          background: rgba(255, 255, 255, 0.5); color: #2b2f45; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
+        }
+        .smc-chip.is-on { background: #3d74d8; border-color: #3d74d8; color: #f7f2e3; }
+        .smc-status-line { margin: 0 0 10px; text-align: center; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13.5px; color: rgba(247, 241, 227, 0.72); }
+        .smc-saved-kind { margin: 0 0 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(43, 47, 69, 0.58); }
         .smc-body { margin: 10px 0 2px; font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; line-height: 1.3; color: #2b2f45; }
         .smc-support { margin: 0 0 14px; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; line-height: 1.38; color: rgba(43, 47, 69, 0.66); }
         .smc-primary {
@@ -931,6 +1117,34 @@ function ArrowLeft() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 12H5M11 6l-6 6 6 6" />
+    </svg>
+  );
+}
+/** Picture it — an eye, gently open */
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 16c3.2-5 7.3-7.5 12-7.5S24.8 11 28 16c-3.2 5-7.3 7.5-12 7.5S7.2 21 4 16z" />
+      <circle cx="16" cy="16" r="3.6" />
+    </svg>
+  );
+}
+/** Walk with it — a winding path */
+function PathIcon() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 27c0-4 6-4 7-8s-6-4-5-8 5-3.5 7-6" />
+      <path d="M19 27c0-3 5-3.5 5.5-7" opacity=".55" />
+      <circle cx="23" cy="5" r="1.4" />
+    </svg>
+  );
+}
+/** Reflect on today — a small leaf, like a note */
+function LeafIcon() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 25C7 14 13 7 26 6c0 12-7 19-19 19z" />
+      <path d="M7 25 18 14" />
     </svg>
   );
 }
