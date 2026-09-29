@@ -87,8 +87,7 @@ export default function RootLayout({
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         {/* Sentient — self-hosted; the two weights every screen uses load first */}
-        <link rel="preload" href="/fonts/sentient/Sentient-Regular.woff2" as="font" type="font/woff2" crossOrigin="" />
-        <link rel="preload" href="/fonts/sentient/Sentient-Medium.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/sentient/Sentient-Light.woff2" as="font" type="font/woff2" crossOrigin="" />
       </head>
       <body className="bg-paper overflow-x-hidden">
         <ServiceWorkerRegister />

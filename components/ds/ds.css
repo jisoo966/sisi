@@ -19,7 +19,7 @@
   font-size: var(--text-button);
   font-weight: 500;
   line-height: 1.1;
-  letter-spacing: -0.005em;
+  letter-spacing: var(--tracking-editorial);
   text-align: center;
   text-decoration: none;
   cursor: pointer;
@@ -250,7 +250,7 @@
   border-radius: 2px;
   margin-top: var(--space-3);
 }
-.ds-memory-meta { font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); }
+.ds-memory-meta { font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); letter-spacing: 0.005em; }
 .ds-memory-text { margin: var(--space-2) 0 0; font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); white-space: pre-wrap; }
 .ds-memory-title { margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title); }
 button.ds-memory { width: 100%; padding: 0; text-align: left; border: 0; background: none; cursor: pointer; font: inherit; color: inherit; }
@@ -428,7 +428,7 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
 .ds-screen--sky { background: var(--sisi-blue); color: var(--sisi-ink); }
 .ds-screen-head { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; margin-bottom: var(--space-4); }
 .ds-screen-head > .ds-screen-title { flex: 1; min-width: 0; margin: 0; }
-.ds-screen-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title); line-height: var(--leading-title); letter-spacing: -0.015em; }
+.ds-screen-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title); line-height: var(--leading-title); letter-spacing: var(--tracking-editorial); }
 .ds-screen-sub { margin: var(--space-2) 0 0; font-family: var(--font-editorial); font-style: italic; font-size: var(--text-body); color: var(--ink-60); }
 .ds-screen--night .ds-screen-sub { color: var(--paper-60); }
 .ds-scroll { scrollbar-width: none; }
@@ -453,9 +453,9 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
 .ds-field:focus-visible { outline: 2px solid var(--blue-60); outline-offset: 1px; border-color: transparent; }
 .ds-field.ds-on-dark { background: var(--paper-14); border-color: var(--paper-35); color: var(--sisi-paper); }
 .ds-field.ds-on-dark::placeholder { color: var(--paper-35); }
-.ds-label { display: block; margin-bottom: var(--space-2); font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); }
-.ds-error { margin-top: var(--space-2); font-family: var(--font-ui); font-size: var(--text-meta); color: var(--sisi-coral); }
-.ds-helper { font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); }
+.ds-label { display: block; margin-bottom: var(--space-2); font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
+.ds-error { margin-top: var(--space-2); font-family: var(--font-ui); font-size: var(--text-meta); color: var(--sisi-coral); letter-spacing: 0.005em; }
+.ds-helper { font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
 
 /* Star connection row */
 .ds-star-row {

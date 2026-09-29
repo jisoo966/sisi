@@ -123,7 +123,7 @@ export function JourneyHeader({
           font-size: var(--text-display);
           line-height: var(--leading-display);
           margin: 0;
-          letter-spacing: -0.015em;
+          letter-spacing: var(--tracking-editorial);
         }
         .name-italic { font-style: italic; }
         /* the trailing period stays upright — an italic period visually drifts */

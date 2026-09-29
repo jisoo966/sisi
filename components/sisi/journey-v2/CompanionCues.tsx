@@ -265,7 +265,7 @@ export function CompanionCues({
         .cc-root > * { pointer-events: auto; }
         .cc-thought.sisi-speech { padding: 14px 40px 8px 18px; }
         .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); }
-        .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); }
+        .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .cc-actions { display: flex; gap: 4px 14px; margin: 4px 0 0 -12px; }
         .cc-thought .cc-actions--wrap { flex-wrap: wrap; }
         .cc-link { color: var(--sisi-ink); font-weight: 500; }

@@ -445,3 +445,21 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
   min-height: 44px; white-space: nowrap;
   background: rgba(16, 45, 50, 0.18) !important;
 }
+
+/* Foreground trees: the supplied tree-front PNGs end flat at the top of
+   their canvas (the canopy is clipped in the source files). Feather the
+   top of the frame so the canopy dissolves into the sky instead of showing
+   a hard horizontal cut. The PNGs themselves are untouched. */
+.jw-fore .passing-trees .ps-item img {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%);
+}
+/* tree-front-01 is also clipped on its right edge */
+.jw-fore .passing-trees .ps-item img[src*="tree-front-01"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%),
+    linear-gradient(to left, transparent 0%, #000 7%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%),
+    linear-gradient(to left, transparent 0%, #000 7%);
+  mask-composite: intersect;
+}

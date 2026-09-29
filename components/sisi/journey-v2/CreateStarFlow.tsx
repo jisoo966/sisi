@@ -178,7 +178,7 @@ export function CreateStarFlow({
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
       <input ref={libraryRef} type="file" accept="image/*" hidden onChange={onFile} />
       <style jsx global>{`
-        .csf-focus .ds-focus-title { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); }
+        .csf-focus .ds-focus-title { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .csf-title { margin: 0 0 14px; }
         .csf-input { margin-bottom: 12px; }
         .csf-error { margin: -4px 0 12px; }

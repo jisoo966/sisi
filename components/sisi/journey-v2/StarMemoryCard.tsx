@@ -659,7 +659,7 @@ export function StarMemoryCard({
         .sms-card--origin { width: min(60vw, 240px); text-align: center; }
         .sms-bead { position: absolute; top: 3px; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: var(--sisi-gold); }
         .sms-text { margin: 6px 0 0; font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); overflow-wrap: break-word; white-space: pre-wrap; }
-        .sms-date { margin: 0; font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); }
+        .sms-date { margin: 0; font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .sms-completion { display: flex; flex-direction: column; align-items: center; margin-top: 28px; }
         .sms-say { display: flex; justify-content: flex-end; width: min(86vw, 330px); }
         .sms-sisi { display: block; width: 92px; height: auto; margin: 10px 0 0 min(40vw, 150px); pointer-events: none; user-select: none; }

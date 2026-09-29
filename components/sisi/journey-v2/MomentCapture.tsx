@@ -191,7 +191,7 @@ export function MomentCapture({
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
       <input ref={libraryRef} type="file" accept="image/*" hidden onChange={onFile} />
       <style jsx global>{`
-        .mc-focus .ds-focus-title { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); }
+        .mc-focus .ds-focus-title { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .mc-title { margin: 0 0 12px; }
         .mc-sub { margin: 0 0 16px; color: var(--ink-80); }
         .mc-option { margin-bottom: 10px; }

@@ -326,7 +326,7 @@ export function MemoryTrail() {
         .mt-camera svg { width: 22px; height: 22px; }
         .mt-title {
           position: relative; margin: 0; padding-top: calc(124px + var(--safe-top));
-          font-family: var(--display); font-weight: 400; font-size: clamp(34px, 10vw, 42px); letter-spacing: -0.01em;
+          font-family: var(--display); font-weight: 400; font-size: clamp(34px, 10vw, 42px); letter-spacing: var(--tracking-editorial);
         }
         .mt-sub { position: relative; margin: 4px 0 0; font-family: var(--serif); font-size: 18px; color: rgba(16, 45, 50, 0.72); }
         .mt-empty { padding: 60px 32px; text-align: center; font-family: var(--serif); font-style: italic; color: rgba(16, 45, 50, 0.6); }

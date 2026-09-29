@@ -137,7 +137,7 @@ export function MomentsList({
         .ml-group .ml-row:last-child { border-bottom: 0; }
         .ml-thumb { flex: 0 0 76px; width: 76px; height: 54px; object-fit: cover; border-radius: 2px; display: block; }
         .ml-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
-        .ml-date { font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); }
+        .ml-date { font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .ml-star { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-editorial); font-weight: 500; font-size: 13px; color: var(--ink-80); }
         .ml-dot { flex: none; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--sisi-gold); }
         /* Moment content is never truncated */

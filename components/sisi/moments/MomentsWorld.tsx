@@ -843,8 +843,8 @@ export const MomentsWorld = forwardRef<
           display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
           font-family: var(--font-editorial); font-size: 13.5px; line-height: 1.3; margin: 0 0 5px;
         }
-        .mw-note-kicker { display: block; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-chip); color: var(--ink-60); margin-bottom: 3px; }
-        .mw-note-date { display: block; font-family: var(--font-ui); font-size: var(--text-helper); color: var(--ink-60); }
+        .mw-note-kicker { display: block; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-chip); color: var(--ink-60); margin-bottom: 3px; letter-spacing: 0.005em; }
+        .mw-note-date { display: block; font-family: var(--font-ui); font-size: var(--text-helper); color: var(--ink-60); letter-spacing: 0.005em; }
         .mw-label {
           position: absolute; left: 2px; bottom: calc(100% + 7px); white-space: nowrap;
           font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); letter-spacing: 0.02em;

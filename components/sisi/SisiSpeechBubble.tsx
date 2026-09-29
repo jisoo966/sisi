@@ -121,7 +121,7 @@ export function SisiSpeechBubble({
           font-weight: 400;
           font-size: var(--text-dialogue);
           line-height: var(--leading-dialogue);
-          letter-spacing: -0.01em;
+          letter-spacing: var(--tracking-editorial);
           text-align: center;
           overflow-wrap: break-word;
           white-space: normal;

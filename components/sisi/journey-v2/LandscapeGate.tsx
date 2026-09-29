@@ -26,7 +26,7 @@ export function LandscapeGate() {
         style={{
           fontFamily: "var(--font-editorial)",
           fontWeight: 300,
-          letterSpacing: "-0.02em",
+          letterSpacing: "var(--tracking-editorial)",
           fontSize: "clamp(13px, 3.5vw, 15px)",
           color: "rgba(16, 45, 50,0.65)",
           fontStyle: "italic",

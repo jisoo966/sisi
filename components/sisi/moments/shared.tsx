@@ -359,8 +359,8 @@ export function MomentsSharedStyles() {
       .mm-crop { position: relative; display: block; }
       .mm-text { display: block; font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); margin: 0 0 6px; }
       .mm-muted { font-style: italic; color: var(--ink-60); }
-      .mm-when { display: block; font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); }
-      .mm-kicker { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); }
+      .mm-when { display: block; font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); letter-spacing: 0.005em; }
+      .mm-kicker { margin: 0; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
       .mm-pc { position: relative; aspect-ratio: 428 / 567; }
       .mm-pc > .mm-art:first-child { filter: drop-shadow(0 4px 8px rgba(16, 45, 50, 0.22)); }
       .mm-pc-win { position: absolute; left: 9.35%; top: 11.64%; width: 79.21%; height: 70.9%; overflow: hidden; }
@@ -368,7 +368,8 @@ export function MomentsSharedStyles() {
       .mm-pc-cap {
         position: absolute; left: 8%; right: 8%; top: 84.5%; text-align: center; white-space: nowrap;
         font-family: var(--font-ui); font-size: var(--text-helper); color: var(--ink-60);
-      }
+          letter-spacing: 0.005em;
+        }
 
       /* detail content (the dialog itself is components/ds) */
       .mm-dtext { margin: 0; white-space: pre-wrap; }

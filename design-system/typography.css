@@ -1,36 +1,33 @@
 /* ─────────────────────────────────────────────────────────────────────
  * Sísí typography.
- *   Sentient — editorial voice: titles, Sísí, wishes, Moments, buttons.
- *     Files (from the licensed OTFs, converted to WOFF2):
- *       Sentient-Regular (400), Sentient-Italic (400 italic), Sentient-Medium (500)
- *     Internal family name confirmed in every OTF's name table: "Sentient".
+ *   Sentient Light — the editorial voice: titles, Sísí, wishes, Moments,
+ *     buttons. Only Sentient-Light / Sentient-LightItalic are loaded
+ *     (WOFF2 from the licensed OTFs; internal family name "Sentient").
+ *     Tracking: -3% everywhere Sentient is used (--tracking-editorial).
  *   Inter — functional metadata only (dates, statuses, helpers, chips).
  * ───────────────────────────────────────────────────────────────────── */
 
+/* Sentient Light is the one editorial face. Registered for every weight
+   (100–900) so titles and buttons keep their hierarchy through size, never
+   through a heavier cut or a synthesized bold. */
 @font-face {
   font-family: "Sentient";
-  src: url("/fonts/sentient/Sentient-Regular.woff2") format("woff2");
-  font-weight: 400;
+  src: url("/fonts/sentient/Sentient-Light.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: "Sentient";
-  src: url("/fonts/sentient/Sentient-Italic.woff2") format("woff2");
-  font-weight: 400;
+  src: url("/fonts/sentient/Sentient-LightItalic.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: italic;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Sentient";
-  src: url("/fonts/sentient/Sentient-Medium.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
   font-display: swap;
 }
 
 :root {
   --font-editorial: "Sentient", Georgia, serif;
+  --tracking-editorial: -0.03em;
   --font-ui: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
 
   /* legacy family variables → the two system families */
@@ -62,12 +59,14 @@ body {
   font-size: var(--text-body);
   line-height: var(--leading-body);
   color: var(--sisi-ink);
+  letter-spacing: var(--tracking-editorial);
   overflow-wrap: break-word;
   font-synthesis: none; /* never fake a bold or an italic */
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-editorial);
+  letter-spacing: var(--tracking-editorial);
   font-weight: 500;
   line-height: var(--leading-title);
   overflow-wrap: break-word;
@@ -80,21 +79,21 @@ h1, h2, h3, h4, h5, h6 {
 .font-caveat {
   font-family: var(--font-editorial);
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--tracking-editorial);
 }
-.font-inter, .font-ui { font-family: var(--font-ui); }
+.font-inter, .font-ui { font-family: var(--font-ui); letter-spacing: 0.005em; }
 .font-light, .font-extralight, .font-thin { font-weight: 400 !important; }
 .font-semibold, .font-bold, .font-extrabold { font-weight: 500 !important; }
 
 /* ── roles ── */
-.t-display { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-display); line-height: var(--leading-display); letter-spacing: -0.02em; }
-.t-screen-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title); line-height: var(--leading-title); letter-spacing: -0.015em; }
-.t-card-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title); letter-spacing: -0.01em; }
-.t-dialogue { font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-dialogue); line-height: var(--leading-dialogue); letter-spacing: -0.01em; }
-.t-body { font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-body); line-height: var(--leading-body); }
-.t-affirmation { font-family: var(--font-editorial); font-style: italic; font-weight: 400; font-size: var(--text-dialogue); line-height: var(--leading-dialogue); }
+.t-display { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-display); line-height: var(--leading-display); letter-spacing: var(--tracking-editorial); }
+.t-screen-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title); line-height: var(--leading-title); letter-spacing: var(--tracking-editorial); }
+.t-card-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title); letter-spacing: var(--tracking-editorial); }
+.t-dialogue { font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-dialogue); line-height: var(--leading-dialogue); letter-spacing: var(--tracking-editorial); }
+.t-body { font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-body); line-height: var(--leading-body); letter-spacing: var(--tracking-editorial); }
+.t-affirmation { font-family: var(--font-editorial); font-style: italic; font-weight: 400; font-size: var(--text-dialogue); line-height: var(--leading-dialogue); letter-spacing: var(--tracking-editorial); }
 .t-meta { font-family: var(--font-ui); font-weight: 400; font-size: var(--text-meta); line-height: var(--leading-meta); letter-spacing: 0.01em; }
 .t-status { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-chip); line-height: 1; letter-spacing: 0.02em; }
-.t-helper { font-family: var(--font-ui); font-weight: 400; font-size: var(--text-helper); line-height: var(--leading-meta); }
+.t-helper { font-family: var(--font-ui); font-weight: 400; font-size: var(--text-helper); line-height: var(--leading-meta); letter-spacing: 0.005em; }
 
 .t-dialogue, .t-body, .t-affirmation, .t-card-title, .t-screen-title, .t-display { overflow-wrap: break-word; }

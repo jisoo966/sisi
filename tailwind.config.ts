@@ -52,7 +52,7 @@ const config: Config = {
       },
       letterSpacing: {
         // brand v2 — all Sentient text uses -0.03em by default
-        sentient: "-0.01em",
+        sentient: "-0.03em",
       },
       // Mobile viewport lock — svh accounts for iOS Safari URL bar
       height: {
