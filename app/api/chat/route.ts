@@ -164,7 +164,10 @@ export async function POST(request: NextRequest) {
       user = null;
     }
 
-    const { messages, sessionId, currentStar } = await request.json();
+    const { messages, sessionId, currentStar, stars: starList } = await request.json();
+    const userStars: string[] = Array.isArray(starList)
+      ? starList.filter((w: unknown) => typeof w === "string" && w.trim()).slice(0, 8).map((w: string) => w.trim().slice(0, 140))
+      : [];
 
     // Journey companion mode — the conversation panel inside Journey.
     const journeyContext =
@@ -182,7 +185,18 @@ You are walking beside the user on their Journey toward their Current Star: "${c
 - When it feels natural, gently connect the reflection to ONE small, realistic next step the user could take.
 - First help the user put what they feel into words. Not every conversation is about the Star: never turn it into coaching, manifestation or goal-setting, and never push toward action. Staying and talking is always enough.
 - When something hopeful appears, you may name it gently — hope without guarantees, never denying what is hard, never implying that a wish fails for lack of belief.
-- Occasionally, only if it truly fits, you may offer one short thought of your own (one sentence, plain words, gently literary). Never quote books or other authors.`
+- Occasionally, only if it truly fits, you may offer one short thought of your own (one sentence, plain words, gently literary). Never quote books or other authors.
+
+─── LISTEN FIRST, GUIDE SECOND (invisible markers, at the very end) ───
+- If the user's message is short, vague or ambiguous ("I'm lost", "idk", "bad day"), you don't understand yet: acknowledge the feeling and ask ONE gentle clarifying question. You may add up to two short replies the user could tap, in their voice (under 6 words each): [CHIPS:first|second]
+  Example — User: "I'm lost" → "That sounds like a hard kind of lost. Is it that you don't know where you want to go, or that you know—but don't know how to get there? [CHIPS:I don't know what I want|I know, but I feel stuck]"
+- Add at most ONE action marker, and only when it is clearly earned. NEVER on a greeting, the user's first message, a vague feeling, ordinary conversation, or when you still need context. Most replies have none.
+  [ACTION:step] — the user has explained a goal or problem, knows what they want but feels blocked, and you understand enough to help find progress.
+  [VISIT:n] — the talk is clearly about one of the user's Stars below (n = its number). Name that Star in your reply and ask if they'd like to visit it.
+  [ACTION:walk] — a natural emotional pause, where walking on together would feel comforting.
+- [SAVE:…] marks words worth keeping in Moments; never combine it with an action or chips.${
+          userStars.length ? `\nThe user's Stars:\n${userStars.map((w, i) => `${i + 1}. "${w}"`).join("\n")}` : ""
+        }`
         : "";
 
     // 로그인한 유저면 stars(소원) context 붙이기

@@ -32,7 +32,10 @@ const PAPER_EDGE = tornEdge(51, 30, 0.9);
 const NOTE_EDGE = tornEdge(61, 14, 2.4);
 /** A reply is prepared with a thoughtful look, held at least this long. */
 const MIN_THINK_MS = 700;
-const MARKERS = /\[(SAVE|MOOD):[a-z]+\]/gi;
+/** Invisible markers Sísí may add (see app/api/chat): stripped from the text. */
+const MARKERS = /\[(?:SAVE|MOOD|ACTION|VISIT):[a-z0-9]+\]|\[CHIPS:[^\]]*\]/gi;
+/** a marker still arriving mid-stream ("[CHIPS:I don…") is never shown */
+const PARTIAL = /\[[A-Z]{0,6}(?::[^\]]*)?$/;
 
 type Pill = { label: string; act: () => void; quiet?: boolean };
 type Msg = {
@@ -41,8 +44,10 @@ type Msg = {
   text: string;
   /** the user's words Sísí marked as worth keeping */
   offer?: string;
-  /** once per talk: gentle directions */
-  choices?: boolean;
+  /** short reply options for a clarifying question (max two) */
+  chips?: string[];
+  /** ONE earned suggestion — only when Sísí's reply asks for it */
+  action?: { kind: "step" | "walk" } | { kind: "visit"; star: Star };
   /** after a save: keep talking · back to Journey */
   after?: boolean;
 };
@@ -80,7 +85,6 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
   const [expr, setExpr] = useState<SisiChatExpression>("seated");
   const [scrolling, setScrolling] = useState(false);
   const scrollTimer = useRef<ReturnType<typeof setTimeout>>();
-  const choicesShown = useRef(false);
   const sharedChars = useRef(0);
   const sharedCount = useRef(0);
   const meaningfulSent = useRef(false);
@@ -96,7 +100,6 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       // a first welcome: seated; opening from a thought: already listening
       setExpr(opening ? "listening" : "seated");
       setDismissed(new Set());
-      choicesShown.current = false;
       sharedChars.current = 0;
       sharedCount.current = 0;
       meaningfulSent.current = false;
@@ -143,7 +146,12 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, currentStar: star?.wish ?? null }),
+        body: JSON.stringify({
+          messages: history,
+          currentStar: star?.wish ?? null,
+          // numbered, so Sísí can suggest visiting one by name ([VISIT:n])
+          stars: stars.map((st) => st.wish).slice(0, 8),
+        }),
       });
       if (!resp.ok || !resp.body) throw new Error("chat failed");
       // Server-Sent Events: `data: {"text": "..."}` lines.
@@ -167,7 +175,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             // partial line
           }
         }
-        const shown = acc.replace(MARKERS, "").trim();
+        const shown = acc.replace(MARKERS, "").replace(PARTIAL, "").trim();
         setMessages((m) => m.map((x) => (x.id === sisiId ? { ...x, text: shown } : x)));
       }
       // Explicit mood from the reply (never guessed from keywords):
@@ -175,15 +183,24 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       const mood: SisiChatExpression = /\[MOOD:comfort\]/i.test(acc) ? "comfort" : "listening";
       const wait = Math.max(0, MIN_THINK_MS - (Date.now() - thinkingSince));
       setTimeout(() => setExpr(mood), wait);
-      // Sísí thought the user's words were worth keeping → offer, never save.
-      const worth = /\[SAVE:[a-z]+\]/.test(acc);
-      // directions come after something real was shared (not a starter tap)
-      const isStarter = STARTERS.some((st) => st.say === text);
-      const giveChoices = !!star && !isStarter && !choicesShown.current && !worth;
-      if (giveChoices) choicesShown.current = true;
-      if (worth || giveChoices) {
+      // Listen first, guide second: actions come only from Sísí's own reply,
+      // never on the first message (she doesn't understand yet), and never
+      // more than one. A clarifying question may carry two reply chips.
+      const firstTurn = sharedCount.current <= 1;
+      const chipsM = /\[CHIPS:([^\]]+)\]/i.exec(acc);
+      const chips = chipsM ? chipsM[1].split("|").map((c) => c.trim()).filter(Boolean).slice(0, 2) : undefined;
+      const worth = !firstTurn && /\[SAVE:[a-z]+\]/i.test(acc);
+      let action: Msg["action"];
+      if (!firstTurn && !worth && !chips) {
+        const visit = /\[VISIT:(\d+)\]/i.exec(acc);
+        const kind = /\[ACTION:(step|walk)\]/i.exec(acc)?.[1] as "step" | "walk" | undefined;
+        const target = visit ? stars[Number(visit[1]) - 1] : undefined;
+        if (target) action = { kind: "visit", star: target };
+        else if (kind) action = { kind };
+      }
+      if (chips || worth || action) {
         setMessages((m) =>
-          m.map((x) => (x.id === sisiId ? { ...x, offer: worth ? text : undefined, choices: giveChoices } : x)),
+          m.map((x) => (x.id === sisiId ? { ...x, chips, offer: worth ? text : undefined, action } : x)),
         );
       }
     } catch {
@@ -228,33 +245,31 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
 
   // Only the newest Sísí note carries choices.
   const lastSisi = [...messages].reverse().find((m) => m.from === "sisi");
-  const pillsFor = (m: Msg): { pills: Pill[]; lock?: boolean } | null => {
+  /** at most one primary suggestion and one subtle secondary — or chips */
+  const pillsFor = (m: Msg): { chips?: Pill[]; primary?: Pill; secondary?: Pill; lock?: boolean } | null => {
     if (!lastSisi || m.id !== lastSisi.id || sending || dismissed.has(m.id)) return null;
     const hide = () => setDismissed((d) => new Set(d).add(m.id));
+    if (m.chips?.length)
+      return { chips: m.chips.map((c) => ({ label: c, act: () => { hide(); send(c); } })) };
     if (m.offer)
       return {
         lock: true,
-        pills: [
-          { label: "Keep this", act: () => startKeep("moment", m.offer!) },
-          { label: "Add to a Star", act: () => startKeep("star", m.offer!) },
-          { label: "Keep talking", act: hide, quiet: true },
-        ],
+        primary: { label: "Keep this in Moments", act: () => startKeep("moment", m.offer!) },
+        secondary: stars.length ? { label: "Add to a Star", act: () => startKeep("star", m.offer!) } : undefined,
       };
-    if (m.after)
+    if (m.after) return { primary: { label: "Walk with me", act: onClose } };
+    if (m.action?.kind === "step")
       return {
-        pills: [
-          { label: "Keep talking", act: () => { hide(); inputRef.current?.focus(); } },
-          { label: "Back to Journey", act: onClose, quiet: true },
-        ],
+        primary: {
+          label: "Find one small step together",
+          act: () => { hide(); send("Could you help me find one small step?"); },
+        },
       };
-    if (m.choices && star)
-      return {
-        pills: [
-          { label: "Just keep talking", act: hide, quiet: true },
-          { label: "See my journey", act: () => onSeeJourney?.(star) },
-          { label: "Find a small step", act: () => { hide(); send("Could you help me find one very small next step?"); } },
-        ],
-      };
+    if (m.action?.kind === "visit") {
+      const target = m.action.star;
+      return { primary: { label: `Visit “${target.wish}”`, act: () => onSeeJourney?.(target) } };
+    }
+    if (m.action?.kind === "walk") return { primary: { label: "Walk with me", act: onClose } };
     return null;
   };
 
@@ -389,9 +404,9 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
                     )}
                   </div>
                   {!hasTalked && (
-                    <div className="pills">
+                    <div className="chips" aria-label="Ways to begin">
                       {STARTERS.map((s) => (
-                        <button key={s.label} type="button" className="pill" onClick={() => send(s.say)}>
+                        <button key={s.label} type="button" className="chip" onClick={() => send(s.say)}>
                           {s.label}
                         </button>
                       ))}
@@ -422,13 +437,25 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
                           // eslint-disable-next-line @next/next/no-img-element
                           <img className="coral" src="/V2/moments/coral-star-stamp.png" alt="" aria-hidden />
                         )}
-                        {p && (
-                          <div className="pills">
-                            {p.pills.map((b) => (
-                              <button key={b.label} type="button" className={`pill${b.quiet ? " pill--quiet" : ""}`} onClick={b.act}>
-                                {b.label}
+                        {p?.chips && (
+                          <div className="chips" aria-label="Quick replies">
+                            {p.chips.map((c) => (
+                              <button key={c.label} type="button" className="chip" onClick={c.act}>
+                                {c.label}
                               </button>
                             ))}
+                          </div>
+                        )}
+                        {p?.primary && (
+                          <div className="suggest">
+                            <button type="button" className="suggest-btn" onClick={p.primary.act}>
+                              {p.primary.label}
+                            </button>
+                            {p.secondary && (
+                              <button type="button" className="suggest-link" onClick={p.secondary.act}>
+                                {p.secondary.label}
+                              </button>
+                            )}
                             {p.lock && (
                               <p className="lock">
                                 <LockIcon /> Nothing is saved unless you choose.
@@ -528,6 +555,24 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             }
             .companion-sheet .pill:hover { background: #fbf7ee; }
             .companion-sheet .pill--quiet { color: rgba(43, 47, 69, 0.7); }
+            /* compact reply chips (wrap), never a stack of full-width buttons */
+            .companion-sheet .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
+            .companion-sheet .chip {
+              min-height: 38px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+              border: 1px solid rgba(61, 116, 216, 0.3); background: #f8f2e4; color: #2b4f9e;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
+            }
+            .companion-sheet .suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 0 2px; }
+            .companion-sheet .suggest-btn {
+              min-height: 42px; padding: 0 18px; border-radius: 999px; cursor: pointer; border: 0;
+              background: #3d74d8; color: #f7f2e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px;
+              max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            }
+            .companion-sheet .suggest-link {
+              min-height: 42px; padding: 0 4px; border: 0; background: transparent; cursor: pointer;
+              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px; color: #3d74d8;
+            }
+            .companion-sheet .suggest .lock { flex-basis: 100%; justify-content: flex-start; }
             .companion-sheet .lock {
               display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px 0 0;
               font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; color: rgba(43, 47, 69, 0.55);
