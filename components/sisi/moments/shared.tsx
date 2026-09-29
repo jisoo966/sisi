@@ -18,7 +18,7 @@ import {
 } from "@/components/ds";
 import type { Sign, Star } from "@/lib/myStars";
 import { unrestStar } from "@/lib/myStars";
-import { whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
+import { isRealPhoto, whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
 import { deleteMoment, TYPE_LABEL, updateMoment } from "@/lib/momentStore";
 
 /**
@@ -233,7 +233,7 @@ export function MomentDetail({
             text && <p className="t-dialogue mm-dtext">{text}</p>
           )}
 
-          {item.image && (
+          {isRealPhoto(item.image) && item.image && (
             <div className="mm-dimg">
               <Postcard image={item.image} className="mm-d-pc" />
             </div>

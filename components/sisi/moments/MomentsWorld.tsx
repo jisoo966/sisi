@@ -3,7 +3,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TrailEntry, TimelineMotion, Placed } from "@/lib/momentsTimeline";
 import { buildTrail, layoutTimeline, TRAIL_ART, trailYAt } from "@/lib/momentsTimeline";
-import { whenLabel } from "@/lib/moments";
+import { isRealPhoto, whenLabel } from "@/lib/moments";
 import { TYPE_LABEL } from "@/lib/momentStore";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
@@ -936,7 +936,7 @@ function Card({ p, onStar }: { p: Placed; onStar?: (starId: string) => void }) {
       </button>
     ) : null;
   const typeLabel = TYPE_LABEL[it.mtype];
-  if (it.image)
+  if (it.image && isRealPhoto(it.image))
     return (
       <>
         {starLine}

@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { monthLabel } from "@/lib/moments";
+import { useMemo } from "react";
+import { isRealPhoto, monthLabel } from "@/lib/moments";
 import { TYPE_LABEL } from "@/lib/momentStore";
 import type { Placed } from "@/lib/momentsTimeline";
 
 /**
- * MomentsList — the practical way to search or jump to a month.
- * Warm ivory paper over the world; grouped by month; compact rows with an
- * occasional small photo; a tiny gold dot marks a Star-linked Moment.
+ * MomentsList — browsing memories by date.
+ * Warm ivory torn paper over the world; grouped by month; typographic rows,
+ * with a small thumbnail only when the Moment holds a real photo; a tiny
+ * gold dot marks a Star-linked Moment. The search field lives in the
+ * Moments header (it opens only when asked for); `query` filters here by
+ * Moment text, the connected Star, the date / month and the reflection type.
  * Picking a row returns to the Memory Trail and walks to that Moment.
  */
 
@@ -23,18 +26,39 @@ const EDGE = (() => {
   return `polygon(${pts.join(", ")}, 100% 100%, 0% 100%)`;
 })();
 
-export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (index: number) => void }) {
-  const [q, setQ] = useState("");
+/** Everything a person might type to find a Moment. */
+function haystack(p: Placed): string {
+  const it = p.item;
+  const d = new Date(it.at);
+  const dates = [
+    monthLabel(it.at),
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    d.toLocaleDateString("en-US", { month: "long", day: "numeric" }),
+    d.toLocaleDateString("en-US", { weekday: "long" }),
+    new Date().toDateString() === d.toDateString() ? "today" : "",
+  ].join(" ");
+  if (it.type === "rest") return `a star at rest ${it.star.wish} ${dates}`;
+  return [it.text, it.starTitle ?? "", TYPE_LABEL[it.mtype] ?? "", it.kind === "small_step" ? "a small step" : "", dates].join(" ");
+}
 
+export function MomentsList({
+  placed,
+  onPick,
+  query = "",
+}: {
+  placed: Placed[];
+  onPick: (index: number) => void;
+  query?: string;
+}) {
+  const q = query;
   const groups = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const today = new Date().toDateString();
     const out: { label: string; rows: Placed[] }[] = [];
     placed.forEach((p) => {
       const it = p.item;
-      const text = it.type === "rest" ? `a star at rest ${it.star.wish}` : it.text;
       const m = monthLabel(it.at);
-      if (needle && !`${text} ${m}`.toLowerCase().includes(needle)) return;
+      if (needle && !haystack(p).toLowerCase().includes(needle)) return;
       const label = new Date(it.at).toDateString() === today ? "Today" : m;
       const g = out[out.length - 1];
       if (g && g.label === label) g.rows.push(p);
@@ -46,15 +70,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
   return (
     <section className="ml-sheet ds-paper ds-paper--memory" style={{ clipPath: EDGE }} aria-label="Moments list">
       <div className="ml-scroll ds-scroll">
-        <label className="ml-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
-            <circle cx="10.5" cy="10.5" r="6.5" />
-            <path d="M15.5 15.5 20 20" />
-          </svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your moments…" aria-label="Search your moments" />
-        </label>
-
-        {groups.length === 0 && <p className="ml-empty">{q ? "Nothing here with those words." : "Your moments will gather here as you walk."}</p>}
+        {groups.length === 0 && <p className="ml-empty">{q.trim() ? "Nothing here with those words yet." : "Your Moments will gather here as you walk."}</p>}
 
         {groups.map((g) => (
           <div key={g.label} className="ml-group">
@@ -64,7 +80,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
               const d = new Date(it.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
               return (
                 <button key={p.key} type="button" className="ml-row" onClick={() => onPick(p.index)}>
-                  {it.type === "moment" && it.image ? (
+                  {it.type === "moment" && isRealPhoto(it.image) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img className="ml-thumb" src={it.image} alt="" loading="lazy" />
                   ) : null}
@@ -100,25 +116,17 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
       <style jsx global>{`
         .ml-sheet {
           position: absolute; z-index: 20; left: 0; right: 0; bottom: 0;
-          top: calc(var(--header-top) + 100px); /* below the filters */
+          top: var(--ml-top, calc(var(--header-top) + 100px)); /* below the filters (and search, when open) */
+          transition: top var(--motion-paper) var(--ease-sisi);
           color: var(--sisi-ink);
         }
         .ml-scroll {
           position: absolute; inset: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
-          padding: 26px var(--stage-padding) calc(var(--nav-total) + 28px);
+          /* the last row scrolls fully clear of the fixed tabs */
+          padding: 22px var(--stage-padding) calc(var(--nav-total) + 36px);
+          scrollbar-width: none;
           touch-action: pan-y;
         }
-        .ml-search {
-          display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border-radius: 999px;
-          background: var(--ink-08); color: var(--ink-60);
-        }
-        .ml-search svg { width: 18px; height: 18px; flex: 0 0 auto; }
-        .ml-search input {
-          flex: 1; min-width: 0; border: 0; background: transparent; outline: none; color: var(--sisi-ink);
-          font-family: var(--font-editorial); font-size: 16px;
-        }
-        .ml-search:focus-within { outline: 2px solid var(--blue-60); outline-offset: 1px; }
-        .ml-search input::placeholder { color: var(--ink-35); }
         .ml-empty { margin: 28px 4px; font-family: var(--font-editorial); font-style: italic; font-size: var(--text-body); color: var(--ink-60); }
         .ml-group { margin-top: 24px; }
         .ml-month { margin: 0 0 4px; }

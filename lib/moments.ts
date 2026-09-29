@@ -124,3 +124,14 @@ export const ENTRY_LABEL: Record<EntryKind, string> = {
   something_good: "Something good",
   small_step: "A step I took",
 };
+
+/**
+ * A real photo the person kept (camera / library / upload) — not app
+ * artwork. Text-only Moments stay typographic; nothing decorative stands in.
+ */
+export function isRealPhoto(image?: string | null): boolean {
+  if (!image) return false;
+  if (image.startsWith("data:image/") || /^https?:\/\//.test(image) || image.startsWith("blob:")) return true;
+  // same-origin static paths are illustration assets (/V2/…, /assets/…, /journey/…)
+  return false;
+}

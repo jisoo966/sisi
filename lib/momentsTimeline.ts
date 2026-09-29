@@ -17,7 +17,7 @@
  */
 
 import type { MomentItem, RestItem } from "@/lib/moments";
-import { monthLabel } from "@/lib/moments";
+import { isRealPhoto, monthLabel } from "@/lib/moments";
 
 /* ── deterministic variation ──────────────────────────────────────── */
 
@@ -93,14 +93,14 @@ export function layoutTimeline(entries: TrailEntry[], W: number): TimelineLayout
       // Controlled variation: never equal spacing, always readable.
       D += W * (0.29 + 0.06 * rnd(key, 1));
     }
-    const kind: Placed["kind"] = item.type === "rest" ? "rest" : item.image ? "photo" : "note";
+    const kind: Placed["kind"] = item.type === "rest" ? "rest" : isRealPhoto(item.image) ? "photo" : "note";
 
     let light: LightKind = null;
     if (item.type === "moment") {
       // The thread to a Star is not permanent (it would clutter the trail):
       // it shows only for the selected Moment, or briefly after saving.
       // Photos kept on purpose get a small idle light, sparsely.
-      if (item.image && i - lastLight > 2) light = "idle";
+      if (isRealPhoto(item.image) && i - lastLight > 2) light = "idle";
     }
     if (light) lastLight = i;
 

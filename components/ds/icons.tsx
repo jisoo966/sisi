@@ -49,6 +49,7 @@ export const IconSettings = (p: IconProps) => (<Svg {...p}><circle cx="12" cy="1
 export const IconMusic = (p: IconProps) => (<Svg {...p}><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></Svg>);
 export const IconShare = (p: IconProps) => (<Svg {...p}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><path d="m16 6-4-4-4 4" /><path d="M12 2v13" /></Svg>);
 export const IconDownload = (p: IconProps) => (<Svg {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></Svg>);
+export const IconSearch = (p: IconProps) => (<Svg {...p}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.8-3.8" /></Svg>);
 export const IconStar = (p: IconProps) => (<Svg {...p}><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.3l-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9z" /></Svg>);
 
 /** The one filled icon: a small gold four-point Star (Stars only). */
