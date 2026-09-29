@@ -44,8 +44,8 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
   }, [placed, q]);
 
   return (
-    <section className="ml-sheet paper-bg" style={{ clipPath: EDGE }} aria-label="Moments list">
-      <div className="ml-scroll">
+    <section className="ml-sheet ds-paper" style={{ clipPath: EDGE }} aria-label="Moments list">
+      <div className="ml-scroll ds-scroll">
         <label className="ml-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
             <circle cx="10.5" cy="10.5" r="6.5" />
@@ -58,7 +58,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
 
         {groups.map((g) => (
           <div key={g.label} className="ml-group">
-            <h2 className="ml-month">{g.label}</h2>
+            <h2 className="ml-month t-card-title">{g.label}</h2>
             {g.rows.map((p) => {
               const it = p.item;
               const d = new Date(it.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -67,9 +67,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
                   {it.type === "moment" && it.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img className="ml-thumb" src={it.image} alt="" loading="lazy" />
-                  ) : (
-                    <span className="ml-thumb ml-thumb--none" aria-hidden />
-                  )}
+                  ) : null}
                   <span className="ml-body">
                     {it.type === "moment" && it.starTitle && (
                       <span className="ml-star">
@@ -103,7 +101,7 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
         .ml-sheet {
           position: absolute; z-index: 20; left: 0; right: 0; bottom: 0;
           top: calc(var(--header-top) + 100px); /* below the filters */
-          color: #2b2f45;
+          color: var(--sisi-ink);
         }
         .ml-scroll {
           position: absolute; inset: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
@@ -111,34 +109,32 @@ export function MomentsList({ placed, onPick }: { placed: Placed[]; onPick: (ind
           touch-action: pan-y;
         }
         .ml-search {
-          display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px; border-radius: 999px;
-          background: rgba(43, 47, 69, 0.06); color: rgba(43, 47, 69, 0.6);
+          display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border-radius: 999px;
+          background: var(--ink-08); color: var(--ink-60);
         }
-        .ml-search svg { width: 19px; height: 19px; flex: 0 0 auto; }
+        .ml-search svg { width: 18px; height: 18px; flex: 0 0 auto; }
         .ml-search input {
-          flex: 1; min-width: 0; border: 0; background: transparent; outline: none; color: #2b2f45;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
+          flex: 1; min-width: 0; border: 0; background: transparent; outline: none; color: var(--sisi-ink);
+          font-family: var(--font-editorial); font-size: 16px;
         }
-        .ml-search input::placeholder { color: rgba(43, 47, 69, 0.45); }
-        .ml-empty { margin: 28px 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; color: rgba(43, 47, 69, 0.55); }
-        .ml-group { margin-top: 22px; }
-        .ml-month { margin: 0 0 4px; font-family: var(--font-fraunces), Georgia, serif; font-weight: 400; font-size: 22px; }
+        .ml-search:focus-within { outline: 2px solid var(--blue-60); outline-offset: 1px; }
+        .ml-search input::placeholder { color: var(--ink-35); }
+        .ml-empty { margin: 28px 4px; font-family: var(--font-editorial); font-style: italic; font-size: var(--text-body); color: var(--ink-60); }
+        .ml-group { margin-top: 24px; }
+        .ml-month { margin: 0 0 4px; }
         .ml-row {
-          display: flex; gap: 14px; align-items: flex-start; width: 100%; padding: 12px 0; border: 0;
-          border-bottom: 1px solid rgba(43, 47, 69, 0.1); background: transparent; text-align: left; cursor: pointer; color: inherit;
+          display: flex; gap: 14px; align-items: flex-start; width: 100%; min-height: 44px; padding: 12px 0; border: 0;
+          border-bottom: 1px solid var(--ink-08); background: transparent; text-align: left; cursor: pointer; color: inherit;
         }
         .ml-group .ml-row:last-child { border-bottom: 0; }
         .ml-thumb { flex: 0 0 76px; width: 76px; height: 54px; object-fit: cover; border-radius: 2px; display: block; }
-        .ml-thumb--none { height: 1px; }
-        .ml-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-        .ml-date { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; color: rgba(43, 47, 69, 0.55); }
-        .ml-star { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: #3d5fae; }
-        .ml-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #d4a82a; }
-        .ml-text {
-          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; line-height: 1.3;
-        }
-        .ml-text em { font-style: italic; color: rgba(43, 47, 69, 0.65); }
+        .ml-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+        .ml-date { font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); }
+        .ml-star { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-editorial); font-weight: 500; font-size: 13px; color: var(--ink-80); }
+        .ml-dot { flex: none; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--sisi-gold); }
+        /* Moment content is never truncated */
+        .ml-text { font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); overflow-wrap: break-word; white-space: pre-wrap; }
+        .ml-text em { font-style: italic; color: var(--ink-60); }
       `}</style>
     </section>
   );

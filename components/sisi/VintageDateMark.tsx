@@ -28,14 +28,14 @@ export default function VintageDateMark({ date, format = "short", tint = false }
 
   return (
     <span
-      className="inline-block font-garamond italic text-[#6B5648] leading-none"
+      className="inline-block font-garamond italic text-ink/80 leading-none"
       style={{
         fontSize: "0.72rem",
         letterSpacing: "0.04em",
         padding: tint ? "2px 8px" : undefined,
-        background: tint ? "rgba(61,46,37,0.04)" : undefined,
+        background: tint ? "rgba(16, 45, 50,0.04)" : undefined,
         // Subtle warm border if tinted
-        border: tint ? "1px solid rgba(61,46,37,0.07)" : undefined,
+        border: tint ? "1px solid rgba(16, 45, 50,0.07)" : undefined,
         borderRadius: tint ? "2px" : undefined,
       }}
     >

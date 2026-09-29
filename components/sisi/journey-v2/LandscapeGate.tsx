@@ -13,7 +13,7 @@ export function LandscapeGate() {
     <div className="journey-landscape-gate">
       <p
         style={{
-          fontFamily: "var(--font-fraunces), Georgia, serif",
+          fontFamily: "var(--font-editorial)",
           fontSize: "clamp(18px, 4vw, 22px)",
           color: "var(--journey-navy)",
           marginBottom: 12,
@@ -24,11 +24,11 @@ export function LandscapeGate() {
       </p>
       <p
         style={{
-          fontFamily: "var(--font-sentient), Georgia, serif",
+          fontFamily: "var(--font-editorial)",
           fontWeight: 300,
           letterSpacing: "-0.02em",
           fontSize: "clamp(13px, 3.5vw, 15px)",
-          color: "rgba(31,42,68,0.65)",
+          color: "rgba(16, 45, 50,0.65)",
           fontStyle: "italic",
         }}
       >

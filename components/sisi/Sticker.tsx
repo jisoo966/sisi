@@ -10,11 +10,11 @@ const SIZES = {
 } as const;
 
 const COLORS: Record<string, { bg: string; border: string; shadow: string }> = {
-  gold:  { bg: "#D4A82A", border: "#FAF6F0", shadow: "rgba(212,168,42,0.25)" },
-  rose:  { bg: "#C4847C", border: "#FAF6F0", shadow: "rgba(196,132,124,0.25)" },
-  sage:  { bg: "#8FA38C", border: "#FAF6F0", shadow: "rgba(143,163,140,0.25)" },
-  plum:  { bg: "#3D2E25", border: "#FAF6F0", shadow: "rgba(61,46,37,0.30)" },
-  coral: { bg: "#D89789", border: "#FAF6F0", shadow: "rgba(216,151,137,0.25)" },
+  gold:  { bg: "var(--sisi-gold)", border: "var(--sisi-paper)", shadow: "rgba(241, 196, 94,0.25)" },
+  rose:  { bg: "var(--sisi-coral)", border: "var(--sisi-paper)", shadow: "rgba(238, 104, 78,0.25)" },
+  sage:  { bg: "rgba(16, 45, 50, 0.6)", border: "var(--sisi-paper)", shadow: "rgba(245, 239, 221,0.25)" },
+  plum:  { bg: "var(--sisi-ink)", border: "var(--sisi-paper)", shadow: "rgba(16, 45, 50,0.30)" },
+  coral: { bg: "var(--sisi-coral)", border: "var(--sisi-paper)", shadow: "rgba(241, 196, 94,0.25)" },
 };
 
 type StickerProps = {
@@ -69,7 +69,7 @@ export default function Sticker({
         borderRadius: radius,
         backgroundColor: color.bg,
         border: `3px solid ${color.border}`,
-        boxShadow: `0 1px 2px rgba(61,46,37,0.10), 0 2px 8px rgba(61,46,37,0.08), 0 0 0 1px ${color.shadow}`,
+        boxShadow: `0 1px 2px rgba(16, 45, 50,0.10), 0 2px 8px rgba(16, 45, 50,0.08), 0 0 0 1px ${color.shadow}`,
         // Subtle inner paper feel
         backgroundImage:
           "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E\")",

@@ -29,8 +29,8 @@ export function BottomNav({ theme = "light" }: { theme?: Theme }) {
     <nav
       className={`fixed bottom-[30px] left-[24px] right-[24px] z-50 flex items-center rounded-[25px] backdrop-blur-md px-[4px] py-[4px] h-[50px] shadow-lg ${
         isDark
-          ? "bg-white/10 border border-white/15"
-          : "bg-white/60 border border-white/60"
+          ? "bg-paper/10 border border-paper/15"
+          : "bg-paper/60 border border-paper/60"
       }`}
     >
       {TABS.map((tab) => {
@@ -74,11 +74,11 @@ function NavItem({
   children: React.ReactNode;
 }) {
   const activeBg = isDark
-    ? "rgba(255, 255, 255, 0.2)"
-    : "rgba(255, 255, 255, 0.85)";
-  const activeColor = isDark ? "rgb(255, 255, 255)" : "rgb(31, 42, 68)";
-  const inactiveColor = isDark ? "text-white/70" : "text-journey-navy/70";
-  const inactiveHover = isDark ? "hover:text-white" : "hover:text-journey-navy";
+    ? "rgba(245, 239, 221, 0.2)"
+    : "rgba(245, 239, 221, 0.85)";
+  const activeColor = isDark ? "rgb(245, 239, 221)" : "rgb(16, 45, 50)";
+  const inactiveColor = isDark ? "text-paper/70" : "text-journey-navy/70";
+  const inactiveHover = isDark ? "hover:text-paper" : "hover:text-journey-navy";
 
   return (
     <Link

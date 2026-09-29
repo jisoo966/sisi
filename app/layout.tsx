@@ -1,35 +1,21 @@
 import type { Metadata } from "next";
-import { Fraunces, EB_Garamond, Caveat, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
+import "@/design-system/tokens.css";
+import "@/design-system/typography.css";
+import "@/design-system/motion.css";
 import "./globals.css";
+import "@/components/ds/ds.css";
 import ServiceWorkerRegister from "@/components/sisi/ServiceWorkerRegister";
 import { BackgroundMusic } from "@/components/sisi/BackgroundMusic";
 
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-});
-
-const ebGaramond = EB_Garamond({
-  subsets: ["latin"],
-  variable: "--font-eb-garamond",
-  display: "swap",
-});
-
-const caveat = Caveat({
-  subsets: ["latin"],
-  variable: "--font-caveat",
-  display: "swap",
-});
-
-// Brand v2: Inter for body text (sans)
+// Inter — functional metadata only (dates, statuses, helpers, chips).
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });
 
-// Sentient (Fontshare) loaded via <link> below — not on Google Fonts
+// Sentient — self-hosted WOFF2 (design-system/typography.css).
 
 export const metadata: Metadata = {
   title: "sísí — manifest with sísí.",
@@ -78,8 +64,8 @@ export const metadata: Metadata = {
     ],
   },
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f2e3" },
-    { media: "(prefers-color-scheme: dark)", color: "#1c2340" },
+    { media: "(prefers-color-scheme: light)", color: "var(--sisi-paper)" },
+    { media: "(prefers-color-scheme: dark)", color: "var(--sisi-ink)" },
   ],
 };
 
@@ -91,7 +77,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${ebGaramond.variable} ${caveat.variable} ${inter.variable}`}
+      className={inter.variable}
     >
       <head>
         {/* Viewport — 기본 설정. interactive-widget 안 씀 (svh를 shrink시켜서
@@ -100,18 +86,11 @@ export default function RootLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        {/* Sentient — Fontshare (brand v2 heading font) */}
-        <link
-          rel="preconnect"
-          href="https://api.fontshare.com"
-          crossOrigin=""
-        />
-        <link
-          href="https://api.fontshare.com/v2/css?f[]=sentient@200,300,400,500,700&display=swap"
-          rel="stylesheet"
-        />
+        {/* Sentient — self-hosted; the two weights every screen uses load first */}
+        <link rel="preload" href="/fonts/sentient/Sentient-Regular.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/sentient/Sentient-Medium.woff2" as="font" type="font/woff2" crossOrigin="" />
       </head>
-      <body className="bg-[#e8e0cf] overflow-x-hidden">
+      <body className="bg-paper overflow-x-hidden">
         <ServiceWorkerRegister />
         <BackgroundMusic />
         {/* Phone-frame — 데스크탑에서만 폰 크기 constraint.
@@ -119,8 +98,11 @@ export default function RootLayout({
              - 데스크탑 (>= 500px): 430px 중앙, transform으로 fixed 요소들도 wrapper 안에 갇힘
              이렇게 media query로 나눠야 모바일에서 nav/버튼 터치 정상 작동.
              모바일에선 bg 투명 → 각 페이지가 body 색으로 safe area 채움. */}
-        <div className="phone-frame relative mx-auto min-h-svh w-full max-w-[430px] md:bg-[#f7f2e3] md:shadow-[0_0_80px_rgba(0,0,0,0.15)]">
+        <div className="phone-frame relative mx-auto min-h-dvh w-full max-w-[430px] md:bg-paper md:shadow-[0_0_80px_rgba(16,45,50,0.15)]">
           {children}
+          {/* Overlays (modals, paper sheets, toasts) render here: outside every
+              transformed world container, inside the phone frame on desktop. */}
+          <div id="sisi-overlay-root" />
         </div>
         <style>{`
           @media (min-width: 500px) {

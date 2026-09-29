@@ -11,10 +11,10 @@ type Props = {
 };
 
 const ACCENTS = {
-  gold:  { stroke: "#D4A82A", text: "text-[#D4A82A]" },
-  rose:  { stroke: "#C4847C", text: "text-[#C4847C]" },
-  sage:  { stroke: "#8FA38C", text: "text-[#8FA38C]" },
-  coral: { stroke: "#D89789", text: "text-[#D89789]" },
+  gold:  { stroke: "var(--sisi-gold)", text: "text-ink/70" },
+  rose:  { stroke: "var(--sisi-coral)", text: "text-coral" },
+  sage:  { stroke: "rgba(16, 45, 50, 0.6)", text: "text-ink/60" },
+  coral: { stroke: "var(--sisi-coral)", text: "text-coral" },
 };
 
 function fmt(s: number) {
@@ -58,7 +58,7 @@ export default function MinimalAudioPlayer({
   return (
     <div
       className="w-full max-w-xs mx-auto select-none"
-      style={{ background: "#FAF6F0", padding: "28px 24px 24px" }}
+      style={{ background: "var(--sisi-paper)", padding: "28px 24px 24px" }}
     >
       <audio
         ref={audioRef}
@@ -76,7 +76,7 @@ export default function MinimalAudioPlayer({
       )}
 
       {/* Title */}
-      <p className="font-fraunces text-xl text-[#3D2E25] leading-snug mb-7">
+      <p className="t-card-title text-ink mb-7">
         {title}
       </p>
 
@@ -93,7 +93,7 @@ export default function MinimalAudioPlayer({
             <circle
               cx="56" cy="56" r={R}
               fill="none"
-              stroke="rgba(61,46,37,0.07)"
+              stroke="rgba(16, 45, 50,0.07)"
               strokeWidth="1.5"
             />
             {/* Progress */}
@@ -123,12 +123,12 @@ export default function MinimalAudioPlayer({
               width: 72,
               height: 72,
               borderRadius: "50%",
-              background: "#F5EFE6",
-              border: "1px solid rgba(61,46,37,0.10)",
+              background: "var(--sisi-paper)",
+              border: "1px solid rgba(16, 45, 50,0.10)",
               // single skeuomorphic hint: inner light from top-left
               boxShadow: pressed
-                ? "inset 0 1px 3px rgba(61,46,37,0.12)"
-                : "0 1px 2px rgba(61,46,37,0.04), 0 2px 6px rgba(61,46,37,0.06), inset 0 1px 0 rgba(255,255,255,0.7)",
+                ? "inset 0 1px 3px rgba(16, 45, 50,0.12)"
+                : "0 1px 2px rgba(16, 45, 50,0.04), 0 2px 6px rgba(16, 45, 50,0.06), inset 0 1px 0 rgba(245, 239, 221,0.7)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -138,13 +138,13 @@ export default function MinimalAudioPlayer({
             {playing ? (
               // Pause: two thin bars
               <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
-                <rect x="1"  y="1" width="4" height="14" rx="1.5" fill="#3D2E25" fillOpacity="0.65"/>
-                <rect x="9"  y="1" width="4" height="14" rx="1.5" fill="#3D2E25" fillOpacity="0.65"/>
+                <rect x="1"  y="1" width="4" height="14" rx="1.5" fill="var(--sisi-ink)" fillOpacity="0.65"/>
+                <rect x="9"  y="1" width="4" height="14" rx="1.5" fill="var(--sisi-ink)" fillOpacity="0.65"/>
               </svg>
             ) : (
               // Play: single triangle, slightly inset
               <svg width="14" height="16" viewBox="0 0 14 16" fill="none" style={{ marginLeft: 2 }}>
-                <path d="M2 1.5L13 8L2 14.5V1.5Z" fill="#3D2E25" fillOpacity="0.65"/>
+                <path d="M2 1.5L13 8L2 14.5V1.5Z" fill="var(--sisi-ink)" fillOpacity="0.65"/>
               </svg>
             )}
           </motion.button>
@@ -154,18 +154,18 @@ export default function MinimalAudioPlayer({
         <div className="flex items-center gap-5">
           <button
             onClick={() => { if (audioRef.current) audioRef.current.currentTime -= 15; }}
-            className="font-garamond text-xs text-[#6B5648]/50 hover:text-[#3D2E25] transition-colors"
+            className="t-meta text-ink/50 hover:text-ink transition-colors"
           >
             −15
           </button>
 
-          <span className="font-garamond text-xs text-[#6B5648]/40 tabular-nums w-20 text-center">
+          <span className="t-meta text-ink/40 tabular-nums w-20 text-center">
             {fmt(current)} / {duration ? fmt(duration) : "—"}
           </span>
 
           <button
             onClick={() => { if (audioRef.current) audioRef.current.currentTime += 15; }}
-            className="font-garamond text-xs text-[#6B5648]/50 hover:text-[#3D2E25] transition-colors"
+            className="t-meta text-ink/50 hover:text-ink transition-colors"
           >
             +15
           </button>
@@ -182,7 +182,7 @@ export default function MinimalAudioPlayer({
             onChange={seek}
             className="w-full appearance-none h-px cursor-pointer"
             style={{
-              background: `linear-gradient(to right, ${color.stroke} ${progress * 100}%, rgba(61,46,37,0.10) ${progress * 100}%)`,
+              background: `linear-gradient(to right, ${color.stroke} ${progress * 100}%, rgba(16, 45, 50,0.10) ${progress * 100}%)`,
               outline: "none",
             }}
           />

@@ -55,9 +55,9 @@ function formatDate(dateStr: string) {
 }
 
 const INTENSITY_COLORS: Record<string, string> = {
-  gently: "#8FA38C",
-  firmly: "#D4A82A",
-  urgently: "#C4847C",
+  gently: "rgba(16, 45, 50, 0.6)",
+  firmly: "var(--sisi-gold)",
+  urgently: "var(--sisi-coral)",
 };
 
 export default function TimelineClient({
@@ -97,13 +97,13 @@ export default function TimelineClient({
   );
 
   return (
-    <main className="min-h-screen bg-[#F5EFE6]">
+    <main className="min-h-dvh bg-paper">
       <header className="flex items-center justify-between px-6 pt-8 pb-4">
-        <Link href="/app" className="font-garamond text-sm text-[#6B5648] hover:text-[#3D2E25] transition-colors">
+        <Link href="/app" className="t-body text-ink/80 hover:text-ink transition-colors">
           ← back
         </Link>
-        <span className="font-fraunces text-lg text-[#3D2E25]">timeline</span>
-        <Link href="/capture" className="font-garamond text-sm text-[#D4A82A] hover:text-[#3D2E25] transition-colors">
+        <span className="t-card-title text-ink">timeline</span>
+        <Link href="/capture" className="t-body text-ink/70 hover:text-ink transition-colors">
           + capture
         </Link>
       </header>
@@ -119,8 +119,8 @@ export default function TimelineClient({
                 onClick={() => setSelectedGoal(g)}
                 className={`shrink-0 px-3 py-1.5 font-garamond text-sm border transition-all ${
                   selectedGoal?.id === g.id
-                    ? "bg-[#3D2E25] text-[#F5EFE6] border-[#3D2E25]"
-                    : "text-[#6B5648] border-[#3D2E25]/20"
+                    ? "bg-ink text-paper border-ink"
+                    : "text-ink/80 border-ink/20"
                 }`}
               >
                 {g.category ?? "goal"}
@@ -139,25 +139,25 @@ export default function TimelineClient({
               className="mb-8"
             >
               <p
-                className="font-garamond text-xs uppercase tracking-widest mb-2"
-                style={{ color: INTENSITY_COLORS[selectedGoal.intensity] ?? "#D4A82A" }}
+                className="t-meta mb-2"
+                style={{ color: INTENSITY_COLORS[selectedGoal.intensity] ?? "var(--sisi-gold)" }}
               >
                 {selectedGoal.intensity} · {selectedGoal.category ?? "manifestation"}
               </p>
-              <h2 className="font-fraunces text-2xl text-[#3D2E25] leading-snug mb-3">
+              <h2 className="t-screen-title text-ink mb-3">
                 {selectedGoal.content}
               </h2>
               {selectedGoal.target_date && (
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-[#D4A82A]/20" />
-                  <p className="font-garamond italic text-sm text-[#6B5648]">
+                  <div className="h-px flex-1 bg-ink/5" />
+                  <p className="ds-helper italic text-ink/80">
                     {daysUntil(selectedGoal.target_date) > 0
                       ? `${daysUntil(selectedGoal.target_date)} days away`
                       : daysUntil(selectedGoal.target_date) === 0
                       ? "today is the day."
-                      : "it is already here."}
+                      : "It is already here."}
                   </p>
-                  <div className="h-px flex-1 bg-[#D4A82A]/20" />
+                  <div className="h-px flex-1 bg-ink/5" />
                 </div>
               )}
             </motion.div>
@@ -170,7 +170,7 @@ export default function TimelineClient({
                 transition={{ delay: 0.1, duration: 0.7 }}
                 className="mb-8"
               >
-                <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-4">
+                <p className="t-meta text-ink/60 mb-4">
                   your journey · {formatDate(calendarDays[0])} → {formatDate(calendarDays[calendarDays.length - 1])}
                 </p>
                 <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
@@ -187,23 +187,23 @@ export default function TimelineClient({
                         title={formatDate(day)}
                         className={`aspect-square flex items-center justify-center text-[9px] font-garamond transition-all ${
                           isToday
-                            ? "ring-1 ring-[#D4A82A]"
+                            ? "ring-1 ring-star"
                             : ""
                         }`}
                         style={{
                           backgroundColor: hasActivity
-                            ? `rgba(212, 168, 42, ${0.3 + progress * 0.7})`
+                            ? `rgba(241, 196, 94), ${0.3 + progress * 0.7})`
                             : isPast
-                            ? "rgba(61, 46, 37, 0.05)"
-                            : "rgba(61, 46, 37, 0.03)",
+                            ? "rgba(16, 45, 50, 0.05)"
+                            : "rgba(16, 45, 50, 0.03)",
                           opacity: isFuture ? 0.4 : 1,
                         }}
                       >
                         {isToday && (
-                          <span className="text-[#D4A82A] font-caveat text-xs">◎</span>
+                          <span className="t-meta text-ink/70">◎</span>
                         )}
                         {hasActivity && !isToday && (
-                          <span style={{ color: `rgba(212, 168, 42, ${0.6 + progress * 0.4})` }}>
+                          <span style={{ color: `rgba(241, 196, 94), ${0.6 + progress * 0.4})` }}>
                             ✦
                           </span>
                         )}
@@ -212,13 +212,13 @@ export default function TimelineClient({
                   })}
                 </div>
                 <div className="flex items-center gap-3 mt-3">
-                  <span className="font-garamond text-xs text-[#8FA38C] italic">less active</span>
+                  <span className="t-meta text-ink/60 italic">less active</span>
                   <div className="flex gap-1 flex-1">
                     {[0.1, 0.3, 0.5, 0.7, 0.9].map((o) => (
-                      <div key={o} className="h-2 flex-1" style={{ backgroundColor: `rgba(212, 168, 42, ${o})` }} />
+                      <div key={o} className="h-2 flex-1" style={{ backgroundColor: `rgba(241, 196, 94), ${o})` }} />
                     ))}
                   </div>
-                  <span className="font-garamond text-xs text-[#D4A82A] italic">more active</span>
+                  <span className="t-meta text-ink/70 italic">more active</span>
                 </div>
               </motion.div>
             )}
@@ -226,12 +226,12 @@ export default function TimelineClient({
             {/* Captures list */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest">
-                  synchronicities captured
+                <p className="t-meta text-ink/60">
+                  Synchronicities captured
                 </p>
                 <Link
                   href="/capture"
-                  className="font-garamond text-xs text-[#D4A82A]"
+                  className="t-meta text-ink/70"
                 >
                   + add
                 </Link>
@@ -245,14 +245,14 @@ export default function TimelineClient({
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05, duration: 0.4 }}
-                      className="flex gap-4 bg-[#FAF6F0] border border-[#3D2E25]/8 p-4"
+                      className="flex gap-4 bg-paper border border-ink/8 p-4"
                     >
-                      <div className="font-caveat text-[#D4A82A] text-lg mt-0.5">◇</div>
+                      <div className="t-card-title text-ink/70 mt-0.5">◇</div>
                       <div className="flex-1">
-                        <p className="font-garamond text-[#3D2E25] leading-relaxed">
+                        <p className="font-garamond text-ink leading-relaxed">
                           {capture.content}
                         </p>
-                        <p className="font-garamond italic text-xs text-[#8FA38C] mt-1">
+                        <p className="t-meta italic text-ink/60 mt-1">
                           {formatDate(capture.created_at)}
                         </p>
                       </div>
@@ -262,13 +262,13 @@ export default function TimelineClient({
               ) : (
                 <Link
                   href="/capture"
-                  className="block border border-dashed border-[#3D2E25]/20 p-6 text-center hover:border-[#D4A82A]/40 transition-colors"
+                  className="block border border-dashed border-ink/20 p-6 text-center hover:border-star/40 transition-colors"
                 >
-                  <p className="font-garamond italic text-[#6B5648]">
-                    what has the universe shown you?
+                  <p className="font-garamond italic text-ink/80">
+                    What has the universe shown you?
                   </p>
-                  <p className="font-garamond text-xs text-[#8FA38C] mt-1">
-                    tap to capture a synchronicity
+                  <p className="t-meta text-ink/60 mt-1">
+                    Tap to capture a synchronicity
                   </p>
                 </Link>
               )}
@@ -276,15 +276,15 @@ export default function TimelineClient({
           </>
         ) : (
           <div className="text-center pt-20">
-            <p className="font-fraunces text-2xl text-[#3D2E25] mb-4">no goals yet.</p>
-            <p className="font-garamond italic text-[#6B5648] mb-8">
-              what are you calling in?
+            <p className="t-screen-title text-ink mb-4">no goals yet.</p>
+            <p className="font-garamond italic text-ink/80 mb-8">
+              What are you calling in?
             </p>
             <Link
               href="/onboarding"
-              className="font-garamond px-8 py-4 bg-[#3D2E25] text-[#F5EFE6]"
+              className="font-garamond px-8 py-4 bg-ink text-paper"
             >
-              set a goal
+              Set a goal
             </Link>
           </div>
         )}

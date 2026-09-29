@@ -17,11 +17,11 @@ type BookCardProps = {
 };
 
 const SPINE_COLORS = {
-  gold:  { spine: "#C49820", cover: "#FAF6F0", label: "#D4A82A" },
-  rose:  { spine: "#B0746C", cover: "#FDF6F5", label: "#C4847C" },
-  sage:  { spine: "#7A9077", cover: "#F5FAF6", label: "#8FA38C" },
-  coral: { spine: "#C48070", cover: "#FDF8F5", label: "#D89789" },
-  plum:  { spine: "#2E2019", cover: "#F8F5F2", label: "#3D2E25" },
+  gold:  { spine: "var(--sisi-gold)", cover: "var(--sisi-paper)", label: "var(--sisi-gold)" },
+  rose:  { spine: "var(--sisi-coral)", cover: "var(--sisi-paper)", label: "var(--sisi-coral)" },
+  sage:  { spine: "rgba(16, 45, 50, 0.6)", cover: "var(--sisi-paper)", label: "rgba(16, 45, 50, 0.6)" },
+  coral: { spine: "var(--sisi-coral)", cover: "var(--sisi-paper)", label: "var(--sisi-coral)" },
+  plum:  { spine: "var(--sisi-ink)", cover: "var(--sisi-paper)", label: "var(--sisi-ink)" },
 };
 
 export function BookCard({
@@ -51,7 +51,7 @@ export function BookCard({
         style={{
           background: c.cover,
           borderLeft: `4px solid ${c.spine}`,
-          boxShadow: "0 1px 2px rgba(61,46,37,0.04), 0 2px 6px rgba(61,46,37,0.06)",
+          boxShadow: "0 1px 2px rgba(16, 45, 50,0.04), 0 2px 6px rgba(16, 45, 50,0.06)",
         }}
       >
         {/* Hover lift */}
@@ -65,18 +65,18 @@ export function BookCard({
         <div className="absolute inset-0 p-3 flex flex-col justify-between">
           {/* Top label */}
           {label && (
-            <p className="font-caveat text-xs" style={{ color: c.label, opacity: 0.8 }}>
+            <p className="t-meta" style={{ color: c.label, opacity: 0.8 }}>
               {label}
             </p>
           )}
 
           {/* Title area */}
           <div className="mt-auto">
-            <p className="font-fraunces text-sm text-[#3D2E25] leading-snug line-clamp-3">
+            <p className="t-body text-ink line-clamp-3">
               {title}
             </p>
             {subtitle && (
-              <p className="font-garamond italic text-xs text-[#6B5648]/60 mt-1 line-clamp-2 leading-snug">
+              <p className="t-meta italic text-ink/60 mt-1 line-clamp-2">
                 {subtitle}
               </p>
             )}
@@ -86,7 +86,7 @@ export function BookCard({
         {/* Listened mark — top right */}
         {listened && (
           <div className="absolute top-2 right-2">
-            <span className="font-caveat text-sm" style={{ color: c.label }}>✓</span>
+            <span className="t-body" style={{ color: c.label }}>✓</span>
           </div>
         )}
 
@@ -96,14 +96,14 @@ export function BookCard({
             className="absolute top-2 right-2 px-1.5 py-0.5"
             style={{ background: `${c.spine}18` }}
           >
-            <span className="font-garamond text-xs" style={{ color: c.label }}>premium</span>
+            <span className="t-meta" style={{ color: c.label }}>premium</span>
           </div>
         )}
 
         {/* Subtle inner top highlight — physical paper suggestion */}
         <div
           className="absolute inset-x-0 top-0 h-px"
-          style={{ background: "rgba(255,255,255,0.6)" }}
+          style={{ background: "rgba(245, 239, 221,0.6)" }}
         />
       </div>
     </motion.div>
@@ -124,7 +124,7 @@ export default function BookGallery({ children, cols = 3, label }: BookGalleryPr
   return (
     <div>
       {label && (
-        <p className="font-garamond text-xs text-[#6B5648]/50 uppercase tracking-widest mb-4">
+        <p className="t-meta text-ink/50 mb-4">
           {label}
         </p>
       )}

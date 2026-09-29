@@ -26,7 +26,7 @@ export default function PaperBackground({
   return (
     <div
       className={`relative ${className}`}
-      style={{ backgroundColor: "#F5EFE6" }}
+      style={{ backgroundColor: "var(--sisi-paper)" }}
     >
       {/* Layer 1: paper grain noise */}
       <div
@@ -47,7 +47,7 @@ export default function PaperBackground({
         className="pointer-events-none absolute inset-0 z-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(255,248,236,0.18) 0%, rgba(240,235,228,0.12) 50%, rgba(228,232,235,0.08) 100%)",
+            "linear-gradient(180deg, rgba(245, 239, 221,0.18) 0%, rgba(245, 239, 221,0.12) 50%, rgba(245, 239, 221,0.08) 100%)",
         }}
       />
 
@@ -57,7 +57,7 @@ export default function PaperBackground({
           aria-hidden
           className="pointer-events-none absolute inset-0 z-0"
           style={{
-            boxShadow: "inset 0 0 48px rgba(61,46,37,0.045), inset 0 0 8px rgba(61,46,37,0.03)",
+            boxShadow: "inset 0 0 48px rgba(16, 45, 50,0.045), inset 0 0 8px rgba(16, 45, 50,0.03)",
             borderRadius: "inherit",
           }}
         />

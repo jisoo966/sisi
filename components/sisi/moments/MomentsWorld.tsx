@@ -815,7 +815,7 @@ export const MomentsWorld = forwardRef<
         .mw-trail { position: absolute; left: 0; top: 0; pointer-events: none; opacity: ${TRAIL_OPACITY}; }
         .mw-trail img { position: absolute; max-width: none; display: block; }
         .mw-item { position: absolute; top: 0; width: 0; height: 100%; }
-        .mw-stem { position: absolute; width: 1px; background: rgba(245, 239, 230, 0.38); pointer-events: none; }
+        .mw-stem { position: absolute; width: 1px; background: rgba(245, 239, 221, 0.38); pointer-events: none; }
         .mw-light { position: absolute; max-width: none; pointer-events: none; }
         .mw-light--selected { animation: mw-light-in 420ms ease-out both; }
         .mw-thread { animation: mw-thread-in 600ms ease-out both; }
@@ -823,32 +823,32 @@ export const MomentsWorld = forwardRef<
         .mw-star-title {
           display: flex; align-items: center; gap: 4px; max-width: 100%; margin: 0 0 4px; padding: 0; border: 0;
           background: transparent; cursor: pointer; text-align: left;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 11.5px; color: #3d5fae;
+          font-family: var(--font-editorial); font-weight: 500; font-size: 11.5px; color: var(--ink-80);
         }
         .mw-star-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .mw-star-title img { width: 11px; height: 11px; flex: 0 0 auto; }
-        .mw-card--photo .mw-star-title { color: rgba(247, 241, 227, 0.92); margin: 0 0 3px 2px; }
+        .mw-card--photo .mw-star-title { color: rgba(245, 239, 221, 0.92); margin: 0 0 3px 2px; }
         .mw-starmark img { width: 100%; height: 100%; display: block; }
         .mw-starmark {
           border: 0; padding: 0; background: transparent; cursor: pointer; pointer-events: auto !important;
           position: absolute; right: -5px; top: -6px; width: 16px; height: 16px; z-index: 2; pointer-events: none;
-          filter: drop-shadow(0 1px 2px rgba(10, 18, 30, 0.35));
+          filter: drop-shadow(0 1px 2px rgba(16, 45, 50, 0.35));
         }
         @keyframes mw-light-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
         .mw-card { position: absolute; cursor: pointer; transform-origin: 50% 100%; outline: none; translate: 0 0; }
-        .mw-card:focus-visible { outline: 1px dashed rgba(245, 239, 230, 0.7); outline-offset: 4px; }
-        .mw-note { position: relative; padding: 11px 12px 9px; color: #2b2f45; }
+        .mw-card:focus-visible { outline: 2px solid var(--paper-90); outline-offset: 4px; }
+        .mw-note { position: relative; padding: 11px 12px 9px; color: var(--sisi-ink); }
         .mw-note > :not(.mm-art) { position: relative; }
         .mw-note-text {
           display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13.5px; line-height: 1.28; margin: 0 0 5px;
+          font-family: var(--font-editorial); font-size: 13.5px; line-height: 1.3; margin: 0 0 5px;
         }
-        .mw-note-kicker { display: block; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 11.5px; color: rgba(43, 47, 69, 0.6); margin-bottom: 2px; }
-        .mw-note-date { display: block; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 10.5px; color: rgba(43, 47, 69, 0.58); }
+        .mw-note-kicker { display: block; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-chip); color: var(--ink-60); margin-bottom: 3px; }
+        .mw-note-date { display: block; font-family: var(--font-ui); font-size: var(--text-helper); color: var(--ink-60); }
         .mw-label {
           position: absolute; left: 2px; bottom: calc(100% + 7px); white-space: nowrap;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; letter-spacing: 0.02em;
-          color: rgba(245, 239, 230, 0.86);
+          font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); letter-spacing: 0.02em;
+          color: rgba(245, 239, 221, 0.86);
         }
 
         /* ── arrival / departure ─────────────────────────────────── */
@@ -868,21 +868,22 @@ export const MomentsWorld = forwardRef<
 
         .mw-empty {
           position: absolute; left: 12%; width: 46%; bottom: calc(var(--walking-baseline) + 48px); z-index: 4;
-          padding: 12px 14px; background: rgba(245, 239, 230, 0.92); color: #2b2f45; border-radius: 2px;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15px; line-height: 1.35;
+          padding: 12px 14px; background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat; color: var(--sisi-ink); border-radius: 3px;
+          box-shadow: var(--paper-shadow-soft);
+          font-family: var(--font-editorial); font-style: italic; font-size: var(--text-dialogue); line-height: var(--leading-dialogue);
         }
         .mw-hint {
           position: absolute; left: 0; right: 0; bottom: calc(var(--nav-total) + 22px); z-index: 7;
           display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
-          color: rgba(245, 239, 230, 0.92); font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px;
+          color: var(--paper-90); font-family: var(--font-editorial); font-size: var(--text-dialogue);
           animation: mw-hint-in 900ms ease-out 500ms both;
         }
         .mw-hint-track { position: relative; display: block; width: 120px; height: 34px; }
         .mw-hint-track i {
-          position: absolute; left: 6px; right: 0; top: 7px; height: 1px; background: rgba(245, 239, 230, 0.4);
+          position: absolute; left: 6px; right: 0; top: 7px; height: 1px; background: rgba(245, 239, 221, 0.4);
         }
         .mw-hand {
-          position: absolute; left: 0; top: 0; width: 28px; height: 28px; color: rgba(245, 239, 230, 0.92);
+          position: absolute; left: 0; top: 0; width: 28px; height: 28px; color: rgba(245, 239, 221, 0.92);
           animation: mw-hand 2.6s ease-in-out infinite;
         }
         @keyframes mw-hint-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -895,9 +896,9 @@ export const MomentsWorld = forwardRef<
         .mw-today {
           position: absolute; z-index: 8; right: var(--stage-padding); top: calc(var(--header-top) + 58px);
           min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
-          background: rgba(245, 239, 230, 0.94); color: #2b2f45; box-shadow: 0 2px 8px rgba(10, 18, 30, 0.18);
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
-          animation: mw-hint-in 380ms ease-out both;
+          background: var(--sisi-paper) var(--paper-grain) 0 0 / 180px 180px repeat; color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12);
+          font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-button);
+          animation: mw-hint-in var(--motion-bubble) var(--ease-sisi) both;
         }
         @media (prefers-reduced-motion: reduce) {
           .mw-hint, .mw-hand, .mw-today, .mw-light--selected { animation: none; }

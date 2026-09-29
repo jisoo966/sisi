@@ -50,7 +50,7 @@ export default function PostcardSavedPage() {
       className="relative w-full overflow-hidden flex flex-col"
       style={{
         background:
-          "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
+          "linear-gradient(180deg, var(--sisi-ink) 0%, var(--sisi-ink) 45%, var(--sisi-ink) 100%)",
         minHeight: "100svh",
         height: "100svh",
       }}
@@ -62,8 +62,8 @@ export default function PostcardSavedPage() {
       <div className="shrink-0 relative z-20 flex items-center justify-between pt-[52px] px-[24px]">
         <Link
           href="/journey"
-          aria-label="close"
-          className="h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition"
+          aria-label="Close"
+          className="ds-icon-btn ds-icon-btn--filled"
         >
           <svg
             width="14"
@@ -83,7 +83,7 @@ export default function PostcardSavedPage() {
           onClick={handleShare}
           disabled={!postcard || shareState === "sharing"}
           aria-label="Share this moment"
-          className="h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition disabled:opacity-40"
+          className="ds-icon-btn ds-icon-btn--filled"
         >
           {shareState === "done" ? (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -108,7 +108,7 @@ export default function PostcardSavedPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-[20px] text-[#F5F4EC]/80 mb-1 shrink-0"
+          className="t-card-title text-paper/80 mb-1 shrink-0"
         >
           ✦
         </motion.div>
@@ -117,16 +117,16 @@ export default function PostcardSavedPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="font-sentient text-[22px] text-white/95 text-center leading-tight shrink-0"
+          className="t-screen-title text-paper/95 text-center shrink-0"
         >
-          your moment is safely kept.
+          Your moment is safely kept.
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="font-sentient italic text-[12px] text-white/60 text-center mt-1 mb-[16px] shrink-0"
+          className="t-meta italic text-paper/60 text-center mt-1 mb-[16px] shrink-0"
         >
           it&apos;s here whenever you need it.
         </motion.p>
@@ -142,7 +142,7 @@ export default function PostcardSavedPage() {
           }}
           className="relative w-full max-w-[220px] flex-shrink min-h-0"
         >
-          <div className="bg-[#f7f2e3] rounded-[14px] p-[10px] pb-[14px] shadow-2xl">
+          <div className="bg-paper rounded-[14px] p-[10px] pb-[14px] shadow-2xl">
             <div className="relative rounded-[8px] overflow-hidden aspect-[3/4] bg-journey-cream">
               {postcard?.image ? (
                 postcard.image.startsWith("data:") ? (
@@ -174,10 +174,10 @@ export default function PostcardSavedPage() {
                 transition={{ delay: 0.75, duration: 0.4 }}
                 className="flex items-center justify-between mt-[8px] px-[6px]"
               >
-                <p className="font-sentient text-[10px] text-journey-navy/60 tracking-wider">
+                <p className="t-meta text-journey-navy/60">
                   {formatDateTime(postcard.createdAt)}
                 </p>
-                <span className="text-[12px] text-[#D4A82A]">✦</span>
+                <span className="t-meta text-ink/70">✦</span>
               </motion.div>
             )}
           </div>
@@ -193,15 +193,15 @@ export default function PostcardSavedPage() {
       >
         <Link
           href="/gallery"
-          className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/85 backdrop-blur-md border border-white/30 text-journey-navy text-[16px] h-[52px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition"
+          className="ds-btn ds-btn--primary ds-btn--block block w-full"
         >
-          view postcard
+          View postcard
         </Link>
         <Link
           href="/journey"
-          className="font-sentient block w-full text-center rounded-[30px] bg-white/15 backdrop-blur-md border border-white/25 text-white text-[16px] h-[52px] flex items-center justify-center hover:bg-white/25 transition"
+          className="ds-btn ds-btn--secondary ds-btn--block block w-full"
         >
-          back to journey
+          Back to journey
         </Link>
       </motion.div>
     </main>
@@ -228,13 +228,13 @@ function StarField() {
       {stars.map((s, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full bg-white"
+          className="absolute rounded-full bg-paper"
           style={{
             top: s.top,
             left: s.left,
             width: s.size,
             height: s.size,
-            boxShadow: `0 0 ${s.size * 2}px rgba(255,236,189,0.6)`,
+            boxShadow: `0 0 ${s.size * 2}px rgba(245, 239, 221,0.6)`,
           }}
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{
@@ -253,20 +253,20 @@ function StarField() {
 function MiniStamp() {
   return (
     <div
-      className="relative flex items-center justify-center bg-[#F5F4EC] shadow-sm"
+      className="relative flex items-center justify-center bg-paper shadow-sm"
       style={{
         width: 36,
         height: 42,
         borderRadius: "2px",
-        border: "1.2px dashed rgba(31,42,68,0.35)",
+        border: "1.2px dashed rgba(16, 45, 50,0.35)",
       }}
     >
       <svg width="20" height="20" viewBox="0 0 100 100">
         <defs>
           <radialGradient id="saved-stamp-star" cx="50%" cy="50%">
-            <stop offset="0%" stopColor="rgb(255,248,225)" />
-            <stop offset="40%" stopColor="rgb(255,236,189)" />
-            <stop offset="100%" stopColor="rgb(212,168,42)" />
+            <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="40%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="100%" stopColor="rgb(241, 196, 94)" />
           </radialGradient>
         </defs>
         <path

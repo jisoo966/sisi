@@ -304,7 +304,7 @@ export function StarWorld({
             style={{ left: placed[0].x, top: placed[0].y + 58 }}
             aria-hidden
           >
-            tap your star
+            Tap your Star
           </p>
         )}
         {placed.map((p, i) => {
@@ -360,7 +360,7 @@ export function StarWorld({
           position: absolute;
           inset: 0;
           /* Deep night that continues below the painted sky. */
-          background: linear-gradient(to bottom, #03070a 0%, #050c16 55%, #0b1b38 100%);
+          background: linear-gradient(to bottom, var(--sisi-ink) 0%, var(--sisi-ink) 55%, var(--sisi-ink) 100%);
           transition: opacity 450ms ease;
         }
         .sw-sky-img {
@@ -395,7 +395,7 @@ export function StarWorld({
         }
         .sw-path path {
           fill: none;
-          stroke: rgba(246, 236, 214, 0.9);
+          stroke: rgba(245, 239, 221, 0.9);
           stroke-width: 1;
           stroke-dasharray: 1.5 7;
           stroke-linecap: round;
@@ -409,11 +409,11 @@ export function StarWorld({
           transform: translateX(-50%);
           margin: 0;
           white-space: nowrap;
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-style: italic;
-          font-size: 14px;
-          letter-spacing: 0.04em;
-          color: rgba(246, 236, 214, 0.75);
+          font-family: var(--font-ui);
+          font-weight: 500;
+          font-size: var(--text-meta);
+          letter-spacing: 0.02em;
+          color: var(--paper-80);
           opacity: 0;
           transition: opacity 600ms ease;
           pointer-events: none;
@@ -496,7 +496,7 @@ export function StarWorld({
           width: 2px;
           height: 34vh;
           margin-left: -1px;
-          background: linear-gradient(to bottom, rgba(246, 226, 170, 0.55), rgba(246, 226, 170, 0));
+          background: linear-gradient(to bottom, rgba(245, 239, 221, 0.55), rgba(245, 239, 221, 0));
           transform-origin: top center;
           animation: swRestTrail 1.6s ease-out forwards;
           pointer-events: none;

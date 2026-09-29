@@ -14,9 +14,9 @@ type PaperPageProps = {
 };
 
 const RULES = {
-  gold:  "#D4A82A",
-  rose:  "#C4847C",
-  sage:  "#8FA38C",
+  gold:  "var(--sisi-gold)",
+  rose:  "var(--sisi-coral)",
+  sage:  "rgba(16, 45, 50, 0.6)",
   none:  "transparent",
 };
 
@@ -33,14 +33,14 @@ export default function PaperPage({
     <div
       className={`relative ${className}`}
       style={{
-        background: "#F9F4EC",
+        background: "var(--sisi-paper)",
         backgroundImage: GRAIN,
         backgroundRepeat: "repeat",
         backgroundSize: "200px 200px",
         // Edge shadow — suggests the page sitting on a surface
         boxShadow: isPage
-          ? "0 1px 2px rgba(61,46,37,0.04), 0 4px 12px rgba(61,46,37,0.08), inset 0 0 40px rgba(61,46,37,0.025)"
-          : "0 1px 2px rgba(61,46,37,0.04), 0 2px 6px rgba(61,46,37,0.06)",
+          ? "0 1px 2px rgba(16, 45, 50,0.04), 0 4px 12px rgba(16, 45, 50,0.08), inset 0 0 40px rgba(16, 45, 50,0.025)"
+          : "0 1px 2px rgba(16, 45, 50,0.04), 0 2px 6px rgba(16, 45, 50,0.06)",
         maxWidth: isPage ? 640 : undefined,
         ...style,
       }}

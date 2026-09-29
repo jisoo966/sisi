@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { FocusPaper, IconCamera, IconChevronRight, StarGlyph, TextAction } from "@/components/ds";
 import { useRouter } from "next/navigation";
 
 /**
@@ -123,88 +123,35 @@ export function PostcardOptionsSheet({
         onChange={handleFileSelect}
       />
 
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              onClick={handleClose}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-            />
-
-            {/* Sheet */}
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] bg-[#f7f2e3] shadow-2xl"
-            >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-[10px] pb-[6px]">
-                <div className="h-[4px] w-[42px] rounded-full bg-journey-navy/20" />
-              </div>
-
-              <div className="px-[24px] pb-[28px]">
-                {/* Header */}
-                <div className="text-center mt-[6px] mb-[24px]">
-                  <p className="font-sentient text-[22px] text-journey-navy leading-tight">
-                    keep a moment
-                  </p>
-                  <p className="font-sentient italic text-[13px] text-journey-navy/60 mt-[6px]">
-                    choose how you&apos;d like to save it.
-                  </p>
-                </div>
-
-                {/* 2 options — iOS native picker가 camera/library/files 3선택 자동 제공 */}
-                <div className="flex flex-col gap-[10px]">
-                  <OptionCard
-                    icon={<CameraIcon />}
-                    title="add a photo"
-                    subtitle="from your camera or library"
-                    onClick={() => photoInputRef.current?.click()}
-                    disabled={processing}
-                  />
-                  <OptionCard
-                    icon={<SparkIcon />}
-                    title="keep this scene"
-                    subtitle="today's walk with sísí"
-                    onClick={() => {
-                      handleClose();
-                      router.push("/moment");
-                    }}
-                    disabled={processing}
-                  />
-                </div>
-
-                {error && (
-                  <p className="mt-4 font-sentient italic text-[13px] text-journey-oxblood text-center">
-                    {error}
-                  </p>
-                )}
-
-                {processing && !error && (
-                  <p className="mt-4 font-sentient italic text-[13px] text-journey-navy/60 text-center">
-                    preparing your photo...
-                  </p>
-                )}
-
-                {/* Cancel */}
-                <button
-                  onClick={handleClose}
-                  className="w-full mt-[16px] py-[14px] font-sentient text-[14px] text-journey-navy/50"
-                >
-                  cancel
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <FocusPaper open={open} onClose={handleClose} title="Keep a moment" titleId="pc-title">
+        <p className="t-body" style={{ margin: "0 0 16px", color: "var(--ink-60)", fontStyle: "italic" }}>
+          Choose how you&apos;d like to save it.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <OptionCard
+            icon={<IconCamera />}
+            title="Add a photo"
+            subtitle="From your camera or library"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={processing}
+          />
+          <OptionCard
+            icon={<StarGlyph size={20} />}
+            title="Keep this scene"
+            subtitle="Today's walk with Sísí"
+            onClick={() => {
+              handleClose();
+              router.push("/moment");
+            }}
+            disabled={processing}
+          />
+        </div>
+        {error && <p className="ds-error" role="alert" style={{ textAlign: "center" }}>{error}</p>}
+        {processing && !error && <p className="ds-helper" style={{ marginTop: 12, textAlign: "center" }}>Preparing your photo…</p>}
+        <div className="ds-actions" style={{ alignItems: "center" }}>
+          <TextAction onClick={handleClose}>Not now</TextAction>
+        </div>
+      </FocusPaper>
     </>
   );
 }
@@ -225,63 +172,14 @@ function OptionCard({
   disabled?: boolean;
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="flex items-center gap-[14px] w-full py-[18px] px-[18px] rounded-[16px] bg-white/70 hover:bg-white active:scale-98 transition text-left disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <div className="shrink-0 text-journey-navy/70">{icon}</div>
-      <div className="flex-1">
-        <p className="font-sentient text-[16px] text-journey-navy leading-tight">
-          {title}
-        </p>
-        <p className="font-sentient italic text-[12px] text-journey-navy/55 mt-[3px]">
-          {subtitle}
-        </p>
-      </div>
-      {/* Chevron for affordance */}
-      <svg
-        className="shrink-0 text-journey-navy/35"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="9 6 15 12 9 18" />
-      </svg>
+    <button type="button" onClick={onClick} disabled={disabled} className="ds-star-row" style={{ minHeight: 64 }}>
+      <span style={{ flex: "none", display: "inline-flex", color: "var(--ink-80)" }}>{icon}</span>
+      <span className="ds-star-row-main">
+        <span className="ds-star-row-title">{title}</span>
+        <span className="t-meta" style={{ color: "var(--ink-60)" }}>{subtitle}</span>
+      </span>
+      <IconChevronRight size={18} />
     </button>
   );
 }
 
-/* ─── Icons ───────────────────────────────────────────── */
-
-function CameraIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-      <circle cx="12" cy="13" r="4" />
-    </svg>
-  );
-}
-
-function SparkIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 100 100">
-      <defs>
-        <radialGradient id="sheet-spark" cx="50%" cy="50%">
-          <stop offset="0%" stopColor="rgb(255,248,225)" />
-          <stop offset="45%" stopColor="rgb(255,236,189)" />
-          <stop offset="100%" stopColor="rgb(251,198,106)" />
-        </radialGradient>
-      </defs>
-      <path
-        d="M50 12 L60 42 L90 42 L66 60 L76 90 L50 72 L24 90 L34 60 L10 42 L40 42 Z"
-        fill="url(#sheet-spark)"
-      />
-    </svg>
-  );
-}

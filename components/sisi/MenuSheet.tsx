@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { FocusPaper, IconChevronRight, IconMusic, SecondaryButton } from "@/components/ds";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * MenuSheet — CHANI 스타일 full-page overlay 메뉴.
- *   - 전체 화면 크림 배경
- *   - X 오른쪽 상단
- *   - 항목들 오른쪽 정렬, 큰 여백
- *   - Sentient Light 폰트
+ * MenuSheet — account & settings on the shared FocusPaper
+ * (design system: rows in Sentient, meta in Inter, one secondary action).
  *
  * 사용법:
  *   const [open, setOpen] = useState(false);
@@ -90,144 +87,57 @@ export function MenuSheet({
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[100] overflow-hidden bg-[#f7f2e3]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {/* X close — top right */}
-          <button
-            onClick={onClose}
-            aria-label="Close menu"
-            className="absolute top-[52px] right-[24px] z-10 h-10 w-10 flex items-center justify-center text-journey-navy/80 hover:text-journey-navy transition"
-          >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-
-          {/* Content — right-aligned list, generous vertical rhythm */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="relative flex min-h-screen flex-col justify-center px-[32px] pt-[100px] pb-[80px]"
-          >
-            {/* Profile — small top card feel */}
-            {(name || email) && (
-              <div className="text-right mb-[48px]">
-                <p className="font-sentient text-[24px] text-journey-navy">
-                  {name || "friend"}
-                </p>
-                {email && (
-                  <p className="font-sentient italic text-[13px] text-journey-navy/50 mt-1">
-                    {email}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Menu items — right-aligned, big tap targets, big spacing */}
-            <nav className="flex flex-col items-end gap-[28px]">
-              <button
-                onClick={toggleMusic}
-                className="flex items-center gap-4 font-sentient text-[20px] tracking-[0.1em] text-journey-navy hover:opacity-70 transition-opacity"
-              >
-                AMBIENT MUSIC
-                <Toggle on={musicOn} />
-              </button>
-
-              <MenuLink href="/privacy" onClose={onClose}>
-                PRIVACY POLICY
-              </MenuLink>
-
-              <MenuLink href="/terms" onClose={onClose}>
-                TERMS OF SERVICE
-              </MenuLink>
-
-              <MenuItem onClick={signOut}>
-                <span className="text-journey-oxblood">SIGN OUT</span>
-              </MenuItem>
-            </nav>
-
-            {/* Footer */}
-            <p className="text-right font-sentient italic text-[11px] text-journey-navy/40 mt-[48px]">
-              sísí v1.0
-            </p>
-          </motion.div>
-        </motion.div>
+    <FocusPaper open={open} onClose={onClose} title="Menu" titleId="menu-title" closeLabel="Close menu" className="menu-focus">
+      {(name || email) && (
+        <div className="menu-profile">
+          <p className="t-card-title" style={{ margin: 0 }}>{name || "Friend"}</p>
+          {email && <p className="t-meta" style={{ margin: "4px 0 0", color: "var(--ink-60)" }}>{email}</p>}
+        </div>
       )}
-    </AnimatePresence>
+      <nav className="menu-list" aria-label="Menu">
+        <button type="button" role="switch" aria-checked={musicOn} className="menu-row" onClick={toggleMusic}>
+          <span className="menu-row-icon"><IconMusic size={20} /></span>
+          <span className="menu-row-label">Ambient music</span>
+          <Toggle on={musicOn} />
+        </button>
+        <Link href="/privacy" onClick={onClose} className="menu-row">
+          <span className="menu-row-label">Privacy policy</span>
+          <IconChevronRight size={18} />
+        </Link>
+        <Link href="/terms" onClick={onClose} className="menu-row">
+          <span className="menu-row-label">Terms of service</span>
+          <IconChevronRight size={18} />
+        </Link>
+      </nav>
+      <div className="ds-actions">
+        <SecondaryButton block onClick={signOut}>Sign out</SecondaryButton>
+      </div>
+      <p className="t-helper menu-version">Sísí v1.0</p>
+      <style jsx global>{`
+        .menu-profile { padding: 4px 0 16px; border-bottom: 1px solid var(--ink-08); margin-bottom: 4px; }
+        .menu-list { display: flex; flex-direction: column; }
+        .menu-row {
+          display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 2px;
+          border: 0; border-bottom: 1px solid var(--ink-08); background: none; color: var(--sisi-ink);
+          font-family: var(--font-editorial); font-size: var(--text-dialogue); text-align: left; text-decoration: none; cursor: pointer;
+        }
+        .menu-row-icon { display: inline-flex; color: var(--ink-80); }
+        .menu-row-label { flex: 1; }
+        .menu-version { margin: 16px 0 0; text-align: center; color: var(--ink-60); }
+        .menu-toggle { position: relative; flex: none; width: 44px; height: 26px; border-radius: 999px; background: var(--ink-14); transition: background var(--motion-instant) ease; }
+        .menu-toggle.is-on { background: var(--sisi-blue); }
+        .menu-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--sisi-paper); box-shadow: 0 1px 2px rgba(16, 45, 50, 0.2); transition: transform var(--motion-bubble) var(--ease-sisi); }
+        .menu-toggle.is-on .menu-toggle-knob { transform: translateX(18px); }
+      `}</style>
+    </FocusPaper>
   );
 }
 
-/** Menu item — right-aligned typography with tracking */
-function MenuItem({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="font-sentient text-[20px] tracking-[0.1em] text-journey-navy hover:opacity-70 transition-opacity"
-    >
-      {children}
-    </button>
-  );
-}
-
-function MenuLink({
-  href,
-  onClose,
-  children,
-}: {
-  href: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClose}
-      className="font-sentient text-[20px] tracking-[0.1em] text-journey-navy hover:opacity-70 transition-opacity"
-    >
-      {children}
-    </Link>
-  );
-}
-
-/** 예쁜 토글 스위치 (iOS 스타일) */
+/** On/off switch — selected state uses Sísí Blue */
 function Toggle({ on }: { on: boolean }) {
   return (
-    <span
-      role="switch"
-      aria-checked={on}
-      className={`relative inline-block h-[26px] w-[46px] rounded-full transition-colors ${
-        on ? "bg-journey-purple" : "bg-journey-navy/25"
-      }`}
-    >
-      <motion.span
-        animate={{ x: on ? 22 : 2 }}
-        transition={{ type: "spring", damping: 25, stiffness: 350 }}
-        className="absolute top-[2px] block h-[22px] w-[22px] rounded-full bg-white shadow-sm"
-      />
+    <span className={`menu-toggle${on ? " is-on" : ""}`} aria-hidden>
+      <span className="menu-toggle-knob" />
     </span>
   );
 }

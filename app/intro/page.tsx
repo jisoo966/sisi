@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { PrimaryButton, TextAction } from "@/components/ds";
 
 export const dynamic = "force-dynamic";
 
@@ -25,23 +26,23 @@ const SLIDES: Slide[] = [
   {
     bg: "/journey/ChatScreen.png",
     overlay:
-      "linear-gradient(180deg, rgba(31,42,68,0.15) 0%, rgba(31,42,68,0.55) 60%, rgba(31,42,68,0.85) 100%)",
-    title: "walk with your feelings.",
-    subtitle: "a quiet world that moves as you do.",
+      "linear-gradient(180deg, rgba(16, 45, 50,0.15) 0%, rgba(16, 45, 50,0.55) 60%, rgba(16, 45, 50,0.85) 100%)",
+    title: "Walk with your feelings.",
+    subtitle: "A quiet world that moves as you do.",
   },
   {
     bg: "/journey/ChatScreen2.png",
     overlay:
-      "linear-gradient(180deg, rgba(31,42,68,0.15) 0%, rgba(31,42,68,0.55) 60%, rgba(31,42,68,0.85) 100%)",
-    title: "capture moments that stay.",
-    subtitle: "small postcards from your journey.",
+      "linear-gradient(180deg, rgba(16, 45, 50,0.15) 0%, rgba(16, 45, 50,0.55) 60%, rgba(16, 45, 50,0.85) 100%)",
+    title: "Capture Moments that stay.",
+    subtitle: "Small postcards from your journey.",
   },
   {
     bg: "/mystars/default.png",
     overlay:
-      "linear-gradient(180deg, rgba(20,17,55,0.35) 0%, rgba(20,17,55,0.75) 60%, rgba(20,17,55,0.95) 100%)",
-    title: "wish upon what you're\nwalking toward.",
-    subtitle: "each star, a direction.",
+      "linear-gradient(180deg, rgba(16, 45, 50,0.35) 0%, rgba(16, 45, 50,0.75) 60%, rgba(16, 45, 50,0.95) 100%)",
+    title: "Wish upon what you're\nwalking toward.",
+    subtitle: "Each Star, a direction.",
   },
 ];
 
@@ -65,7 +66,7 @@ export default function IntroPage() {
   const isLast = index === SLIDES.length - 1;
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-[#1a1737]">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-ink">
       {/* Background image */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -93,22 +94,19 @@ export default function IntroPage() {
       </AnimatePresence>
 
       {/* Skip — top right */}
-      <button
-        onClick={skip}
-        className="absolute top-[52px] right-[24px] z-20 font-sentient text-[13px] text-white/70 tracking-wider hover:text-white transition-colors"
-      >
-        skip
-      </button>
+      <TextAction surface="dark" onClick={skip} className="absolute top-[calc(var(--safe-top)+12px)] right-[12px] z-20">
+        Skip
+      </TextAction>
 
       {/* Content — bottom section */}
-      <div className="relative z-10 flex min-h-svh flex-col justify-end px-[24px] pb-[52px]">
+      <div className="relative z-10 flex min-h-dvh flex-col justify-end px-[20px] pb-[calc(40px+var(--safe-bottom))]">
         {/* Dots pagination */}
         <div className="flex items-center justify-center gap-2 mb-[36px]">
           {SLIDES.map((_, i) => (
             <div
               key={i}
               className={`h-[6px] rounded-full transition-all duration-400 ${
-                i === index ? "w-[24px] bg-white/90" : "w-[6px] bg-white/30"
+                i === index ? "w-[24px] bg-paper/90" : "w-[6px] bg-paper/30"
               }`}
             />
           ))}
@@ -124,39 +122,36 @@ export default function IntroPage() {
             transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="mb-[36px]"
           >
-            <h1 className="font-sentient text-[32px] text-white leading-[1.15] mb-3 whitespace-pre-line">
+            <h1 className="t-display text-paper mb-3 whitespace-pre-line">
               {slide.title}
             </h1>
-            <p className="font-sentient italic text-[16px] text-white/70">
+            <p className="t-affirmation text-paper/70">
               {slide.subtitle}
             </p>
           </motion.div>
         </AnimatePresence>
 
         {/* CTA button */}
-        <button
-          onClick={next}
-          className="font-sentient text-[16px] rounded-[24px] bg-journey-purple/90 backdrop-blur-md border border-white/30 text-journey-navy h-[56px] w-full shadow-lg hover:brightness-105 active:scale-98 transition-all"
-        >
-          {isLast ? "begin ✦" : "next"}
-        </button>
+        <PrimaryButton surface="dark" block onClick={next}>
+          {isLast ? "Begin" : "Next"}
+        </PrimaryButton>
 
         {/* Small legal note on last slide */}
         {isLast && (
-          <p className="mt-4 text-center font-sentient text-[11px] text-white/50 leading-relaxed">
-            by continuing, you agree to our{" "}
+          <p className="ds-helper mt-4 text-center" style={{ color: "var(--paper-60)" }}>
+            By continuing, you agree to our{" "}
             <Link
               href="/terms"
-              className="underline underline-offset-2 hover:text-white"
+              className="underline underline-offset-2 hover:text-paper"
             >
-              terms
+              Terms
             </Link>{" "}
             and{" "}
             <Link
               href="/privacy"
-              className="underline underline-offset-2 hover:text-white"
+              className="underline underline-offset-2 hover:text-paper"
             >
-              privacy policy
+              Privacy policy
             </Link>
             .
           </p>

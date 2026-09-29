@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { loadTrail, type MomentItem, type RestItem } from "@/lib/moments";
 import { layoutTimeline, TimelineMotion, type TrailEntry } from "@/lib/momentsTimeline";
-import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
+import { FilterChip, IconButton, IconClose, IconList, MemoryPaper, StickerNavigation } from "@/components/ds";
 import { MomentDetail, MomentsSharedStyles, originOf, RestDetail, type Origin } from "./shared";
 import { MomentsWorld, type MomentsWorldHandle } from "./MomentsWorld";
 import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
@@ -156,41 +156,29 @@ export function MomentsScreen() {
       )}
 
       <header className={`mm-header${headerIn && !turned ? "" : " is-out"}`}>
-        <h1 className="mm-title">Moments</h1>
-        <button
-          type="button"
+        <h1 className="ds-screen-title mm-title">Moments</h1>
+        <IconButton
+          filled
           className="mm-toggle"
-          aria-label={view === "trail" ? "Show as a list" : "Show the Memory Trail"}
+          label={view === "trail" ? "Show as a list" : "Show the Memory Trail"}
           onClick={() => !leaving && setView((v) => (v === "trail" ? "list" : "trail"))}
         >
           {view === "trail" ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
-              <path d="M9 7h10M9 12h10M9 17h10" />
-              <circle cx="5" cy="7" r="0.9" fill="currentColor" />
-              <circle cx="5" cy="12" r="0.9" fill="currentColor" />
-              <circle cx="5" cy="17" r="0.9" fill="currentColor" />
-            </svg>
+            <IconList />
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
               <path d="M3 16c3 0 3.5-5 7-5s3.5 4 6.5 4S20 9 21 8" />
             </svg>
           )}
-        </button>
+        </IconButton>
       </header>
 
       {/* filters */}
-      <div className={`mm-filters${headerIn && !turned ? "" : " is-out"}`} role="tablist" aria-label="Show">
+      <div className={`mm-filters ds-chip-row${headerIn && !turned ? "" : " is-out"}`} role="group" aria-label="Show">
         {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            role="tab"
-            aria-selected={filter === f.key}
-            className={`mm-chip${filter === f.key ? " is-on" : ""}`}
-            onClick={() => pickFilter(f.key)}
-          >
+          <FilterChip key={f.key} surface="sky" selected={filter === f.key} onClick={() => pickFilter(f.key)}>
             {f.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
 
@@ -199,25 +187,24 @@ export function MomentsScreen() {
         {explain && headerIn && !turned && view === "trail" && (
           <fm.div
             key="explain"
-            className="mm-explain paper-bg"
+            className="mm-explain"
             role="note"
             initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.45 } }}
-            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
+            exit={{ opacity: 0, transition: { duration: 0.22 } }}
           >
-            <button
-              type="button"
-              className="mm-explain-x"
-              aria-label="Got it"
-              onClick={() => {
-                markHint("moments");
-                setExplain(false);
-              }}
-            >
-              ×
-            </button>
-            <p className="mm-explain-h">Your life along the way</p>
-            <p className="mm-explain-p">Moments you capture and reflections you add to your Stars live here.</p>
+            <MemoryPaper compact title="Your life along the way" text="Moments you capture and reflections you add to your Stars live here.">
+              <IconButton
+                className="mm-explain-x"
+                label="Got it"
+                onClick={() => {
+                  markHint("moments");
+                  setExplain(false);
+                }}
+              >
+                <IconClose size={18} />
+              </IconButton>
+            </MemoryPaper>
           </fm.div>
         )}
       </AnimatePresence>
@@ -279,9 +266,8 @@ export function MomentsScreen() {
         )}
       </AnimatePresence>
 
-      <div className={`journey-nav-host mm-nav${navIn ? "" : " is-waiting"}`}>
-        <BottomNavV2
-          theme="light"
+      <div className={`ds-nav-host journey-nav-host mm-nav${navIn ? "" : " is-waiting"}`}>
+        <StickerNavigation
           activeTab={turned ? "journey" : "moments"}
           still={!!arrival}
           dock={navIn ? "ground" : "sky"}
@@ -294,7 +280,7 @@ export function MomentsScreen() {
       </div>
 
       <style jsx global>{`
-        .mm-root { background: #0f2233; }
+        .mm-root { background: var(--sisi-ink); }
         @media (min-width: 500px) {
           .mm-root { max-width: 430px; margin: 0 auto; }
         }
@@ -306,44 +292,24 @@ export function MomentsScreen() {
         }
         .mm-header.is-out { opacity: 0; }
         .mm-filters {
-          position: absolute; z-index: 10; left: var(--stage-padding); top: calc(var(--header-top) + 54px);
-          display: flex; gap: 8px; transition: opacity 420ms ease;
+          position: absolute; z-index: 10; left: var(--stage-padding); right: var(--stage-padding); top: calc(var(--header-top) + 56px);
+          transition: opacity 420ms ease;
         }
         .mm-filters.is-out { opacity: 0; pointer-events: none; }
-        .mm-chip {
-          min-height: 36px; min-width: 44px; padding: 0 14px; border-radius: 999px; cursor: pointer;
-          border: 1px solid rgba(247, 241, 227, 0.55); background: rgba(247, 241, 227, 0.14);
-          color: #f7f1e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
-          transition: background 0.25s ease, color 0.25s ease;
-        }
-        .mm-chip.is-on { background: #f7f2e3; color: #1d2744; border-color: #f7f2e3; }
         .mm-explain {
           position: absolute; z-index: 10; left: var(--stage-padding); right: var(--stage-padding);
-          top: calc(var(--header-top) + 104px); padding: 14px 44px 14px 16px; color: #2b2f45;
-          box-shadow: 0 8px 20px rgba(10, 18, 30, 0.22); border-radius: 2px;
+          top: calc(var(--header-top) + 104px);
         }
-        .mm-explain-h { margin: 0 0 4px; font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; }
-        .mm-explain-p { margin: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px; line-height: 1.38; color: rgba(43, 47, 69, 0.75); }
-        .mm-explain-x {
-          position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; border: 0; background: transparent;
-          font-size: 22px; color: rgba(43, 47, 69, 0.55); cursor: pointer;
-        }
+        .mm-explain .ds-memory-sheet { padding-right: 52px; }
+        .mm-explain-x { position: absolute; right: 4px; top: 6px; }
         .mm-nav { transition: opacity 360ms ease; }
         /* arriving from the Stars: the dock stays faintly visible (and
            locked) under the clouds, then clears as the ground appears */
         .mm-nav.is-waiting { opacity: 0.25; pointer-events: none; }
         .mm-nav.is-waiting * { pointer-events: none !important; }
         .mm-header.is-out * { pointer-events: none !important; }
-        .mm-title {
-          margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-weight: 400;
-          font-size: clamp(32px, 9.5vw, 40px); letter-spacing: -0.01em; color: #1d2744;
-        }
-        .mm-toggle {
-          pointer-events: auto; width: var(--icon-btn-size); height: var(--icon-btn-size); border-radius: 50%; border: 0;
-          background: #f7f2e3; color: #2b2f45; display: inline-flex; align-items: center; justify-content: center;
-          box-shadow: 0 3px 10px rgba(10, 18, 30, 0.2); cursor: pointer;
-        }
-        .mm-toggle svg { width: 21px; height: 21px; }
+        .mm-title { margin: 0; color: var(--sisi-ink); }
+        .mm-header .mm-toggle { pointer-events: auto; }
         .mm-list-wrap { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
         .mm-list-wrap > * { pointer-events: auto; }
       `}</style>

@@ -90,17 +90,17 @@ export default function WritePostcardPage() {
 
   if (!pending) {
     // Loading state (short flash, sessionStorage 읽는 중)
-    return <main className="min-h-svh bg-journey-cream" />;
+    return <main className="min-h-dvh bg-journey-cream" />;
   }
 
   return (
-    <main className="relative min-h-svh w-full bg-journey-cream flex flex-col">
+    <main className="relative min-h-dvh w-full bg-journey-cream flex flex-col">
       {/* Header — back only */}
       <header className="shrink-0 pt-[52px] px-[24px]">
         <button
           onClick={handleBack}
-          aria-label="back"
-          className="h-9 w-9 flex items-center justify-center rounded-full bg-white/60 backdrop-blur-md border border-white/50 text-journey-navy shadow-sm hover:bg-white/80 transition"
+          aria-label="Back"
+          className="ds-icon-btn ds-icon-btn--filled"
         >
           <svg
             width="14"
@@ -126,7 +126,7 @@ export default function WritePostcardPage() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full max-w-[280px] mx-auto"
         >
-          <div className="bg-white rounded-[12px] p-[10px] pb-[14px] shadow-xl">
+          <div className="bg-paper rounded-[12px] p-[10px] pb-[14px] shadow-xl">
             <div className="relative rounded-[6px] overflow-hidden aspect-square bg-journey-navy/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -140,7 +140,7 @@ export default function WritePostcardPage() {
               </div>
             </div>
             {/* Date inside polaroid */}
-            <p className="font-sentient text-[10px] text-journey-navy/60 tracking-wider mt-[6px] px-[4px]">
+            <p className="t-meta text-journey-navy/60 mt-[6px] px-[4px]">
               {nowStr}
             </p>
           </div>
@@ -153,8 +153,8 @@ export default function WritePostcardPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-[28px]"
         >
-          <p className="font-sentient text-[18px] text-journey-navy leading-tight">
-            today i felt...
+          <p className="t-card-title text-journey-navy">
+            Today i felt...
           </p>
         </motion.div>
 
@@ -167,17 +167,17 @@ export default function WritePostcardPage() {
           <textarea
             value={caption}
             onChange={(e) => setCaption(e.target.value.slice(0, 300))}
-            placeholder="share your thoughts, feelings, or anything that stays with you."
+            placeholder="Share your thoughts, feelings, or anything that stays with you."
             rows={5}
-            className="font-sentient w-full mt-[12px] p-[16px] rounded-[14px] bg-white/70 border border-journey-navy/10 text-[15px] text-journey-navy placeholder:text-journey-navy/40 outline-none resize-none leading-relaxed transition-colors focus:bg-white focus:border-journey-navy/25"
+            className="ds-field w-full mt-[12px] p-[16px]"
           />
-          <p className="text-[10px] font-mono text-journey-navy/40 text-right mt-1">
+          <p className="t-meta text-journey-navy/40 text-right mt-1">
             {caption.length}/300
           </p>
         </motion.div>
 
         {error && (
-          <p className="mt-3 font-sentient italic text-[13px] text-journey-oxblood text-center">
+          <p className="ds-error mt-3 text-center" role="alert">
             {error}
           </p>
         )}
@@ -193,9 +193,9 @@ export default function WritePostcardPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full h-[56px] rounded-[28px] bg-journey-purple text-journey-navy font-sentient text-[16px] shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-70 disabled:cursor-wait transition-all"
+          className="ds-btn ds-btn--primary ds-btn--block w-full"
         >
-          {saving ? "saving..." : "save postcard"}
+          {saving ? "saving..." : "Save postcard"}
         </button>
       </motion.div>
     </main>
@@ -206,20 +206,20 @@ export default function WritePostcardPage() {
 function MiniStamp() {
   return (
     <div
-      className="relative flex items-center justify-center bg-white shadow-sm"
+      className="relative flex items-center justify-center bg-paper shadow-sm"
       style={{
         width: 34,
         height: 40,
         borderRadius: "2px",
-        border: "1.2px dashed rgba(31,42,68,0.3)",
+        border: "1.2px dashed rgba(16, 45, 50,0.3)",
       }}
     >
       <svg width="18" height="18" viewBox="0 0 100 100">
         <defs>
           <radialGradient id="write-stamp-star" cx="50%" cy="50%">
-            <stop offset="0%" stopColor="rgb(255,248,225)" />
-            <stop offset="40%" stopColor="rgb(255,236,189)" />
-            <stop offset="100%" stopColor="rgb(212,168,42)" />
+            <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="40%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="100%" stopColor="rgb(241, 196, 94)" />
           </radialGradient>
         </defs>
         <path

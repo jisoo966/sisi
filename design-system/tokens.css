@@ -1,0 +1,115 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * Sísí design tokens — the single source for colour, space, layers,
+ * viewport and motion. Every page and component reads from here.
+ *
+ * Colour: five core colours only. Variations are opacity/blends of these.
+ * The `-rgb` channels let Tailwind and CSS derive alphas:
+ *   rgb(var(--sisi-ink-rgb) / 0.6)   ·   bg-ink/60
+ * Painted illustration assets keep their own colours; these tokens are
+ * for everything drawn by the UI.
+ * ───────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* core five */
+  --sisi-blue: #7198d8;
+  --sisi-ink: #102d32;
+  --sisi-paper: #f5efdd;
+  --sisi-gold: #f1c45e;
+  --sisi-coral: #ee684e;
+
+  --sisi-blue-rgb: 113 152 216;
+  --sisi-ink-rgb: 16 45 50;
+  --sisi-paper-rgb: 245 239 221;
+  --sisi-gold-rgb: 241 196 94;
+  --sisi-coral-rgb: 238 104 78;
+
+  /* derived — opacity only */
+  --ink-80: rgba(16, 45, 50, 0.8);
+  --ink-60: rgba(16, 45, 50, 0.6);
+  --ink-35: rgba(16, 45, 50, 0.35);
+  --ink-14: rgba(16, 45, 50, 0.14);
+  --ink-08: rgba(16, 45, 50, 0.08);
+
+  --paper-90: rgba(245, 239, 221, 0.9);
+  --paper-80: rgba(245, 239, 221, 0.8);
+  --paper-60: rgba(245, 239, 221, 0.6);
+  --paper-35: rgba(245, 239, 221, 0.35);
+  --paper-14: rgba(245, 239, 221, 0.14);
+
+  --blue-60: rgba(113, 152, 216, 0.6);
+  --blue-20: rgba(113, 152, 216, 0.2);
+  --gold-60: rgba(241, 196, 94, 0.6);
+
+  --overlay-dark: rgba(16, 45, 50, 0.42);
+
+  /* surfaces */
+  --paper-grain: url("/assets/ui/paper-grain.webp");
+  --paper-shadow: 0 3px 8px rgba(16, 45, 50, 0.12), 0 12px 28px rgba(16, 45, 50, 0.08);
+  --paper-shadow-soft: 0 2px 6px rgba(16, 45, 50, 0.1);
+  --paper-radius: 15px 13px 17px 12px;
+
+  /* spacing — 4px system */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --screen-pad: 20px;
+  --touch-min: 44px;
+
+  /* viewport */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --nav-height: 56px;
+
+  /* layers */
+  --z-background: 0;
+  --z-decoration: 10;
+  --z-world-content: 20;
+  --z-floating-ui: 100;
+  --z-navigation: 200;
+  --z-backdrop: 1000;
+  --z-modal: 1001;
+  --z-toast: 1100;
+
+  /* motion */
+  --ease-sisi: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-instant: 140ms;
+  --motion-bubble: 320ms;
+  --motion-paper: 420ms;
+  --motion-card: 420ms;
+  --motion-navigation: 520ms;
+  --motion-slow-walk: 800ms;
+  --motion-resume-walk: 1000ms;
+  --motion-sky-transition: 2800ms;
+
+  /* ── legacy aliases (v1 / v2 names still used in older files) ──
+     They now resolve to the five colours, so every page shares one palette. */
+  --cream: var(--sisi-paper);
+  --cream-off: var(--sisi-paper);
+  --plum: var(--sisi-ink);
+  --brown-warm: var(--ink-80);
+  --brown-dark: var(--sisi-ink);
+  --gold-mustard: var(--sisi-gold);
+  --rose-dusty: var(--sisi-coral);
+  --rose-coral: var(--sisi-coral);
+  --sage: var(--ink-60);
+  --lavender: var(--blue-60);
+  --journey-cream: var(--sisi-paper);
+  --journey-ice: var(--blue-60);
+  --journey-cobalt: var(--sisi-blue);
+  --journey-navy: var(--sisi-ink);
+  --journey-oxblood: var(--sisi-coral);
+  --journey-purple: var(--sisi-blue);
+  --journey-frost: var(--sisi-paper);
+}
+
+@media (max-width: 359px) {
+  :root { --screen-pad: 16px; }
+}

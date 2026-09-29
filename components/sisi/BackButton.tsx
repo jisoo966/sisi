@@ -12,7 +12,7 @@ export function BackButton({ className = "" }: { className?: string }) {
     <button
       onClick={() => router.back()}
       aria-label="Back"
-      className={`flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition ${className}`}
+      className={`flex h-9 w-9 items-center justify-center rounded-full bg-paper/40 backdrop-blur-md border border-paper/40 text-journey-navy/80 shadow-sm hover:bg-paper/60 transition ${className}`}
     >
       <svg
         width="14"

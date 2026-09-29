@@ -1,5 +1,6 @@
 "use client";
 
+import { IconBack, IconButton, PrimaryButton, SecondaryButton, StarGlyph, TextAction } from "@/components/ds";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -89,7 +90,7 @@ function LoginInner() {
   }
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-journey-cream">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-journey-cream">
       {/* Background — same as splash */}
       <Image
         src="/journey/OnboardingScreen.png"
@@ -101,29 +102,14 @@ function LoginInner() {
       />
       {/* Soft cream overlay — 여우 이미지 위 텍스트 readability를 위해 강화.
           가운데(form 영역)를 더 진하게 해서 label/placeholder 잘 보이게. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-journey-cream/55 via-journey-cream/85 to-journey-cream/95" />
+      <div className="absolute inset-0 bg-gradient-to-b from-paper/55 via-paper/85 to-paper/95" />
 
       {/* Back */}
-      <Link
-        href="/"
-        aria-label="Back"
-        className="absolute top-[52px] left-[24px] z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-      </Link>
+      <IconButton href="/" label="Back" filled className="absolute top-[calc(var(--safe-top)+16px)] left-[16px] z-20">
+        <IconBack />
+      </IconButton>
 
-      <div className="relative z-10 flex min-h-svh flex-col items-center justify-center px-[24px]">
+      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-[24px]">
         <div className="w-full max-w-[340px]">
           {/* Title */}
           <motion.div
@@ -132,12 +118,8 @@ function LoginInner() {
             transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
             className="text-center mb-[48px]"
           >
-            <p className="font-sentient italic text-[15px] text-journey-navy mb-3">
-              enter your journey
-            </p>
-            <h1 className="font-sentient text-[42px] text-journey-navy leading-none">
-              SiSi
-            </h1>
+            <p className="t-affirmation text-ink mb-3">Enter your journey</p>
+            <h1 className="t-display text-ink">Sísí</h1>
           </motion.div>
 
           <AnimatePresence mode="wait">
@@ -155,11 +137,8 @@ function LoginInner() {
               >
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   <div>
-                    <label
-                      htmlFor="email"
-                      className="block font-sentient text-[13px] text-journey-navy mb-2 tracking-wider"
-                    >
-                      your email
+                    <label htmlFor="email" className="ds-label">
+                      Your email
                     </label>
                     <input
                       id="email"
@@ -168,12 +147,13 @@ function LoginInner() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
                       required
-                      className="w-full bg-transparent border-b border-journey-navy/50 focus:border-journey-navy outline-none py-3 font-sentient text-[18px] text-journey-navy placeholder:text-journey-navy/65 transition-colors"
+                      autoComplete="email"
+                      className="ds-field"
                     />
                   </div>
 
                   {error && (
-                    <p className="font-sentient italic text-[13px] text-journey-oxblood">
+                    <p className="ds-error" role="alert">
                       {error}
                     </p>
                   )}
@@ -181,48 +161,37 @@ function LoginInner() {
                   {/* Purple primary CTA. Disabled여도 purple 색상 유지 —
                       opacity만 낮춰서 "이 버튼이야, 아직 활성 안 됨" 신호.
                       완전 다른 색(gray)은 오히려 "다른 버튼" 처럼 헷갈림. */}
-                  <button
-                    type="submit"
-                    disabled={loading || !email.trim()}
-                    className="mt-4 w-full h-[56px] rounded-[24px] bg-journey-purple backdrop-blur-md border border-white/40 text-journey-navy font-sentient text-[16px] shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-55 disabled:cursor-not-allowed transition-all"
-                  >
-                    {loading ? "sending..." : "send magic link ✦"}
-                  </button>
+                  <PrimaryButton type="submit" block loading={loading} disabled={!email.trim()} className="mt-2">
+                    Send magic link
+                  </PrimaryButton>
                 </form>
 
                 {/* "or" divider */}
                 <div className="flex items-center gap-3 my-6">
-                  <div className="flex-1 h-px bg-journey-navy/40" />
-                  <span className="font-sentient italic text-[12px] text-journey-navy">
-                    or
-                  </span>
-                  <div className="flex-1 h-px bg-journey-navy/40" />
+                  <div className="flex-1 h-px bg-ink/15" />
+                  <span className="t-meta text-ink/60">or</span>
+                  <div className="flex-1 h-px bg-ink/15" />
                 </div>
 
                 {/* Guest mode (SECONDARY) — 이메일 없이 바로 시작 */}
-                <button
-                  onClick={continueAsGuest}
-                  className="w-full h-[52px] rounded-[24px] bg-white/50 backdrop-blur-md border border-white/60 text-journey-navy font-sentient text-[15px] hover:bg-white/70 active:scale-98 transition-all"
-                >
-                  continue as guest
-                </button>
-                <p className="mt-2 text-center font-sentient italic text-[11px] text-journey-navy">
-                  try sísí first · save your journey later
-                </p>
-                <p className="mt-4 text-center font-sentient text-[11px] text-journey-navy leading-relaxed">
-                  by continuing, you agree to our{" "}
+                <SecondaryButton block onClick={continueAsGuest}>
+                  Continue as guest
+                </SecondaryButton>
+                <p className="ds-helper mt-2 text-center">Try Sísí first, and save your journey later.</p>
+                <p className="ds-helper mt-4 text-center">
+                  By continuing, you agree to our{" "}
                   <Link
                     href="/terms"
-                    className="underline underline-offset-2 hover:text-journey-navy"
+                    className="underline underline-offset-2 hover:text-ink"
                   >
-                    terms
+                    Terms
                   </Link>{" "}
                   and{" "}
                   <Link
                     href="/privacy"
-                    className="underline underline-offset-2 hover:text-journey-navy"
+                    className="underline underline-offset-2 hover:text-ink"
                   >
-                    privacy policy
+                    Privacy policy
                   </Link>
                   .
                 </p>
@@ -235,30 +204,25 @@ function LoginInner() {
                 transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="text-center"
               >
-                <div className="text-[32px] text-journey-navy mb-6">✦</div>
-                <p className="font-sentient text-[22px] text-journey-navy mb-3">
-                  check your inbox.
-                </p>
-                <p className="font-sentient text-[15px] text-journey-navy/70 leading-relaxed">
-                  a link is on its way to{" "}
-                  <span className="text-journey-navy italic">{email}</span>.
+                <div className="mb-6 flex justify-center"><StarGlyph size={32} /></div>
+                <p className="t-screen-title text-ink mb-3">Check your inbox.</p>
+                <p className="t-body text-ink/80">
+                  A link is on its way to <span className="italic">{email}</span>.
                   <br />
-                  it will find you.
+                  It will find you.
                 </p>
-                <p className="mt-6 font-sentient italic text-[12px] text-journey-navy/55 leading-relaxed">
-                  open the link in the same browser you started in.
-                  <br />
-                  (if it opens inside your mail app, tap the compass icon to open in safari.)
+                <p className="ds-helper mt-6">
+                  Open the link in the same browser you started in. If it opens inside your mail app, tap the compass icon to open it in Safari.
                 </p>
-                <button
+                <TextAction
+                  className="mt-6"
                   onClick={() => {
                     setSubmitted(false);
                     setEmail("");
                   }}
-                  className="mt-8 font-sentient text-[13px] text-journey-navy/50 hover:text-journey-navy transition-colors underline underline-offset-2"
                 >
-                  use a different email
-                </button>
+                  Use a different email
+                </TextAction>
               </motion.div>
             )}
           </AnimatePresence>
@@ -271,7 +235,7 @@ function LoginInner() {
 export default function LoginPage() {
   // useSearchParams는 Suspense boundary 필수
   return (
-    <Suspense fallback={<main className="min-h-svh w-full bg-journey-cream" />}>
+    <Suspense fallback={<main className="min-h-dvh w-full bg-paper" />}>
       <LoginInner />
     </Suspense>
   );

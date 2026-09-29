@@ -62,8 +62,8 @@ export default function GalleryLegacyPage() {
 
   return (
     <main
-      className="relative min-h-svh w-full"
-      style={{ backgroundColor: "#f7f2e3" }}
+      className="relative min-h-dvh w-full"
+      style={{ backgroundColor: "var(--sisi-paper)" }}
     >
       {/* Grid content — postcard 열리면 dim + slight scale (behind feel) */}
       <motion.div
@@ -72,19 +72,19 @@ export default function GalleryLegacyPage() {
           scale: isDetailOpen ? 0.97 : 1,
         }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 flex min-h-svh flex-col pt-[52px] px-[24px] pb-[100px]"
+        className="relative z-10 flex min-h-dvh flex-col pt-[52px] px-[24px] pb-[100px]"
       >
         {/* Header — 탭 페이지: back 없음. title + view toggle */}
         <header className="flex items-baseline justify-between mb-1">
-          <h1 className="font-sentient text-[22px] text-journey-navy/95">
+          <h1 className="t-screen-title text-journey-navy/95">
             Moments
           </h1>
           <ViewToggle view={view} onChange={handleViewChange} />
         </header>
-        <p className="font-sentient text-[13px] text-journey-navy/60 italic mb-6">
+        <p className="ds-helper text-journey-navy/60 italic mb-6">
           {postcards.length > 0
             ? `${postcards.length} moment${postcards.length === 1 ? "" : "s"} you've kept`
-            : "moments you've kept"}
+            : "Moments you've kept"}
         </p>
 
         {/* Postcards · Resting stars (only when some stars are resting) */}
@@ -105,8 +105,8 @@ export default function GalleryLegacyPage() {
                 onClick={() => setSection(key)}
                 className={`h-[32px] rounded-full px-4 font-sentient text-[14px] transition ${
                   section === key
-                    ? "bg-journey-cobalt text-[#f7f2e3]"
-                    : "bg-white/60 text-journey-navy/70 border border-journey-navy/10"
+                    ? "bg-sisi-blue text-paper"
+                    : "bg-paper/60 text-journey-navy/70 border border-journey-navy/10"
                 }`}
               >
                 {label}
@@ -136,9 +136,9 @@ export default function GalleryLegacyPage() {
         {/* Content view — timeline (default, 저널) OR grid (시각적 브라우징) */}
         {loaded && postcards.length === 0 && (
           <EmptyState
-            text="your postcards will gather here"
+            text="Your postcards will gather here"
             subtext="as you walk."
-            cta="+ keep a moment"
+            cta="Keep a moment"
             href="/moment"
           />
         )}
@@ -162,7 +162,7 @@ export default function GalleryLegacyPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="fixed inset-x-0 mx-auto w-fit bottom-[96px] z-30 rounded-[6px] bg-[#fbf6ea] px-5 py-3 font-sentient text-[15px] text-journey-navy shadow-[0_6px_20px_rgba(31,42,68,0.18)]"
+            className="t-body fixed inset-x-0 mx-auto w-fit bottom-[96px] z-30 rounded-[6px] bg-paper px-5 py-3 text-journey-navy shadow-[0_6px_20px_rgba(16, 45, 50,0.18)]"
             role="status"
           >
             {note}
@@ -176,7 +176,7 @@ export default function GalleryLegacyPage() {
         transition={{ duration: 0.3 }}
         style={{ pointerEvents: isDetailOpen ? "none" : "auto" }}
       >
-        <div className="journey-nav-host">
+        <div className="ds-nav-host journey-nav-host">
           <BottomNavV2 theme="light" activeTab="moments" />
         </div>
       </motion.div>
@@ -204,7 +204,7 @@ function ViewToggle({
   onChange: (v: View) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-white/60 backdrop-blur-md rounded-full p-[3px] border border-journey-navy/8">
+    <div className="flex items-center gap-1 bg-paper/60 backdrop-blur-md rounded-full p-[3px] border border-journey-navy/8">
       <ToggleButton
         active={view === "timeline"}
         onClick={() => onChange("timeline")}
@@ -240,7 +240,7 @@ function ToggleButton({
       aria-label={label}
       className={`h-[28px] w-[32px] flex items-center justify-center rounded-full transition ${
         active
-          ? "bg-white text-journey-navy shadow-sm"
+          ? "bg-paper text-journey-navy shadow-sm"
           : "text-journey-navy/50 hover:text-journey-navy/80"
       }`}
     >
@@ -317,9 +317,9 @@ function PostcardsGrid({
       {/* + keep a moment CTA */}
       <Link
         href="/moment"
-        className="font-sentient block w-full text-center rounded-[24px] bg-journey-purple/80 backdrop-blur-md text-journey-navy text-[16px] h-[54px] flex items-center justify-center shadow-md hover:brightness-105 active:scale-98 transition"
+        className="ds-btn ds-btn--primary ds-btn--block block w-full"
       >
-        + keep a moment
+        Keep a moment
       </Link>
     </>
   );
@@ -349,8 +349,8 @@ function PostcardsTimeline({
         <div key={dateLabel}>
           {/* Date header */}
           <div className="flex items-center gap-[8px] mb-[12px]">
-            <div className="h-[6px] w-[6px] rounded-full bg-journey-purple" />
-            <p className="font-sentient text-[13px] text-journey-navy/70 tracking-wider">
+            <div className="h-[6px] w-[6px] rounded-full bg-star" />
+            <p className="t-body text-journey-navy/70">
               {dateLabel}
             </p>
           </div>
@@ -372,9 +372,9 @@ function PostcardsTimeline({
       {/* + keep a moment CTA (bottom) */}
       <Link
         href="/moment"
-        className="font-sentient block w-full text-center rounded-[24px] bg-journey-purple/80 backdrop-blur-md text-journey-navy text-[16px] h-[54px] flex items-center justify-center shadow-md hover:brightness-105 active:scale-98 transition mt-[8px]"
+        className="ds-btn ds-btn--primary ds-btn--block block w-full mt-[8px]"
       >
-        + keep a moment
+        Keep a moment
       </Link>
     </div>
   );
@@ -396,10 +396,10 @@ function TimelineEntry({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
       onClick={onClick}
-      className="flex items-start gap-[12px] w-full text-left p-[10px] rounded-[14px] bg-white/60 hover:bg-white active:scale-98 transition"
+      className="flex items-start gap-[12px] w-full text-left p-[10px] rounded-[14px] bg-paper/60 hover:bg-paper active:scale-98 transition"
     >
       {/* Polaroid-style thumbnail — 흰 프레임 + tiny stamp ✦ + rotate으로 postcard 감성 */}
-      <div className="shrink-0 relative bg-white rounded-[6px] p-[4px] pb-[10px] shadow-sm rotate-[-1.5deg]">
+      <div className="shrink-0 relative bg-paper rounded-[6px] p-[4px] pb-[10px] shadow-sm rotate-[-1.5deg]">
         <div className="w-[56px] h-[56px] rounded-[3px] overflow-hidden bg-journey-cream relative">
           {postcard.image.startsWith("data:") ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -422,9 +422,9 @@ function TimelineEntry({
             <svg width="10" height="10" viewBox="0 0 100 100">
               <defs>
                 <radialGradient id={`thumb-star-${postcard.id}`} cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="rgb(255,248,225)" />
-                  <stop offset="45%" stopColor="rgb(255,236,189)" />
-                  <stop offset="100%" stopColor="rgb(251,198,106)" />
+                  <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+                  <stop offset="45%" stopColor="rgb(245, 239, 221)" />
+                  <stop offset="100%" stopColor="rgb(241, 196, 94)" />
                 </radialGradient>
               </defs>
               <path
@@ -438,16 +438,16 @@ function TimelineEntry({
 
       {/* Time + text snippet */}
       <div className="flex-1 min-w-0 pt-[2px]">
-        <p className="font-sentient text-[11px] text-journey-navy/50 tracking-wider mb-[4px]">
+        <p className="t-meta text-journey-navy/50 mb-[4px]">
           {time}
         </p>
         {postcard.text ? (
-          <p className="font-sentient text-[14px] text-journey-navy/90 leading-snug line-clamp-3">
+          <p className="t-body text-journey-navy/90 line-clamp-3">
             {postcard.text}
           </p>
         ) : (
-          <p className="font-sentient italic text-[13px] text-journey-navy/50">
-            a moment kept in silence
+          <p className="ds-helper italic text-journey-navy/50">
+            A moment kept in silence
           </p>
         )}
       </div>
@@ -544,7 +544,7 @@ function PostcardDetail({
       {/* Backdrop */}
       <motion.div
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink/60 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -567,7 +567,7 @@ function PostcardDetail({
           damping: 26,
           stiffness: 240,
         }}
-        className="relative z-10 mx-4 w-full max-w-[380px] h-[78vh] max-h-[700px] rounded-[20px] overflow-hidden shadow-2xl bg-[#f7f2e3] flex flex-col cursor-grab active:cursor-grabbing"
+        className="relative z-10 mx-4 w-full max-w-[380px] h-[78vh] max-h-[700px] rounded-[20px] overflow-hidden shadow-2xl bg-paper flex flex-col cursor-grab active:cursor-grabbing"
       >
         {/* Scene image — 55% of card (그림 위) */}
         <div className="relative w-full shrink-0" style={{ height: "55%" }}>
@@ -610,7 +610,7 @@ function PostcardDetail({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-[14px] left-[14px] z-10 h-8 w-8 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm text-journey-navy/80 hover:bg-white transition active:scale-90"
+            className="ds-icon-btn ds-icon-btn--filled absolute top-[14px] left-[14px] z-10"
           >
             <svg
               width="14"
@@ -634,7 +634,7 @@ function PostcardDetail({
             }}
             disabled={sharing}
             aria-label="Share this moment"
-            className="absolute top-[14px] left-[54px] z-10 h-8 w-8 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-sm text-journey-navy/80 hover:bg-white transition active:scale-90 disabled:opacity-40"
+            className="ds-icon-btn ds-icon-btn--filled absolute top-[14px] left-[54px] z-10"
           >
             {shareDone ? (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -657,15 +657,15 @@ function PostcardDetail({
           transition={{ delay: 0.15, duration: 0.5, ease: "easeOut" }}
           className="flex-1 px-[28px] pt-[24px] pb-[36px] overflow-y-auto relative"
         >
-          <p className="font-sentient text-[11px] text-journey-navy/50 tracking-[0.2em] uppercase mb-[14px]">
+          <p className="t-meta text-journey-navy/50 mb-[14px]">
             {dateStr}
           </p>
           {postcard.text ? (
-            <p className="font-sentient text-[18px] text-journey-navy leading-[1.55] pr-[44px]">
+            <p className="t-card-title text-journey-navy pr-[44px]">
               {postcard.text}
             </p>
           ) : (
-            <p className="font-sentient italic text-[16px] text-journey-navy/50">
+            <p className="t-body italic text-journey-navy/50">
               A moment kept in silence.
             </p>
           )}
@@ -695,7 +695,7 @@ function PostcardDetail({
             repeat: 2,
             ease: "easeInOut",
           }}
-          className="absolute top-[8px] left-1/2 -translate-x-1/2 w-[36px] h-[4px] rounded-full bg-white/70 pointer-events-none z-20"
+          className="absolute top-[8px] left-1/2 -translate-x-1/2 w-[36px] h-[4px] rounded-full bg-paper/70 pointer-events-none z-20"
         />
       </motion.div>
     </motion.div>
@@ -706,12 +706,12 @@ function PostcardDetail({
 function Stamp() {
   return (
     <div
-      className="relative flex items-center justify-center bg-[#F5F4EC] shadow-md"
+      className="relative flex items-center justify-center bg-paper shadow-md"
       style={{
         width: 48,
         height: 56,
         borderRadius: "3px",
-        border: "1.5px dashed rgba(31,42,68,0.35)",
+        border: "1.5px dashed rgba(16, 45, 50,0.35)",
         transform: "rotate(0deg)",
       }}
     >
@@ -723,9 +723,9 @@ function Stamp() {
       >
         <defs>
           <radialGradient id="stamp-star-grad" cx="50%" cy="50%">
-            <stop offset="0%" stopColor="rgb(255,248,225)" />
-            <stop offset="40%" stopColor="rgb(255,236,189)" />
-            <stop offset="100%" stopColor="rgb(212,168,42)" />
+            <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="40%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="100%" stopColor="rgb(241, 196, 94)" />
           </radialGradient>
         </defs>
         <path
@@ -734,8 +734,8 @@ function Stamp() {
         />
       </svg>
       {/* stamp corner mark */}
-      <p className="absolute bottom-[3px] font-sentient text-[7px] text-journey-navy/70 tracking-[0.15em]">
-        sísí
+      <p className="t-meta absolute bottom-[3px] text-journey-navy/70">
+        Sísí
       </p>
     </div>
   );
@@ -751,16 +751,16 @@ function SmallStar() {
           width: 28,
           height: 28,
           background:
-            "radial-gradient(circle, rgba(255,181,112,0.7), transparent 90%)",
+            "radial-gradient(circle, rgba(241, 196, 94,0.7), transparent 90%)",
           filter: "blur(3px)",
         }}
       />
       <svg width="20" height="20" viewBox="0 0 100 100" className="relative">
         <defs>
           <radialGradient id="detail-small-star" cx="50%" cy="50%">
-            <stop offset="0%" stopColor="rgb(255,248,225)" />
-            <stop offset="35%" stopColor="rgb(255,236,189)" />
-            <stop offset="100%" stopColor="rgb(251,198,106)" />
+            <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="35%" stopColor="rgb(245, 239, 221)" />
+            <stop offset="100%" stopColor="rgb(241, 196, 94)" />
           </radialGradient>
         </defs>
         <path
@@ -785,15 +785,15 @@ function EmptyState({
 }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-16">
-      <p className="font-sentient text-base text-journey-navy/60 text-center mb-1">
+      <p className="t-body text-journey-navy/60 text-center mb-1">
         {text}
       </p>
-      <p className="font-sentient text-sm text-journey-navy/40 text-center mb-6">
+      <p className="t-body text-journey-navy/40 text-center mb-6">
         {subtext}
       </p>
       <Link
         href={href}
-        className="font-sentient text-sm rounded-[20px] bg-journey-purple/80 text-journey-navy px-[24px] h-[44px] flex items-center hover:brightness-105 shadow-md transition"
+        className="ds-btn ds-btn--primary"
       >
         {cta}
       </Link>

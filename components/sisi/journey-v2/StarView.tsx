@@ -160,7 +160,7 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
         .postcard-shadow {
           position: absolute;
           inset: 14px 8px -10px 8px;
-          background: rgba(0, 0, 0, 0.42);
+          background: rgba(16, 45, 50, 0.42);
           border-radius: 10px;
           filter: blur(14px);
           pointer-events: none;
@@ -178,7 +178,7 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
           overflow: hidden;
           border-radius: 2px;
           margin-bottom: 14px;
-          background: #4384e3;
+          background: var(--sisi-ink);
         }
         .photo img {
           position: absolute;
@@ -218,28 +218,28 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
           top: 11%;
         }
         .title {
-          font-family: var(--font-fraunces), Georgia, serif;
+          font-family: var(--font-editorial);
           font-size: clamp(15px, 4.4vw, 18px);
           line-height: 1.3;
-          color: #2b2f45;
+          color: var(--sisi-ink);
           margin: 0 44px 6px 2px;
         }
         .sub {
-          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-family: var(--font-editorial);
           font-style: italic;
           font-size: clamp(12px, 3.4vw, 13.5px);
-          color: rgba(43, 47, 69, 0.62);
+          color: rgba(16, 45, 50, 0.62);
           margin: 6px 44px 6px 2px;
         }
         .count {
-          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-family: var(--font-editorial);
           font-size: 12px;
-          color: rgba(43, 47, 69, 0.55);
+          color: rgba(16, 45, 50, 0.55);
           margin: 6px 0 0 2px;
         }
         .rule {
           height: 1px;
-          background: rgba(43, 47, 69, 0.14);
+          background: rgba(16, 45, 50, 0.14);
           margin-right: 44px;
         }
         .stamp {
@@ -248,7 +248,7 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
           bottom: 16px;
           width: 34px;
           height: 34px;
-          border: 1.5px dashed rgba(196, 132, 124, 0.85);
+          border: 1.5px dashed rgba(238, 104, 78, 0.85);
           border-radius: 3px;
           display: inline-flex;
           align-items: center;
@@ -258,7 +258,7 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
         .stamp svg {
           width: 20px;
           height: 20px;
-          fill: #d98673;
+          fill: var(--sisi-coral);
         }
         :global(.star-view) :global(.card-hint) {
           position: absolute;
@@ -266,11 +266,11 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
           left: 0;
           right: 0;
           text-align: center;
-          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-family: var(--font-editorial);
           font-style: italic;
           font-size: 12px;
           letter-spacing: 0.04em;
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(245, 239, 221, 0.6);
           margin: 0;
         }
         .back-btn {
@@ -285,20 +285,20 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
           padding: 8px 14px;
           background: transparent;
           border: 0;
-          color: rgba(255, 255, 255, 0.7);
+          color: rgba(245, 239, 221, 0.7);
           cursor: pointer;
           pointer-events: auto;
           transition: color 0.2s ease;
         }
         .back-btn:hover {
-          color: rgba(255, 255, 255, 0.95);
+          color: rgba(245, 239, 221, 0.95);
         }
         .back-btn svg {
           width: 22px;
           height: 22px;
         }
         .back-label {
-          font-family: var(--font-eb-garamond), Georgia, serif;
+          font-family: var(--font-editorial);
           letter-spacing: 0.1em;
           text-transform: lowercase;
           font-size: 11px;

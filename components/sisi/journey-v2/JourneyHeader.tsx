@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { IconBag, IconButton, IconCamera, IconMenu } from "@/components/ds";
 
 /**
  * JourneyHeader — minimal, quiet header per mockup "Quiet main journey".
@@ -72,30 +73,21 @@ export function JourneyHeader({
           satchel = optional customization drawer. */}
       <div className="right-col">
         {onCameraClick && (
-          <button type="button" onClick={onCameraClick} aria-label="Capture a moment" className="disc-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z" />
-              <circle cx="12" cy="13" r="3.4" />
-            </svg>
-          </button>
+          <IconButton filled label="Capture a moment" onClick={onCameraClick}>
+            <IconCamera />
+          </IconButton>
         )}
         {onSatchelClick && (
-          <button type="button" onClick={onSatchelClick} aria-label="Open your satchel" className="disc-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
-              <path d="M5.5 8h13l-1 11.5a1.5 1.5 0 0 1-1.5 1.5H8a1.5 1.5 0 0 1-1.5-1.5z" />
-              <path d="M10 12.5h4" />
-            </svg>
-          </button>
+          <IconButton filled label="Open your satchel" onClick={onSatchelClick}>
+            <IconBag />
+          </IconButton>
         )}
-        <button type="button" onClick={onMenuClick} aria-label="Menu" className="disc-btn disc-btn--quiet">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <line x1="6" y1="8" x2="18" y2="8" />
-            <line x1="6" y1="12" x2="18" y2="12" />
-            <line x1="6" y1="16" x2="18" y2="16" />
-          </svg>
-          {hasNudge && <span className="nudge-dot" />}
-        </button>
+        <span className="menu-wrap">
+          <IconButton label="Menu" surface={isDark ? "dark" : "paper"} className="menu-btn" onClick={onMenuClick}>
+            <IconMenu />
+          </IconButton>
+          {hasNudge && <span className="nudge-dot" aria-hidden />}
+        </span>
       </div>
 
       <style jsx>{`
@@ -109,85 +101,38 @@ export function JourneyHeader({
           justify-content: space-between;
           gap: 12px;
           z-index: 12;
-          color: var(--journey-navy);
+          color: var(--sisi-ink);
         }
-        :global(.journey-header.is-dark) { color: rgba(255, 255, 255, 0.95); }
+        :global(.journey-header.is-dark) { color: var(--paper-90); }
 
-        .left-col {
-          min-width: 0;
-          flex: 1 1 auto;
-        }
+        .left-col { min-width: 0; flex: 1 1 auto; }
+        /* the date is functional metadata (Inter); the greeting is Sísí's voice */
         .date-line {
-          font-family: var(--font-fraunces), Georgia, serif;
-          font-weight: 400;
-          font-size: var(--date-size);
-          line-height: 1;
-          margin: 0 0 10px 0;
-          opacity: 0.7;
+          font-family: var(--font-ui);
+          font-weight: 500;
+          font-size: var(--text-meta);
+          line-height: var(--leading-meta);
+          margin: 0 0 8px 0;
+          color: var(--ink-80);
           letter-spacing: 0.01em;
         }
-        :global(.journey-header.is-dark) .date-line { opacity: 0.85; }
-
+        :global(.journey-header.is-dark) .date-line { color: var(--paper-80); }
         .greeting-line {
-          font-family: var(--font-fraunces), Georgia, serif;
+          font-family: var(--font-editorial);
           font-weight: 400;
-          font-size: var(--greeting-size);
-          line-height: 1.2;
+          font-size: var(--text-display);
+          line-height: var(--leading-display);
           margin: 0;
-          letter-spacing: -0.005em;
+          letter-spacing: -0.015em;
         }
-        .name-italic {
-          font-style: italic;
-        }
-        .soft-dot {
-          /* the trailing period stays upright — italic period visually drifts */
-          font-style: normal;
-        }
-
-        .right-col {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
-          flex-shrink: 0;
-          margin-top: 2px;
-        }
-        .disc-btn {
-          position: relative;
-          width: var(--icon-btn-size);
-          height: var(--icon-btn-size);
-          padding: 0;
-          border: 0;
-          border-radius: 50%;
-          background: rgba(247, 242, 227, 0.92);
-          color: #2b2f45;
-          box-shadow: 0 2px 8px rgba(20, 30, 60, 0.18);
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          -webkit-tap-highlight-color: transparent;
-          transition: transform 0.12s ease;
-        }
-        .disc-btn:active { transform: scale(0.94); }
-        /* Account & settings: present but quieter than the two tools. */
-        .disc-btn--quiet {
-          width: calc(var(--icon-btn-size) * 0.8);
-          height: calc(var(--icon-btn-size) * 0.8);
-          background: rgba(247, 242, 227, 0.6);
-          box-shadow: none;
-        }
-        .disc-btn svg { width: 52%; height: 52%; }
-
+        .name-italic { font-style: italic; }
+        /* the trailing period stays upright — an italic period visually drifts */
+        .soft-dot { font-style: normal; }
+        .right-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+        .menu-wrap { position: relative; display: inline-flex; }
         .nudge-dot {
-          position: absolute;
-          top: 20%;
-          right: 22%;
-          width: 6px;
-          height: 6px;
-          border-radius: 9999px;
-          background: #d18a5b;
-          border: 1px solid rgba(245, 239, 228, 0.9);
+          position: absolute; top: 10px; right: 10px; width: 6px; height: 6px; border-radius: 9999px;
+          background: var(--sisi-coral); border: 1px solid var(--paper-90); pointer-events: none;
         }
       `}</style>
     </motion.header>

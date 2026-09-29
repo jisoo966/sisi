@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BottomNav } from "@/components/sisi/BottomNav";
+import { StickerNavigationHost } from "@/components/ds";
 import { usePageBg } from "@/lib/usePageBg";
 import {
   loadStars,
@@ -61,7 +61,7 @@ type Tab = "following" | "constellation";
  */
 export default function MyStarsPage() {
   // 밤하늘 톤 — safe area 위쪽도 navy로 자연스럽게
-  usePageBg("#1a1737");
+  usePageBg("var(--sisi-ink)");
 
   const [phase, setPhase] = useState<Phase>("default");
   const [tab, setTab] = useState<Tab>("following");
@@ -152,7 +152,7 @@ export default function MyStarsPage() {
   }
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-[#1a1737]">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-ink">
       {/* Background — phase에 따라 다름 */}
       <BackgroundLayer phase={phase} onVideoEnd={onVideoEnd} />
 
@@ -165,13 +165,13 @@ export default function MyStarsPage() {
       )}
 
       {/* UI Layer — pointer-events-none로 클릭 통과, interactive elements만 auto */}
-      <div className="relative z-30 flex h-svh flex-col text-white pointer-events-none">
+      <div className="relative z-30 flex h-dvh flex-col text-paper pointer-events-none">
         {/* Header — 두 줄: (1) 타이틀 + 벨, (2) full-width 탭 */}
         {phase === "default" && (
           <header className="shrink-0 pt-[52px] px-[24px] pointer-events-auto">
             <div className="flex items-center justify-between">
               {stars.length > 0 ? (
-                <h1 className="font-sentient text-[22px] text-white/95">
+                <h1 className="t-screen-title text-paper/95">
                   My Stars
                 </h1>
               ) : (
@@ -179,7 +179,7 @@ export default function MyStarsPage() {
               )}
               <button
                 aria-label="Notifications"
-                className="shrink-0 h-9 w-9 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg hover:bg-white/30 transition"
+                className="ds-icon-btn ds-icon-btn--filled ds-on-dark shrink-0"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
@@ -198,13 +198,13 @@ export default function MyStarsPage() {
         {/* Constellation 탭인데 완료된 별이 없을 때 empty state */}
         {phase === "default" && mounted && tab === "constellation" && constellation.length === 0 && (
           <div className="pointer-events-none flex-1 flex flex-col items-center justify-center px-[24px] text-center">
-            <p className="font-sentient text-[20px] text-white/85 leading-[1.4] mb-3">
-              your constellation
+            <p className="t-card-title text-paper/85 mb-3">
+              Your constellation
               <br />
               is still forming.
             </p>
-            <p className="font-sentient italic text-[14px] text-white/50 leading-relaxed max-w-[280px]">
-              when you arrive at a star, it stays here.
+            <p className="ds-helper italic text-paper/50 max-w-[280px]">
+              When you arrive at a star, it stays here.
               <br />
               a memory in the sky.
             </p>
@@ -221,7 +221,7 @@ export default function MyStarsPage() {
             transition={{ duration: 0.4, delay: 0.3 }}
             onClick={startAddingStar}
             aria-label="Add a wish"
-            className="fixed bottom-[95px] right-[24px] h-[56px] w-[56px] rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white shadow-lg flex items-center justify-center hover:bg-white/30 active:scale-95 transition z-30 pointer-events-auto"
+            className="fixed bottom-[95px] right-[24px] h-[56px] w-[56px] rounded-full bg-paper/20 backdrop-blur-md border border-paper/30 text-paper shadow-lg flex items-center justify-center hover:bg-paper/30 active:scale-95 transition z-30 pointer-events-auto"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -233,7 +233,7 @@ export default function MyStarsPage() {
       </div>
 
       {/* Bottom nav — shared component, phase가 default일 때만 */}
-      {phase === "default" && <BottomNav theme="dark" />}
+      {phase === "default" && <StickerNavigationHost />}
 
       {/* Empty state prompt — 첫 방문 시 */}
       <AnimatePresence>
@@ -363,16 +363,16 @@ function FirstTimePrompt({ onYes }: { onYes: () => void }) {
       transition={{ duration: 0.6, delay: 0.4 }}
       className="absolute inset-x-0 top-1/3 z-30 flex flex-col items-center px-[24px] text-center"
     >
-      <p className="font-sentient text-[22px] text-white/95 leading-[1.3] mb-[24px]">
+      <p className="t-screen-title text-paper/95 mb-[24px]">
         Do you want to
         <br />
         add a star?
       </p>
       <button
         onClick={onYes}
-        className="font-sentient text-[16px] rounded-[24px] bg-[#B19CD9] text-journey-navy px-[36px] h-[48px] shadow-lg hover:brightness-105 active:scale-95 transition"
+        className="ds-btn ds-btn--primary ds-on-dark"
       >
-        Yes ✦
+        Yes
       </button>
     </motion.div>
   );
@@ -476,7 +476,7 @@ function ClickableStar({
               height: size * 2.2,
               transform: "translate(-50%, -50%)",
               background:
-                "radial-gradient(circle, rgba(255,240,200,0.95) 0%, rgba(255,181,112,0.5) 35%, rgba(255,181,112,0.15) 65%, transparent 90%)",
+                "radial-gradient(circle, rgba(245, 239, 221,0.95) 0%, rgba(241, 196, 94,0.5) 35%, rgba(241, 196, 94,0.15) 65%, transparent 90%)",
               filter: "blur(6px)",
               zIndex: 1,
             }}
@@ -501,7 +501,7 @@ function ClickableStar({
               height: size * 1.4,
               transform: "translate(-50%, -50%)",
               background:
-                "radial-gradient(circle, rgba(255,255,240,1) 0%, rgba(255,236,189,0.6) 40%, transparent 80%)",
+                "radial-gradient(circle, rgba(245, 239, 221,1) 0%, rgba(245, 239, 221,0.6) 40%, transparent 80%)",
               filter: "blur(3px)",
               zIndex: 2,
             }}
@@ -568,7 +568,7 @@ function ClickableStar({
           style={{
             width: size * 1.6,
             height: size * 1.6,
-            background: "radial-gradient(circle, rgba(238,137,79,0.5) 0%, rgba(238,137,79,0.2) 50%, transparent 90%)",
+            background: "radial-gradient(circle, rgba(238, 104, 78,0.5) 0%, rgba(238, 104, 78,0.2) 50%, transparent 90%)",
             filter: "blur(4px)",
             zIndex: 2,
           }}
@@ -579,7 +579,7 @@ function ClickableStar({
           style={{
             width: size,
             height: size,
-            background: "radial-gradient(circle, rgba(255,181,112,1) 0%, rgba(255,181,112,0.35) 55%, transparent 100%)",
+            background: "radial-gradient(circle, rgba(241, 196, 94,1) 0%, rgba(241, 196, 94,0.35) 55%, transparent 100%)",
             filter: "blur(3.5px)",
             zIndex: 3,
           }}
@@ -594,16 +594,16 @@ function ClickableStar({
         >
           <defs>
             <radialGradient id={`star-grad-${star.id}`} cx="50%" cy="50%">
-              <stop offset="0%" stopColor="rgb(255,248,225)" />
-              <stop offset="35%" stopColor="rgb(255,236,189)" />
-              <stop offset="100%" stopColor="rgb(251,198,106)" />
+              <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+              <stop offset="35%" stopColor="rgb(245, 239, 221)" />
+              <stop offset="100%" stopColor="rgb(241, 196, 94)" />
             </radialGradient>
           </defs>
           <path
             d="M50 5 L61 39 L95 39 L68 60 L79 95 L50 74 L21 95 L32 60 L5 39 L39 39 Z"
             fill={`url(#star-grad-${star.id})`}
           />
-          <circle cx="50" cy="50" r="7" fill="rgb(255,248,225)" opacity="0.85" />
+          <circle cx="50" cy="50" r="7" fill="rgb(245, 239, 221)" opacity="0.85" />
         </svg>
       </motion.div>
 
@@ -617,15 +617,15 @@ function ClickableStar({
         }`}
         style={{ top: "50%" }}
       >
-        <p className="font-sentient text-[12px] text-white/90 leading-tight whitespace-nowrap">
+        <p className="t-meta text-paper/90 whitespace-nowrap">
           {star.timeframe}
         </p>
-        <p className="font-sentient text-[10px] text-white/60 leading-snug mt-[2px] max-w-[110px]">
+        <p className="t-meta text-paper/60 mt-[2px] max-w-[110px]">
           {star.wish}
         </p>
         {/* +N indicator — 같은 timeframe에 다른 wish 있으면 잔잔히 */}
         {extraCount > 0 && (
-          <p className="font-sentient italic text-[9px] text-white/40 mt-[2px] whitespace-nowrap">
+          <p className="t-meta italic text-paper/40 mt-[2px] whitespace-nowrap">
             + {extraCount} more
           </p>
         )}
@@ -660,7 +660,7 @@ function WishModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-40 flex items-center justify-center px-[24px] bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-center justify-center px-[24px] bg-ink/50 backdrop-blur-sm"
     >
       {/* Dark theme modal — 별하늘과 매칭 (베이지 background 안 튀게).
           my-stars의 밤 배경과 자연스럽게 연결. */}
@@ -672,20 +672,20 @@ function WishModal({
         className="w-full max-w-[340px] rounded-[24px] p-[24px]"
         style={{
           background:
-            "linear-gradient(180deg, rgba(35, 30, 75, 0.97) 0%, rgba(20, 17, 55, 0.98) 100%)",
-          border: "1px solid rgba(255, 236, 189, 0.14)",
+            "linear-gradient(180deg, rgba(16, 45, 50, 0.97) 0%, rgba(16, 45, 50, 0.98) 100%)",
+          border: "1px solid rgba(245, 239, 221, 0.14)",
           boxShadow:
-            "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(177, 156, 217, 0.12)",
+            "0 20px 60px rgba(16, 45, 50, 0.5), 0 0 40px rgba(113, 152, 216, 0.12)",
         }}
       >
         <div className="flex items-center justify-between mb-[16px]">
-          <h3 className="font-sentient text-[13px] text-white/85 tracking-widest uppercase">
+          <h3 className="t-meta text-paper/85">
             Name a wish
           </h3>
           <button
             onClick={onCancel}
-            aria-label="close"
-            className="text-white/60 hover:text-white/85 transition"
+            aria-label="Close"
+            className="text-paper/60 hover:text-paper/85 transition"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -700,13 +700,13 @@ function WishModal({
           placeholder="I want to..."
           rows={2}
           autoFocus
-          className="font-sentient w-full bg-transparent text-[18px] text-white placeholder:text-white/35 outline-none resize-none leading-snug border-b border-white/25 focus:border-white/50 pb-2 transition-colors"
+          className="ds-field ds-on-dark w-full pb-2"
         />
-        <p className="text-[11px] font-mono text-white/35 text-right mt-1">
+        <p className="t-meta text-paper/35 text-right mt-1">
           {text.length}/80
         </p>
 
-        <p className="font-sentient text-[12px] text-white/70 tracking-widest uppercase mt-[16px] mb-[10px]">
+        <p className="t-meta text-paper/70 mt-[16px] mb-[10px]">
           By when?
         </p>
         <div className="grid grid-cols-2 gap-[8px]">
@@ -716,8 +716,8 @@ function WishModal({
               onClick={() => setTimeframe(tf)}
               className={`font-sentient text-[14px] rounded-[12px] h-[42px] transition ${
                 timeframe === tf
-                  ? "bg-[#B19CD9]/90 text-journey-navy shadow-sm"
-                  : "bg-white/10 border border-white/20 text-white/80 hover:bg-white/15"
+                  ? "bg-sisi-blue/90 text-journey-navy shadow-sm"
+                  : "bg-paper/10 border border-paper/20 text-paper/80 hover:bg-paper/15"
               }`}
             >
               {tf}
@@ -725,19 +725,19 @@ function WishModal({
           ))}
         </div>
 
-        <div className="flex items-center justify-between mt-[20px] pt-[14px] border-t border-white/12">
+        <div className="flex items-center justify-between mt-[20px] pt-[14px] border-t border-paper/12">
           <button
             onClick={onCancel}
-            className="font-sentient text-[13px] text-white/55 tracking-widest uppercase hover:text-white/80 transition"
+            className="t-meta text-paper/55 hover:text-paper/80 transition"
           >
             Cancel
           </button>
           <button
             onClick={() => canSubmit && onCreate(text, timeframe!)}
             disabled={!canSubmit}
-            className="font-sentient text-[15px] rounded-full bg-[#B19CD9]/90 backdrop-blur-md border border-white/25 text-journey-navy px-[22px] h-[42px] shadow-md disabled:opacity-40 hover:brightness-105 transition"
+            className="ds-btn ds-btn--primary ds-on-dark"
           >
-            send to sky ✦
+            Send to sky
           </button>
         </div>
       </motion.div>
@@ -757,7 +757,7 @@ function TabSwitcher({
   onChange: (t: Tab) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-1 w-full bg-white/10 backdrop-blur-md border border-white/15 rounded-full p-1">
+    <div className="grid grid-cols-2 gap-1 w-full bg-paper/10 backdrop-blur-md border border-paper/15 rounded-full p-1">
       <TabButton
         active={current === "following"}
         onClick={() => onChange("following")}
@@ -788,8 +788,8 @@ function TabButton({
       onClick={onClick}
       className={`font-sentient text-[13px] rounded-full h-[34px] w-full flex items-center justify-center leading-none transition ${
         active
-          ? "bg-[#B19CD9]/85 text-journey-navy shadow-sm"
-          : "text-white/75 hover:text-white/95"
+          ? "bg-sisi-blue/85 text-journey-navy shadow-sm"
+          : "text-paper/75 hover:text-paper/95"
       }`}
     >
       {children}
@@ -828,7 +828,7 @@ function ConstellationLayer({ stars }: { stars: Star[] }) {
         >
           <polyline
             fill="none"
-            stroke="rgba(255,236,189,0.35)"
+            stroke="rgba(245, 239, 221,0.35)"
             strokeWidth="0.2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -860,7 +860,7 @@ function ConstellationLayer({ stars }: { stars: Star[] }) {
                 width: STAR_SIZE * 1.4,
                 height: STAR_SIZE * 1.4,
                 background:
-                  "radial-gradient(circle, rgba(255,181,112,0.9) 0%, rgba(255,181,112,0.3) 50%, transparent 100%)",
+                  "radial-gradient(circle, rgba(241, 196, 94,0.9) 0%, rgba(241, 196, 94,0.3) 50%, transparent 100%)",
                 filter: "blur(3px)",
               }}
             />
@@ -872,9 +872,9 @@ function ConstellationLayer({ stars }: { stars: Star[] }) {
             >
               <defs>
                 <radialGradient id={`cst-grad-${star.id}`} cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="rgb(255,248,225)" />
-                  <stop offset="35%" stopColor="rgb(255,236,189)" />
-                  <stop offset="100%" stopColor="rgb(251,198,106)" />
+                  <stop offset="0%" stopColor="rgb(245, 239, 221)" />
+                  <stop offset="35%" stopColor="rgb(245, 239, 221)" />
+                  <stop offset="100%" stopColor="rgb(241, 196, 94)" />
                 </radialGradient>
               </defs>
               <path
@@ -918,36 +918,36 @@ function FirstStarCTA({
         className="rounded-[24px] p-[24px] shadow-2xl"
         style={{
           background:
-            "linear-gradient(180deg, rgba(35, 30, 75, 0.96) 0%, rgba(20, 17, 55, 0.96) 100%)",
-          border: "1px solid rgba(255, 236, 189, 0.15)",
+            "linear-gradient(180deg, rgba(16, 45, 50, 0.96) 0%, rgba(16, 45, 50, 0.96) 100%)",
+          border: "1px solid rgba(245, 239, 221, 0.15)",
           boxShadow:
-            "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(177, 156, 217, 0.12)",
+            "0 20px 60px rgba(16, 45, 50, 0.5), 0 0 40px rgba(113, 152, 216, 0.12)",
         }}
       >
-        <p className="font-sentient text-[20px] text-white/95 text-center leading-tight mb-[6px]">
-          shall we start walking
+        <p className="t-card-title text-paper/95 text-center mb-[6px]">
+          Shall we start walking
           <br />
           to that star?
         </p>
-        <p className="font-sentient italic text-[13px] text-white/60 text-center mb-[20px]">
-          your journey begins now.
+        <p className="ds-helper italic text-paper/60 text-center mb-[20px]">
+          Your journey begins now.
         </p>
 
         <div className="flex flex-col gap-[10px]">
           {/* Primary — start walking → /journey */}
           <button
             onClick={onStartWalking}
-            className="w-full h-[52px] rounded-full bg-[#B19CD9] backdrop-blur-md border border-white/25 text-journey-navy font-sentient text-[15px] shadow-lg hover:brightness-105 active:scale-98 transition-all"
+            className="ds-btn ds-btn--primary ds-on-dark ds-btn--block w-full"
           >
-            start walking ✦
+            Start walking
           </button>
 
           {/* Secondary — see how this works (Phase 2 walkthrough) */}
           <button
             onClick={onSeeHowItWorks}
-            className="w-full h-[42px] font-sentient italic text-[13px] text-white/60 hover:text-white/85 transition"
+            className="ds-helper w-full h-[42px] italic text-paper/60 hover:text-paper/85 transition"
           >
-            see how this works
+            See how this works
           </button>
         </div>
       </div>

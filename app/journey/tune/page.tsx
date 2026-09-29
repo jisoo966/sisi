@@ -107,7 +107,7 @@ transition: {
   }
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-black">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-ink">
       {/* Journey scene background */}
       <JourneyScene />
 
@@ -134,20 +134,20 @@ transition: {
       {/* Toggle + restart buttons — always visible */}
       <button
         onClick={() => setShowControls((s) => !s)}
-        className="fixed top-4 right-4 z-50 rounded-full bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2 text-[13px] font-mono text-journey-navy shadow-md"
+        className="fixed top-4 right-4 z-50 rounded-full bg-paper/85 backdrop-blur-md border border-paper/60 px-4 py-2 text-[13px] font-mono text-journey-navy shadow-md"
       >
         {showControls ? "hide ✕" : "tune ⚙"}
       </button>
       <button
         onClick={restartAnimation}
-        className="fixed top-4 right-24 z-50 rounded-full bg-white/85 backdrop-blur-md border border-white/60 px-4 py-2 text-[13px] font-mono text-journey-navy shadow-md"
+        className="fixed top-4 right-24 z-50 rounded-full bg-paper/85 backdrop-blur-md border border-paper/60 px-4 py-2 text-[13px] font-mono text-journey-navy shadow-md"
       >
         restart ↻
       </button>
 
       {/* Controls panel */}
       {showControls && (
-        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] bg-white/95 backdrop-blur-md border-l border-black/10 overflow-y-auto pt-20 pb-12 px-5 shadow-2xl">
+        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] bg-paper/95 backdrop-blur-md border-l border-ink/10 overflow-y-auto pt-20 pb-12 px-5 shadow-2xl">
           <h1 className="font-mono text-[16px] text-journey-navy mb-1">
             fox path tuner
           </h1>
@@ -177,8 +177,8 @@ transition: {
                   onClick={() => setEase(e)}
                   className={`font-mono text-[11px] px-3 py-1.5 rounded-md border transition ${
                     ease === e
-                      ? "bg-journey-navy text-white border-journey-navy"
-                      : "bg-white text-journey-navy border-black/15 hover:bg-black/5"
+                      ? "bg-journey-navy text-paper border-journey-navy"
+                      : "bg-paper text-journey-navy border-ink/15 hover:bg-ink/5"
                   }`}
                 >
                   {e}
@@ -246,16 +246,16 @@ transition: {
           </Section>
 
           {/* Actions */}
-          <div className="mt-6 flex flex-col gap-2 sticky bottom-0 bg-white/95 backdrop-blur-md -mx-5 px-5 py-4 border-t border-black/10">
+          <div className="mt-6 flex flex-col gap-2 sticky bottom-0 bg-paper/95 backdrop-blur-md -mx-5 px-5 py-4 border-t border-ink/10">
             <button
               onClick={copyCode}
-              className="w-full py-3 rounded-md bg-journey-navy text-white font-mono text-[13px] hover:brightness-110 active:scale-98 transition"
+              className="w-full py-3 rounded-md bg-journey-navy text-paper font-mono text-[13px] hover:brightness-110 active:scale-98 transition"
             >
               {copied ? "copied to clipboard" : "copy code"}
             </button>
             <button
               onClick={resetAll}
-              className="w-full py-3 rounded-md bg-white text-journey-navy border border-black/15 font-mono text-[12px] hover:bg-black/5 transition"
+              className="w-full py-3 rounded-md bg-paper text-journey-navy border border-ink/15 font-mono text-[12px] hover:bg-ink/5 transition"
             >
               reset to defaults
             </button>
@@ -274,7 +274,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-5 pb-5 border-b border-black/8">
+    <div className="mb-5 pb-5 border-b border-ink/8">
       <p className="font-mono text-[12px] text-journey-navy/70 uppercase tracking-wider mb-2.5">
         {title}
       </p>

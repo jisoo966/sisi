@@ -55,8 +55,8 @@ export default function PostcardPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#F5F4EC]">
-      <div className="relative z-10 flex min-h-screen flex-col">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-paper">
+      <div className="relative z-10 flex min-h-dvh flex-col">
         <div className="pt-[28px] px-[21px]">
           <BackButton />
         </div>
@@ -73,8 +73,8 @@ export default function PostcardPage() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <p className="font-sentient text-journey-navy/40 text-[15px]">
-                  no capture found
+                <p className="t-body text-journey-navy/40">
+                  No capture found
                 </p>
               </div>
             )}
@@ -85,18 +85,18 @@ export default function PostcardPage() {
 
         {/* "Today I felt..." input */}
         <div className="px-[21px] pb-[42px]">
-          <div className="rounded-[39px] bg-white/60 backdrop-blur-md border-2 border-white px-[28px] py-[26px] shadow-sm relative min-h-[120px]">
+          <div className="rounded-[39px] bg-paper/60 backdrop-blur-md border-2 border-paper px-[28px] py-[26px] shadow-sm relative min-h-[120px]">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Today I felt..."
               rows={2}
-              className="font-sentient w-full bg-transparent text-[18px] text-journey-navy placeholder:text-journey-navy/40 outline-none resize-none leading-snug pr-[80px]"
+              className="ds-field w-full pr-[80px]"
             />
             <button
               onClick={save}
               disabled={!text.trim() || !capture}
-              className="font-sentient absolute bottom-[14px] right-[14px] rounded-[20px] bg-journey-purple/70 hover:bg-journey-purple/90 disabled:opacity-40 text-journey-navy px-[26px] h-[49px] text-[16px] transition"
+              className="ds-btn ds-btn--primary absolute bottom-[14px] right-[14px]"
             >
               Done
             </button>

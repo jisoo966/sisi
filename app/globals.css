@@ -2,33 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --cream: #F5EFE6;
-  --cream-off: #FAF6F0;
-  --plum: #3D2E25;
-  --brown-warm: #6B5648;
-  --brown-dark: #3A302A;
-  --gold-mustard: #D4A82A;
-  --rose-dusty: #C4847C;
-  --rose-coral: #D89789;
-  --sage: #8FA38C;
-  --lavender: #D4C8F0;
-
-  /* Brand v2 / Journey palette */
-  --journey-cream: #F2E5B5;
-  --journey-ice: #B5D5E8;
-  --journey-cobalt: #3B5BB8;
-  --journey-navy: #1F2A44;
-  --journey-oxblood: #7A2E2E;
-  --journey-purple: #B19CD9;
-  --journey-frost: #E8F0F8;
-}
-
-/* Brand v2: any element using Sentient inherits light weight (300) + tracking -3% */
-.font-sentient {
-  font-weight: 300;
-  letter-spacing: -0.03em;
-}
+/* Tokens, typography and motion live in /design-system (imported by app/layout.tsx). */
 
 /* ───────────────────────────────────────────────────────────────
  * JOURNEY V2 — responsive world coordinate system.
@@ -71,9 +45,9 @@
   /* Icon buttons — Apple HIG 44px tap target min */
   --icon-btn-size: clamp(36px, 10vw, 44px);
 
-  /* Bottom nav (3 tabs: Journey / Stars / Moments) — one-world minimum. */
-  --nav-height: clamp(52px, 13vw, 62px);
-  --nav-margin: clamp(6px, 2vw, 12px);
+  /* StickerNavigation (Moments / Journey / Stars) — design-system sizes */
+  --nav-height: 56px;
+  --nav-margin: 10px;
   --nav-total: calc(var(--nav-height) + var(--nav-margin) + var(--safe-bottom));
 
   /* Camera FAB — sits ABOVE the bottom nav (and above the safe area). */
@@ -173,7 +147,7 @@
   opacity: 0;
   visibility: hidden;
   transform: translate3d(0, calc(-0.3675 * 100dvh), 0);
-  background: #03070a;
+  background: var(--sisi-ink);
 }
 .jw-night-sky {
   position: absolute;
@@ -215,14 +189,14 @@
   right: 0;
   bottom: 0;
   height: 120px;
-  z-index: 40;
+  z-index: var(--z-navigation);
   pointer-events: none;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --stage-padding: clamp(16px, 5vw, 24px);
-  --nav-height: clamp(52px, 13vw, 62px);
-  --nav-margin: clamp(6px, 2vw, 12px);
+  --nav-height: 56px;
+  --nav-margin: 10px;
 }
 @media (min-width: 500px) {
   .journey-nav-host { left: 50%; right: auto; width: 430px; margin-left: -215px; }
@@ -297,7 +271,7 @@
     position: fixed;
     inset: 0;
     z-index: 100;
-    background: #F5F4EC;
+    background: var(--sisi-paper);
     align-items: center;
     justify-content: center;
     flex-direction: column;
@@ -318,36 +292,31 @@ html {
 }
 
 /* ─── Mobile viewport lock ───
- * min-h-screen 대신 svh (small viewport height) 사용 시,
+ * min-h-dvh 대신 svh (small viewport height) 사용 시,
  * iOS Safari URL bar 있어도 정확히 화면에 맞음 (스크롤 X).
  * Tailwind에 svh 유틸 없어서 사용처에서 style로 지정하되
  * 여기서 예비 helper class 만들어둠. */
 .h-viewport {
   height: 100vh; /* fallback */
-  height: 100svh; /* modern browsers — accounts for URL bar */
+  height: 100dvh;
 }
 .min-h-viewport {
   min-height: 100vh;
-  min-height: 100svh;
+  min-height: 100dvh;
 }
 
 body {
-  background-color: var(--cream);
-  color: var(--plum);
-  font-family: var(--font-eb-garamond), Georgia, serif;
+  background-color: var(--sisi-paper);
+  color: var(--sisi-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background-color: var(--gold-mustard);
-  color: var(--cream);
+  background-color: var(--blue-60);
+  color: var(--sisi-ink);
 }
 
-/* Fraunces for all headings by default */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-fraunces), Georgia, serif;
-}
 
 /* ─── Paper utilities ─── */
 
@@ -356,7 +325,7 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--cream);
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E"),
-    linear-gradient(180deg, rgba(255,248,236,0.18) 0%, rgba(228,232,235,0.08) 100%);
+    linear-gradient(180deg, rgba(245, 239, 221,0.18) 0%, rgba(245, 239, 221,0.08) 100%);
   background-repeat: repeat, no-repeat;
   background-size: 256px 256px, 100% 100%;
 }
@@ -364,39 +333,25 @@ h1, h2, h3, h4, h5, h6 {
 /* Soft inner shadow — page edge feel */
 .paper-edge {
   box-shadow:
-    inset 0 0 48px rgba(61, 46, 37, 0.045),
-    inset 0 0 8px  rgba(61, 46, 37, 0.03);
+    inset 0 0 48px rgba(16, 45, 50, 0.045),
+    inset 0 0 8px  rgba(16, 45, 50, 0.03);
 }
 
 /* Card-level shadow — sitting on paper */
 .paper-shadow {
   box-shadow:
-    0 1px 2px rgba(61, 46, 37, 0.06),
-    0 4px 16px rgba(61, 46, 37, 0.06);
+    0 1px 2px rgba(16, 45, 50, 0.06),
+    0 4px 16px rgba(16, 45, 50, 0.06);
 }
 
-/* ─── Focus outline — 시스템 파란색 outline 제거 → soft lavender glow ───
- * 브라우저 기본 focus ring (파란색)이 sísí 감성과 안 맞음.
- * Keyboard focus 접근성은 유지하되 색만 lavender로. */
-button:focus,
-button:focus-visible,
-a:focus,
-a:focus-visible,
-input:focus,
-input:focus-visible,
-textarea:focus,
-textarea:focus-visible {
-  outline: none;
+/* ─── Focus: a visible, quiet ring (ink on light, paper on dark) ─── */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--ink-60);
+  outline-offset: 3px;
 }
-button:focus-visible,
-a:focus-visible {
-  box-shadow: 0 0 0 3px rgba(177, 156, 217, 0.35);
-  border-radius: inherit;
-}
-input:focus-visible,
-textarea:focus-visible {
-  /* input/textarea는 border 있으니 border만 강조 (glow 없음). 컴포넌트에서 자체 처리. */
-}
+.on-dark :focus-visible,
+:focus-visible.on-dark { outline-color: var(--paper-80); }
 
 /* ── Journey ⇄ Moments: one world across two pages ─────────────────────
    Layers that exist only in the Journey (walking path, foreground, passing
@@ -465,41 +420,29 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 }
 .stars-top.is-shown { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 600ms ease 200ms; }
 .stars-top-title {
-  font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 16px;
-  color: rgba(247, 241, 227, 0.62); letter-spacing: 0.01em;
+  margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title);
+  line-height: var(--leading-title); color: var(--paper-90);
 }
-.stars-new {
-  min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 999px; cursor: pointer;
-  border: 1px solid rgba(247, 241, 227, 0.32); background: rgba(247, 241, 227, 0.06);
-  color: rgba(247, 241, 227, 0.9); font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-.stars-new:hover, .stars-new:focus-visible { background: rgba(247, 241, 227, 0.12); border-color: rgba(247, 241, 227, 0.5); outline: none; }
+.stars-new { min-height: 44px; padding: 0 var(--space-4); }
 
 /* Star World stars: no square focus box on tap; a soft round ring only for
    keyboard focus. The painted aura is softened into a round glow (render-time
    mask — the PNG is untouched) so it never reads as a box around the Star. */
 .sw-star { -webkit-tap-highlight-color: transparent; }
 .sw-star:focus { outline: none; }
-.sw-star:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.75); outline-offset: 6px; border-radius: 50%; }
+.sw-star:focus-visible { outline: 1.5px solid rgba(245, 239, 221, 0.75); outline-offset: 6px; border-radius: 50%; }
 .sw-star .sisi-star__aura,
 .ns-star .sisi-star__aura {
   -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 30%, rgba(0, 0, 0, 0.55) 48%, transparent 66%);
   mask-image: radial-gradient(circle at 50% 50%, #000 30%, rgba(0, 0, 0, 0.55) 48%, transparent 66%);
 }
 
-/* Editorial voice for Sísí's speech — Sentient (Fontshare, loaded in the
-   layout), falling back to Fraunces while it loads. */
-:root { --font-editorial: "Sentient", var(--font-fraunces), Georgia, serif; }
-.sisi-speech { font-weight: 400; letter-spacing: -0.01em; }
 
-/* "Walk with it": a quiet way to finish, just above the tabs */
+/* "Walk with it": a quiet way to finish, just above the tabs
+   (a shared SecondaryButton on the world; only its position lives here) */
 .walk-finish {
   position: absolute; z-index: 9; left: 50%; transform: translateX(-50%);
   bottom: calc(var(--nav-total) + 14px);
-  min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
-  background: rgba(245, 239, 221, 0.18); color: rgba(247, 241, 227, 0.92);
-  font-family: var(--font-editorial), Georgia, serif; font-size: 15px; letter-spacing: -0.01em;
-  -webkit-tap-highlight-color: transparent;
+  min-height: 44px; white-space: nowrap;
+  background: rgba(16, 45, 50, 0.18) !important;
 }
-.walk-finish:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.7); outline-offset: 3px; }

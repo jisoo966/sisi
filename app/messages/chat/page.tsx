@@ -94,7 +94,7 @@ const GUEST_NUDGE_THRESHOLD = 5;
  */
 export default function ChatPageWrapper() {
   return (
-    <Suspense fallback={<main className="min-h-svh bg-journey-cream" />}>
+    <Suspense fallback={<main className="min-h-dvh bg-journey-cream" />}>
       <ChatPage />
     </Suspense>
   );
@@ -344,7 +344,7 @@ function ChatPage() {
   }
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-paper">
       {/* Background — single scene.
           이미지 786×1704 (aspect ratio ~0.46).
           - 모바일 (aspect ratio 비슷): object-bottom 으로 산/풀 살려서 grounded feel
@@ -364,7 +364,7 @@ function ChatPage() {
       <div
         className="relative z-10 flex flex-col"
         // 키보드 열리면 visualViewport 높이로 fit → input이 키보드 위 딱 붙음.
-        // 안 그러면 h-svh 고정이라 input이 키보드 밑에 잘림.
+        // 안 그러면 h-dvh 고정이라 input이 키보드 밑에 잘림.
         style={{ height: viewportHeight ? `${viewportHeight}px` : "100svh" }}
       >
         {/* TOP — back to dashboard. Nav 없음 (immersive). */}
@@ -372,7 +372,7 @@ function ChatPage() {
           <button
             onClick={() => router.push("/messages")}
             aria-label="Back to messages"
-            className="h-9 w-9 flex items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition"
+            className="ds-icon-btn ds-icon-btn--filled"
           >
             <svg
               width="14"
@@ -465,11 +465,11 @@ function ChatPage() {
                     </div>
                   </div>
                 </div>
-                <p className="font-sentient text-[22px] text-journey-navy">
+                <p className="t-screen-title text-journey-navy">
                   {savedLabel || "a moment"}
                 </p>
-                <p className="font-sentient text-[15px] text-journey-navy/80">
-                  kept as a memory
+                <p className="t-body text-journey-navy/80">
+                  Kept as a memory
                 </p>
               </motion.div>
             )}
@@ -491,19 +491,19 @@ function ChatPage() {
             >
               <Link
                 href="/journey"
-                className="font-sentient block w-full text-center rounded-[30px] bg-journey-purple/85 backdrop-blur-md border-2 border-white text-journey-navy text-[18px] h-[60px] flex items-center justify-center hover:bg-journey-purple transition"
+                className="ds-btn ds-btn--primary ds-btn--block block w-full"
               >
                 Continue Walking
               </Link>
               <button
                 onClick={() => setStep("chatting")}
-                className="font-sentient block w-full text-center rounded-[30px] bg-white/60 backdrop-blur-md border-2 border-white text-journey-navy text-[18px] h-[60px] flex items-center justify-center hover:bg-white transition"
+                className="ds-btn ds-btn--secondary ds-btn--block block w-full"
               >
                 Keep talking
               </button>
               <Link
                 href="/messages"
-                className="font-sentient text-[13px] text-journey-navy/60 mt-1 text-center"
+                className="t-body text-journey-navy/60 mt-1 text-center"
               >
                 Back to messages
               </Link>
@@ -521,7 +521,7 @@ function ChatPage() {
                           setDraftInput(chip);
                           setTimeout(() => inputRef.current?.focus(), 100);
                         }}
-                        className="font-sentient italic text-[12px] text-journey-navy/75 rounded-full bg-white/50 backdrop-blur-md border border-white/50 px-[14px] h-[32px] hover:bg-white/70 active:scale-98 transition"
+                        className="ds-btn ds-btn--secondary"
                       >
                         {chip}
                       </button>
@@ -531,7 +531,7 @@ function ChatPage() {
               )}
 
               {/* Glass morphic input pill — 시스템 통일 (nav/버튼 스타일) */}
-              <div className="flex items-center gap-2 h-[56px] rounded-[28px] bg-white/40 backdrop-blur-md border border-white/50 px-5 shadow-sm">
+              <div className="flex items-center gap-2 h-[56px] rounded-[28px] bg-paper/40 backdrop-blur-md border border-paper/50 px-5 shadow-sm">
               <input
                 ref={inputRef}
                 type="text"
@@ -542,13 +542,13 @@ function ChatPage() {
                 onBlur={() => setInputFocused(false)}
                 disabled={streaming}
                 placeholder={streaming ? "sísí is thinking..." : "Write here..."}
-                className="font-sentient flex-1 bg-transparent text-[16px] text-journey-navy placeholder:text-journey-navy/45 outline-none disabled:opacity-50"
+                className="ds-field flex-1"
               />
               <button
                 onClick={sendReply}
                 disabled={!draftInput.trim() || streaming}
-                aria-label="send"
-                className="relative z-10 shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-white/70 backdrop-blur-md border border-white/60 text-journey-navy shadow-md hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-50 transition"
+                aria-label="Send"
+                className="ds-icon-btn ds-icon-btn--filled relative z-10 shrink-0"
               >
                 <svg
                   width="16"

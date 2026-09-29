@@ -17,13 +17,13 @@ export function ChatBubble({ from, text, time }: Props) {
         <FoxAvatar size={48} />
         <div className="flex flex-col pt-1">
           {/* Glass morphic bubble — 시스템 통일 */}
-          <div className="rounded-[20px] bg-white/60 backdrop-blur-md border border-white/50 px-[18px] py-[14px] shadow-sm">
-            <p className="font-sentient text-[16px] leading-[1.4] text-journey-navy">
+          <div className="rounded-[20px] bg-paper/60 backdrop-blur-md border border-paper/50 px-[18px] py-[14px] shadow-sm">
+            <p className="t-body text-journey-navy">
               {text}
             </p>
           </div>
           {time && (
-            <p className="font-sentient text-[12px] text-journey-navy/60 mt-2 ml-1">
+            <p className="t-meta text-journey-navy/60 mt-2 ml-1">
               {time}
             </p>
           )}
@@ -36,11 +36,11 @@ export function ChatBubble({ from, text, time }: Props) {
     <div className="flex justify-end max-w-full">
       <div className="flex flex-col items-end max-w-[75%]">
         {/* User bubble — glass purple (매칭 있는 primary CTA 톤) */}
-        <div className="rounded-[20px] bg-journey-purple/85 backdrop-blur-md border border-white/40 px-[20px] py-[12px] shadow-sm">
-          <p className="font-sentient text-[16px] text-journey-navy">{text}</p>
+        <div className="rounded-[14px_14px_4px_14px] bg-sisi-blue/20 px-[16px] py-[10px]">
+          <p className="t-body text-journey-navy">{text}</p>
         </div>
         {time && (
-          <p className="font-sentient text-[12px] text-journey-navy/60 mt-2 mr-1">
+          <p className="t-meta text-journey-navy/60 mt-2 mr-1">
             {time}
           </p>
         )}
@@ -62,7 +62,7 @@ export function ChoiceButton({
     return (
       <button
         onClick={onClick}
-        className="font-sentient rounded-[20px] bg-journey-cobalt/90 hover:bg-journey-cobalt text-white px-[28px] h-[42px] text-[15px] transition shadow-sm"
+        className="ds-btn ds-btn--primary"
       >
         {children}
       </button>
@@ -71,7 +71,7 @@ export function ChoiceButton({
   return (
     <button
       onClick={onClick}
-      className="font-sentient rounded-[20px] border border-journey-cobalt text-journey-cobalt bg-white/80 hover:bg-white px-[28px] h-[42px] text-[15px] transition"
+      className="ds-btn ds-btn--secondary"
     >
       {children}
     </button>

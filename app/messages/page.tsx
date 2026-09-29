@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { BottomNav } from "@/components/sisi/BottomNav";
+import { StickerNavigationHost } from "@/components/ds";
 import { FoxAvatar } from "@/components/sisi/FoxAvatar";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -47,18 +47,18 @@ export default function MessagesDashboardPage() {
 
   return (
     <main
-      className="relative min-h-svh w-full"
-      style={{ backgroundColor: "#f7f2e3" }}
+      className="relative min-h-dvh w-full"
+      style={{ backgroundColor: "var(--sisi-paper)" }}
     >
-      <div className="relative z-10 flex min-h-svh flex-col pt-[52px] px-[24px] pb-[100px]">
+      <div className="relative z-10 flex min-h-dvh flex-col pt-[52px] px-[24px] pb-[100px]">
         {/* Header */}
         <header className="mb-1">
-          <h1 className="font-sentient text-[22px] text-journey-navy/95">
+          <h1 className="t-screen-title text-journey-navy/95">
             Messages
           </h1>
         </header>
-        <p className="font-sentient text-[13px] text-journey-navy/60 italic mb-[36px]">
-          a quiet space to talk with sísí
+        <p className="ds-helper text-journey-navy/60 italic mb-[36px]">
+          A quiet space to talk with Sísí
         </p>
 
         {/* Fox illustration */}
@@ -74,7 +74,7 @@ export default function MessagesDashboardPage() {
               className="absolute inset-0 rounded-full"
               style={{
                 background:
-                  "radial-gradient(circle, rgba(177,156,217,0.35) 0%, transparent 70%)",
+                  "radial-gradient(circle, rgba(113, 152, 216,0.35) 0%, transparent 70%)",
                 filter: "blur(24px)",
                 transform: "scale(1.6)",
               }}
@@ -92,11 +92,11 @@ export default function MessagesDashboardPage() {
           transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="mb-[20px]"
         >
-          <div className="rounded-[20px] bg-white/60 backdrop-blur-md border border-white/50 px-[24px] py-[20px] text-center shadow-sm">
-            <p className="font-sentient text-[11px] text-journey-navy/50 tracking-widest uppercase mb-[10px]">
+          <div className="rounded-[20px] bg-paper/60 backdrop-blur-md border border-paper/50 px-[24px] py-[20px] text-center shadow-sm">
+            <p className="t-meta text-journey-navy/50 mb-[10px]">
               Today&apos;s check-in
             </p>
-            <p className="font-sentient text-[20px] text-journey-navy leading-[1.3]">
+            <p className="t-card-title text-journey-navy">
               What stayed with
               <br />
               you today?
@@ -113,9 +113,9 @@ export default function MessagesDashboardPage() {
         >
           <Link
             href="/messages/chat"
-            className="font-sentient block w-full text-center rounded-[28px] bg-journey-purple/85 backdrop-blur-md border border-white/40 text-journey-navy text-[16px] h-[56px] flex items-center justify-center shadow-lg hover:brightness-105 active:scale-98 transition-all"
+            className="ds-btn ds-btn--primary ds-btn--block block w-full"
           >
-            talk to sísí ✦
+            Talk to Sísí
           </Link>
         </motion.div>
 
@@ -124,8 +124,8 @@ export default function MessagesDashboardPage() {
           <RecentConversations sessions={sessions} />
         )}
         {loaded && isLoggedIn === true && sessions.length === 0 && (
-          <p className="font-sentient italic text-[13px] text-journey-navy/45 text-center mt-[12px]">
-            your first conversation starts a memory.
+          <p className="ds-helper italic text-journey-navy/45 text-center mt-[12px]">
+            Your first conversation starts a memory.
           </p>
         )}
         {loaded && isLoggedIn === false && (
@@ -133,7 +133,7 @@ export default function MessagesDashboardPage() {
         )}
       </div>
 
-      <BottomNav theme="light" />
+      <StickerNavigationHost />
     </main>
   );
 }
@@ -149,7 +149,7 @@ function RecentConversations({ sessions }: { sessions: ChatSession[] }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.4 }}
     >
-      <p className="font-sentient text-[13px] text-journey-navy/70 tracking-wider mb-[14px]">
+      <p className="t-body text-journey-navy/70 mb-[14px]">
         Recent conversations
       </p>
 
@@ -157,8 +157,8 @@ function RecentConversations({ sessions }: { sessions: ChatSession[] }) {
         {grouped.map(({ dateLabel, items }) => (
           <div key={dateLabel}>
             <div className="flex items-center gap-[8px] mb-[10px]">
-              <div className="h-[5px] w-[5px] rounded-full bg-journey-purple" />
-              <p className="font-sentient text-[12px] text-journey-navy/60 tracking-wider">
+              <div className="h-[5px] w-[5px] rounded-full bg-star" />
+              <p className="t-meta text-journey-navy/60">
                 {dateLabel}
               </p>
             </div>
@@ -199,7 +199,7 @@ function SessionEntry({
     >
       <Link
         href={`/messages/chat?session=${session.id}`}
-        className="flex items-start gap-[12px] w-full text-left p-[12px] rounded-[14px] bg-white/60 hover:bg-white active:scale-98 transition"
+        className="ds-star-row w-full p-[12px]"
       >
         {/* Fox icon */}
         <div className="shrink-0 mt-[2px]">
@@ -207,10 +207,10 @@ function SessionEntry({
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="font-sentient text-[11px] text-journey-navy/50 tracking-wider mb-[3px]">
+          <p className="t-meta text-journey-navy/50 mb-[3px]">
             {time}
           </p>
-          <p className="font-sentient text-[14px] text-journey-navy/90 leading-snug line-clamp-2">
+          <p className="t-body text-journey-navy/90 line-clamp-2">
             {preview}
             {session.firstMessage && session.firstMessage.length > 60 && "…"}
           </p>
@@ -228,18 +228,18 @@ function GuestRecentPlaceholder() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.4 }}
-      className="mt-[24px] p-[20px] rounded-[16px] bg-white/50 border border-journey-navy/8 text-center"
+      className="mt-[24px] p-[20px] rounded-[16px] bg-paper/50 border border-journey-navy/8 text-center"
     >
-      <p className="font-sentient italic text-[13px] text-journey-navy/70 leading-relaxed mb-[10px]">
-        save your conversations
+      <p className="ds-helper italic text-journey-navy/70 mb-[10px]">
+        Save your conversations
         <br />
         when you&apos;re ready.
       </p>
       <Link
         href="/login"
-        className="inline-flex items-center gap-1 font-sentient text-[13px] text-journey-purple hover:brightness-90 transition"
+        className="ds-text-action"
       >
-        log in ✦
+        Log in
       </Link>
     </motion.div>
   );

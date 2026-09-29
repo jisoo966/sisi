@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { createStar, saveStar } from "@/lib/myStars";
-import { tornEdge } from "@/lib/tornEdge";
+import { IconButton, IconClose, PrimaryButton } from "@/components/ds";
 import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
 import { CURRENT_STAR_POS } from "@/components/sisi/journey-v2/StarWorld";
 
@@ -23,7 +23,6 @@ import { CURRENT_STAR_POS } from "@/components/sisi/journey-v2/StarWorld";
  * No confetti, points, badges or bounce.
  */
 
-const EDGE = tornEdge(47);
 const EASE = [0.22, 1, 0.36, 1] as const;
 const STAR_PX = 48; // StarLayers base size (as in StarWorld)
 
@@ -178,15 +177,15 @@ export function NewStarSky({
                 role="dialog"
                 aria-label="New Star"
               >
-                <span className="ns-shadow" aria-hidden />
-                <div className="ns-paper paper-bg" style={{ clipPath: EDGE }}>
-                  <button type="button" className="ns-close" aria-label="Not now" onClick={onClose}>
-                    ×
-                  </button>
-                  <h2 className="ns-title">What do you want to bring into your life?</h2>
-                  <p className="ns-sub">Write it in your own words.</p>
+                <div className="ns-paper ds-paper">
+                  <IconButton className="ns-close" label="Not now" onClick={onClose}>
+                    <IconClose />
+                  </IconButton>
+                  <h2 className="t-card-title ns-title">What do you want to bring into your life?</h2>
+                  <p className="t-body ns-sub">Write it in your own words.</p>
                   <textarea
-                    className="ns-input"
+                    className="ds-field ns-input"
+                    aria-label="Your wish"
                     rows={3}
                     maxLength={140}
                     autoFocus
@@ -197,10 +196,10 @@ export function NewStarSky({
                       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) create();
                     }}
                   />
-                  {error && <p className="ns-error">{error}</p>}
-                  <button type="button" className="ns-primary" disabled={!wish.trim() || busy} onClick={create}>
+                  {error && <p className="ds-error ns-error" role="alert">{error}</p>}
+                  <PrimaryButton block loading={busy} disabled={!wish.trim()} onClick={create}>
                     Create my Star
-                  </button>
+                  </PrimaryButton>
                 </div>
               </motion.div>
             )}
@@ -227,7 +226,7 @@ export function NewStarSky({
                 />
               </svg>
               <motion.div
-                className="ns-note paper-bg"
+                className="ns-note ds-paper"
                 style={{ left: sx, top: noteY }}
                 initial={{ opacity: 0, y: -6, rotate: -3 }}
                 animate={{ opacity: 1, y: 0, rotate: -1.2 }}
@@ -247,7 +246,7 @@ export function NewStarSky({
               margin: -${STAR_PX / 2}px 0 0 -${STAR_PX / 2}px; transform-origin: center;
             }
             .ns-thread { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-            .ns-thread path { fill: none; stroke: #f1e2b8; stroke-width: 1.2; stroke-linecap: round; opacity: 0.85; }
+            .ns-thread path { fill: none; stroke: var(--sisi-paper); stroke-width: 1.2; stroke-linecap: round; opacity: 0.85; }
             .ns-paper-wrap {
               position: absolute;
               left: max(14px, var(--safe-left));
@@ -256,39 +255,26 @@ export function NewStarSky({
               bottom: calc(var(--nav-total) + 12px);
               max-height: calc(55% - var(--nav-total) - 12px);
             }
-            .ns-shadow { position: absolute; inset: 14px 6px -6px 6px; border-radius: 12px; background: rgba(0, 0, 0, 0.5); filter: blur(14px); }
             .ns-paper {
               position: relative; max-height: inherit; overflow-y: auto; overscroll-behavior-y: contain;
-              padding: 26px 22px 20px; color: #2b2f45;
+              padding: var(--space-6) var(--space-5) var(--space-5); border-radius: var(--paper-radius);
+              box-shadow: 0 10px 30px rgba(16, 45, 50, 0.45); scrollbar-width: none;
             }
-            .ns-close {
-              position: absolute; right: 10px; top: 8px; width: 44px; height: 44px; border: 0; background: transparent;
-              color: rgba(43, 47, 69, 0.55); font-size: 24px; line-height: 1; cursor: pointer;
-            }
-            .ns-title { margin: 4px 30px 6px 0; font-family: var(--font-fraunces), Georgia, serif; font-weight: 400; font-size: 21px; line-height: 1.28; }
-            .ns-sub { margin: 0 0 12px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15.5px; color: rgba(43, 47, 69, 0.66); }
-            .ns-input {
-              width: 100%; resize: none; padding: 12px 14px; margin-bottom: 12px; border-radius: 10px;
-              border: 1px solid rgba(43, 47, 69, 0.16); background: rgba(255, 255, 255, 0.55);
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; color: #2b2f45; outline: none;
-            }
-            .ns-input::placeholder { font-style: italic; color: rgba(43, 47, 69, 0.42); }
-            .ns-error { margin: 0 0 10px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 14px; color: #a4574a; }
-            .ns-primary {
-              display: block; width: 100%; height: 48px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; cursor: pointer;
-            }
-            .ns-primary:disabled { opacity: 0.45; }
+            .ns-paper::-webkit-scrollbar { display: none; }
+            .ns-close { position: absolute; right: 6px; top: 6px; }
+            .ns-title { margin: 0 40px 8px 0; }
+            .ns-sub { margin: 0 0 14px; font-style: italic; color: var(--ink-60); }
+            .ns-input { margin-bottom: 16px; }
+            .ns-error { margin: -8px 0 12px; }
             .ns-wish {
               position: absolute; margin: 0; width: min(76vw, 320px); translate: -50% 0;
-              text-align: center; font-family: var(--font-fraunces), Georgia, serif; font-size: 20px; line-height: 1.3;
-              color: rgba(247, 241, 227, 0.95);
+              text-align: center; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title);
+              color: var(--sisi-paper); overflow-wrap: break-word;
             }
             .ns-note {
               position: absolute; translate: -50% 0; padding: 10px 16px 11px; white-space: nowrap;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15.5px; color: #2b2f45;
-              clip-path: ${tornEdge(9, 14, 3)};
-              box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+              font-family: var(--font-editorial); font-style: italic; font-size: var(--text-body); color: var(--sisi-ink);
+              border-radius: 3px; box-shadow: 0 6px 16px rgba(16, 45, 50, 0.35);
             }
           `}</style>
         </motion.div>

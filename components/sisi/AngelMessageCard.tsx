@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { markAsRead, type AngelMessage } from "@/lib/angelMessages";
+import { IconButton, IconClose, ModalPortal } from "@/components/ds";
 
 /**
  * AngelMessageCard — Journey 홈 위에 등장하는 편지 카드 + full letter view.
@@ -54,154 +55,83 @@ export function AngelMessageCard({
 
   return (
     <>
-      {/* Envelope card overlay — Journey 홈에 은은히 뜸 */}
+      {/* A small paper envelope on the Journey */}
       <AnimatePresence>
         {phase === "envelope" && (
           <motion.div
             key="envelope-card"
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -12, scale: 0.95 }}
-            transition={{
-              duration: 0.6,
-              ease: [0.22, 1, 0.36, 1],
-              delay: 0.4,
-            }}
-            className="fixed inset-x-0 top-[130px] z-30 flex justify-center px-[24px] pointer-events-none"
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1], delay: 0.4 }}
+            className="angel-host"
           >
-            <button
-              onClick={handleOpen}
-              className="pointer-events-auto flex items-center gap-3 rounded-[20px] bg-white/85 backdrop-blur-md border border-white/70 px-[16px] py-[12px] shadow-lg hover:bg-white transition active:scale-98"
-            >
-              <div className="relative">
-                <EnvelopeIcon />
-                <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-journey-purple text-[10px] text-white font-medium px-1">
-                  1
-                </span>
-              </div>
-              <div className="flex flex-col items-start text-left">
-                <p className="font-sentient text-[13px] text-journey-navy leading-tight">
-                  a message arrived
-                </p>
-                <p className="font-sentient italic text-[11px] text-journey-navy/50">
-                  tap to open
-                </p>
-              </div>
+            <button type="button" onClick={handleOpen} className="angel-envelope ds-paper">
+              <EnvelopeIcon />
+              <span className="angel-envelope-text">
+                <span className="angel-envelope-title">A message arrived</span>
+                <span className="t-meta angel-envelope-sub">Tap to open</span>
+              </span>
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Full-screen letter view */}
-      <AnimatePresence>
-        {phase === "letter" && (
-          <motion.div
-            key="letter-view"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center"
-            style={{
-              background:
-                "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
-            }}
-          >
-            {/* Subtle stars */}
-            <div className="absolute inset-0 z-0 pointer-events-none">
-              {[
-                { top: "12%", left: "18%" },
-                { top: "20%", left: "80%" },
-                { top: "30%", left: "50%" },
-                { top: "72%", left: "12%" },
-                { top: "80%", left: "88%" },
-              ].map((s, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute h-[2px] w-[2px] rounded-full bg-white"
-                  style={{
-                    ...s,
-                    boxShadow: "0 0 4px rgba(255,236,189,0.6)",
-                  }}
-                  animate={{ opacity: [0.3, 0.9, 0.3] }}
-                  transition={{
-                    duration: 3 + (i % 2),
-                    repeat: Infinity,
-                    delay: i * 0.4,
-                  }}
-                />
-              ))}
-            </div>
+      {/* The letter, over a quiet night sky */}
+      <ModalPortal open={phase === "letter"} onClose={handleClose} labelledBy="angel-letter" className="angel-letter">
+        <div className="angel-night" aria-hidden />
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="angel-letter-body"
+        >
+          <div className="angel-letter-art">
+            <EnvelopeIconLarge />
+          </div>
+          <p id="angel-letter" className="angel-letter-text">
+            {displayMessage.content}
+          </p>
+          <p className="angel-letter-sign">Sísí</p>
+          <div className="ds-actions" style={{ alignItems: "center" }}>
+            <IconButton surface="dark" label="Close" onClick={handleClose}>
+              <IconClose />
+            </IconButton>
+          </div>
+        </motion.div>
+      </ModalPortal>
 
-            {/* Close X */}
-            <button
-              onClick={handleClose}
-              aria-label="Close"
-              className="absolute bottom-[80px] left-1/2 -translate-x-1/2 z-20 h-11 w-11 flex items-center justify-center rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white/85 hover:bg-white/25 transition"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-
-            {/* Letter content */}
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                duration: 0.8,
-                delay: 0.2,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="relative z-10 mx-[32px] max-w-[380px] text-center"
-            >
-              {/* Big envelope illustration */}
-              <motion.div
-                initial={{ rotate: -8, scale: 0.9 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{
-                  duration: 1.0,
-                  delay: 0.3,
-                  type: "spring",
-                  damping: 14,
-                }}
-                className="mx-auto mb-[32px] w-[120px]"
-              >
-                <EnvelopeIconLarge />
-              </motion.div>
-
-              {/* Message text — feels like handwritten note */}
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.7 }}
-                className="font-sentient text-[22px] text-white/95 leading-[1.5]"
-              >
-                {displayMessage.content}
-              </motion.p>
-
-              {/* Signature */}
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 1.4 }}
-                className="mt-[40px] font-sentient italic text-[14px] text-white/50"
-              >
-                — sísí
-              </motion.p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <style jsx global>{`
+        .angel-host {
+          position: fixed; inset-inline: 0; top: calc(var(--safe-top) + 130px); z-index: var(--z-floating-ui);
+          display: flex; justify-content: center; padding: 0 var(--screen-pad); pointer-events: none;
+        }
+        .angel-envelope {
+          pointer-events: auto; display: flex; align-items: center; gap: 12px; min-height: 56px;
+          padding: 10px 18px 10px 14px; border: 0; border-radius: var(--paper-radius);
+          box-shadow: var(--paper-shadow); cursor: pointer; text-align: left;
+        }
+        .angel-envelope-text { display: flex; flex-direction: column; gap: 2px; }
+        .angel-envelope-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-body); color: var(--sisi-ink); }
+        .angel-envelope-sub { color: var(--ink-60); }
+        .angel-letter .ds-backdrop { background: var(--sisi-ink); -webkit-backdrop-filter: none; backdrop-filter: none; }
+        .angel-night {
+          position: fixed; inset: 0; z-index: var(--z-backdrop); pointer-events: none;
+          background-image:
+            radial-gradient(1.5px 1.5px at 18% 12%, var(--paper-80), transparent),
+            radial-gradient(1.5px 1.5px at 80% 20%, var(--paper-60), transparent),
+            radial-gradient(1.5px 1.5px at 50% 30%, var(--paper-60), transparent),
+            radial-gradient(1.5px 1.5px at 12% 72%, var(--paper-60), transparent),
+            radial-gradient(1.5px 1.5px at 88% 80%, var(--paper-80), transparent);
+        }
+        .angel-letter-body { position: relative; z-index: var(--z-modal); width: min(100%, 380px); text-align: center; color: var(--sisi-paper); }
+        .angel-letter-art { width: 120px; margin: 0 auto 28px; }
+        .angel-letter-text {
+          margin: 0; font-family: var(--font-editorial); font-size: var(--text-card-title); line-height: var(--leading-dialogue);
+          color: var(--sisi-paper); white-space: pre-wrap;
+        }
+        .angel-letter-sign { margin: 28px 0 0; font-family: var(--font-editorial); font-style: italic; font-size: var(--text-body); color: var(--paper-60); }
+      `}</style>
     </>
   );
 }
@@ -223,15 +153,15 @@ function EnvelopeIcon() {
         width="36"
         height="24"
         rx="3"
-        fill="#f7f2e3"
-        stroke="#1F2A44"
+        fill="var(--sisi-paper)"
+        stroke="var(--sisi-ink)"
         strokeWidth="1.4"
       />
       {/* Flap V-line (앞면 접힘 표시) */}
       <path
         d="M6 14 L24 26 L42 14"
         fill="none"
-        stroke="#1F2A44"
+        stroke="var(--sisi-ink)"
         strokeWidth="1.4"
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -259,7 +189,7 @@ function EnvelopeIconLarge() {
         cy="128"
         rx="46"
         ry="3.5"
-        fill="#000000"
+        fill="var(--sisi-ink)"
         opacity="0.25"
       />
 
@@ -271,24 +201,24 @@ function EnvelopeIconLarge() {
           width="72"
           height="70"
           rx="2"
-          fill="#faf5e6"
-          stroke="#1F2A44"
+          fill="var(--sisi-paper)"
+          stroke="var(--sisi-ink)"
           strokeWidth="1.2"
         />
         {/* 편지 위 작은 줄들 (편지 내용 표시) */}
-        <line x1="42" y1="32" x2="98" y2="32" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
-        <line x1="42" y1="42" x2="88" y2="42" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
-        <line x1="42" y1="52" x2="92" y2="52" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
-        <line x1="42" y1="62" x2="78" y2="62" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="32" x2="98" y2="32" stroke="var(--sisi-ink)" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="42" x2="88" y2="42" stroke="var(--sisi-ink)" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="52" x2="92" y2="52" stroke="var(--sisi-ink)" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="42" y1="62" x2="78" y2="62" stroke="var(--sisi-ink)" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
         {/* 서명 위치 표시 */}
-        <line x1="80" y1="76" x2="98" y2="76" stroke="#1F2A44" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
+        <line x1="80" y1="76" x2="98" y2="76" stroke="var(--sisi-ink)" strokeWidth="0.9" strokeLinecap="round" opacity="0.35" />
       </g>
 
       {/* 편지 봉투 앞면 (뒤에 편지가 나와있게) */}
       <path
         d="M18 66 L18 116 A3 3 0 0 0 21 119 L119 119 A3 3 0 0 0 122 116 L122 66 L70 100 L18 66 Z"
-        fill="#f0e8d0"
-        stroke="#1F2A44"
+        fill="var(--sisi-paper)"
+        stroke="var(--sisi-ink)"
         strokeWidth="1.4"
         strokeLinejoin="round"
       />
@@ -297,7 +227,7 @@ function EnvelopeIconLarge() {
       <path
         d="M18 66 L70 100 L122 66"
         fill="none"
-        stroke="#1F2A44"
+        stroke="var(--sisi-ink)"
         strokeWidth="1.4"
         strokeLinejoin="round"
       />
@@ -305,8 +235,8 @@ function EnvelopeIconLarge() {
       {/* 열린 flap (위로 접힘 — 뒤로 살짝 회전) */}
       <path
         d="M18 66 L70 30 L122 66"
-        fill="#f7f2e3"
-        stroke="#1F2A44"
+        fill="var(--sisi-paper)"
+        stroke="var(--sisi-ink)"
         strokeWidth="1.4"
         strokeLinejoin="round"
         opacity="0.7"
@@ -317,7 +247,7 @@ function EnvelopeIconLarge() {
         cx="70"
         cy="66"
         r="4"
-        fill="#B19CD9"
+        fill="var(--sisi-blue)"
         opacity="0.5"
       />
     </svg>

@@ -54,11 +54,11 @@ export function CaptureFAB({ onClick }: Props) {
           border-radius: 9999px;
           border: 0;
           padding: 0;
-          background: #f5efe4;
+          background: var(--sisi-paper);
           color: var(--journey-navy);
           box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.85) inset,
-            0 6px 16px rgba(28, 35, 64, 0.18);
+            0 1px 0 rgba(245, 239, 221, 0.85) inset,
+            0 6px 16px rgba(16, 45, 50, 0.18);
           cursor: pointer;
           display: inline-flex;
           align-items: center;

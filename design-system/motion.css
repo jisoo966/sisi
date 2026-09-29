@@ -1,0 +1,25 @@
+/* Sísí motion — gentle opacity, translate and scale. No bounce, no overshoot. */
+
+@keyframes ds-bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ds-paper-in {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ds-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+
+.ds-enter-bubble { animation: ds-bubble-in var(--motion-bubble) var(--ease-sisi) both; }
+.ds-enter-paper { animation: ds-paper-in var(--motion-paper) var(--ease-sisi) both; }
+.ds-enter-fade { animation: ds-fade-in var(--motion-paper) var(--ease-sisi) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-enter-bubble,
+  .ds-enter-paper { animation: ds-fade-in 200ms linear both; }
+  html:focus-within { scroll-behavior: auto; }
+}

@@ -110,8 +110,8 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
           transform: translate(-50%, -50%);
           width: 100%; height: 100%;
           border-radius: 9999px;
-          background: radial-gradient(circle, rgba(255, 240, 200, 0.95) 0%,
-                                              rgba(255, 220, 150, 0.5) 40%,
+          background: radial-gradient(circle, rgba(245, 239, 221, 0.95) 0%,
+                                              rgba(245, 239, 221, 0.5) 40%,
                                               transparent 75%);
           filter: blur(2px);
           z-index: 4;
@@ -121,7 +121,7 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
           left: 50%; top: 50%;
           width: 100%; height: 100%;
           border-radius: 9999px;
-          border: 2px solid rgba(255, 220, 150, 0.85);
+          border: 2px solid rgba(245, 239, 221, 0.85);
           transform: translate(-50%, -50%);
           z-index: 4;
           animation: spawnRing 1.4s ease-out forwards;
@@ -130,8 +130,8 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
           left: 50%; top: 50%;
           width: 4px; height: 4px;
           border-radius: 9999px;
-          background: #fff8dc;
-          box-shadow: 0 0 8px rgba(255, 220, 150, 0.9);
+          background: var(--sisi-paper);
+          box-shadow: 0 0 8px rgba(245, 239, 221, 0.9);
           z-index: 5;
           animation: sparkleFly 1.6s ease-out forwards;
         }

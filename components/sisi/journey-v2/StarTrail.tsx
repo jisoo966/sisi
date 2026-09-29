@@ -58,8 +58,8 @@ export function StarTrail() {
         <defs>
           {/* Soft halo as a gradient fill — no SVG/CSS filters (cheaper). */}
           <radialGradient id="trail-halo">
-            <stop offset="0%" stopColor="rgb(255,236,190)" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="rgb(255,236,190)" stopOpacity="0" />
+            <stop offset="0%" stopColor="rgb(245, 239, 221)" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="rgb(245, 239, 221)" stopOpacity="0" />
           </radialGradient>
         </defs>
         {dots.map((p, i) => {
@@ -71,7 +71,7 @@ export function StarTrail() {
               style={{ animationDelay: `${450 + (i / Math.max(1, n)) * 450}ms, ${900 + (i % 5) * 90}ms` }}
             >
               <circle cx={p.x} cy={p.y} r={r * 3} fill="url(#trail-halo)" />
-              <circle cx={p.x} cy={p.y} r={r} fill="rgb(255,246,220)" />
+              <circle cx={p.x} cy={p.y} r={r} fill="rgb(245, 239, 221)" />
             </g>
           );
         })}

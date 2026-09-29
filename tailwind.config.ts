@@ -8,45 +8,42 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Sísí — five core colours (design-system/tokens.css). Legacy names
+      // resolve to the same five so older pages share one palette.
       colors: {
-        cream: {
-          DEFAULT: "#F5EFE6",
-          off: "#FAF6F0",
-        },
-        plum: {
-          DEFAULT: "#3D2E25",
-        },
-        brown: {
-          warm: "#6B5648",
-          dark: "#3A302A",
-        },
-        gold: {
-          mustard: "#D4A82A",
-        },
-        rose: {
-          dusty: "#C4847C",
-          coral: "#D89789",
-        },
-        sage: "#8FA38C",
-        lavender: "#D4C8F0",
-        // Brand v2 / Journey palette (locked from Figma)
+        ink: "rgb(var(--sisi-ink-rgb) / <alpha-value>)",
+        paper: "rgb(var(--sisi-paper-rgb) / <alpha-value>)",
+        "sisi-blue": "rgb(var(--sisi-blue-rgb) / <alpha-value>)",
+        star: "rgb(var(--sisi-gold-rgb) / <alpha-value>)",
+        coral: "rgb(var(--sisi-coral-rgb) / <alpha-value>)",
+        cream: { DEFAULT: "rgb(var(--sisi-paper-rgb) / <alpha-value>)", off: "rgb(var(--sisi-paper-rgb) / <alpha-value>)" },
+        plum: { DEFAULT: "rgb(var(--sisi-ink-rgb) / <alpha-value>)" },
+        brown: { warm: "rgb(var(--sisi-ink-rgb) / 0.8)", dark: "rgb(var(--sisi-ink-rgb) / <alpha-value>)" },
+        gold: { DEFAULT: "rgb(var(--sisi-gold-rgb) / <alpha-value>)", mustard: "rgb(var(--sisi-gold-rgb) / <alpha-value>)" },
+        rose: { dusty: "rgb(var(--sisi-coral-rgb) / <alpha-value>)", coral: "rgb(var(--sisi-coral-rgb) / <alpha-value>)" },
+        sage: "rgb(var(--sisi-ink-rgb) / 0.6)",
+        lavender: "rgb(var(--sisi-blue-rgb) / 0.6)",
         journey: {
-          cream: "#F2E5B5",     // butter cream sky in scenes
-          ice: "#B5D5E8",       // icy pale blue
-          cobalt: "#3B5BB8",    // deep cobalt
-          navy: "#1F2A44",      // primary text dark
-          oxblood: "#7A2E2E",   // oxblood emphasis
-          purple: "#B19CD9",    // primary button (lavender purple)
-          frost: "#E8F0F8",     // soft frosted card bg
+          cream: "rgb(var(--sisi-paper-rgb) / <alpha-value>)",
+          ice: "rgb(var(--sisi-blue-rgb) / 0.6)",
+          cobalt: "rgb(var(--sisi-blue-rgb) / <alpha-value>)",
+          navy: "rgb(var(--sisi-ink-rgb) / <alpha-value>)",
+          oxblood: "rgb(var(--sisi-coral-rgb) / <alpha-value>)",
+          purple: "rgb(var(--sisi-blue-rgb) / <alpha-value>)",
+          frost: "rgb(var(--sisi-paper-rgb) / <alpha-value>)",
         },
       },
       fontFamily: {
-        fraunces: ["var(--font-fraunces)", "serif"],
-        garamond: ["var(--font-eb-garamond)", "serif"],
-        caveat: ["var(--font-caveat)", "cursive"],
-        // Brand v2 lock: Sentient (Fontshare) for headings, Inter for body
-        sentient: ["Sentient", "var(--font-fraunces)", "serif"],
-        inter: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        // Two families only: Sentient (editorial) and Inter (functional UI)
+        editorial: ["var(--font-editorial)"],
+        ui: ["var(--font-ui)"],
+        sentient: ["var(--font-editorial)"],
+        fraunces: ["var(--font-editorial)"],
+        garamond: ["var(--font-editorial)"],
+        caveat: ["var(--font-editorial)"],
+        inter: ["var(--font-ui)"],
+        serif: ["var(--font-editorial)"],
+        sans: ["var(--font-ui)"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
@@ -55,7 +52,7 @@ const config: Config = {
       },
       letterSpacing: {
         // brand v2 — all Sentient text uses -0.03em by default
-        sentient: "-0.03em",
+        sentient: "-0.01em",
       },
       // Mobile viewport lock — svh accounts for iOS Safari URL bar
       height: {

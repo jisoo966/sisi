@@ -4,7 +4,19 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { addSign, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
-import { tornEdge } from "@/lib/tornEdge";
+import {
+  ConfirmationDialog,
+  FilterChip,
+  IconBack,
+  IconButton,
+  IconChevronRight,
+  IconClose,
+  IconPencil,
+  OverflowMenu,
+  PrimaryButton,
+  StatusChip,
+  TextAction,
+} from "@/components/ds";
 import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
 import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
@@ -62,7 +74,7 @@ type Props = {
 };
 
 type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey";
-type Overlay = null | "menu" | "confirm-rest";
+type Overlay = null | "confirm-rest";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const SOFT = [0.45, 0, 0.25, 1] as const; // soft ease-in-out
@@ -93,8 +105,6 @@ const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpressio
 };
 const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort" };
 
-const NOTE_EDGE = tornEdge(23, 18, 2.2);
-const JOURNEY_NOTE_EDGES = [tornEdge(31, 16, 3), tornEdge(37, 16, 3), tornEdge(43, 16, 3)];
 
 export function StarMemoryCard({
   star,
@@ -261,17 +271,18 @@ export function StarMemoryCard({
             {hasHeader && (
             <header className="sms-header">
               {mode === "journey" ? (
-                <button type="button" className="smj-icon" aria-label="Back to this Star" onClick={() => setMode("invite")}>
-                  <ArrowLeft />
-                </button>
+                <IconButton surface="dark" label="Back to this Star" onClick={() => setMode("invite")}>
+                  <IconBack />
+                </IconButton>
               ) : (
                 <span className="smj-icon" aria-hidden />
               )}
               <div className="smj-titles">
                 {editing ? (
-                  <div className="smj-edit paper-bg">
+                  <div className="smj-edit ds-paper">
                     <textarea
-                      className="smc-edit-input"
+                      className="ds-field smc-edit-input"
+                      aria-label="Your wish"
                       value={draft}
                       rows={2}
                       maxLength={140}
@@ -279,36 +290,24 @@ export function StarMemoryCard({
                       onChange={(e) => setDraft(e.target.value)}
                     />
                     <div className="smc-edit-actions">
-                      <button type="button" className="smc-link" onClick={() => { setDraft(star.wish); setEditing(false); }}>
-                        cancel
-                      </button>
-                      <button type="button" className="smc-link smc-link--strong" onClick={saveEdit}>
-                        save
-                      </button>
+                      <TextAction onClick={() => { setDraft(star.wish); setEditing(false); }}>Cancel</TextAction>
+                      <PrimaryButton onClick={saveEdit}>Save</PrimaryButton>
                     </div>
                   </div>
                 ) : (
-                  <h2 className="smj-title">{star.wish || "your star"}</h2>
+                  <h2 className="smj-title">{star.wish || "Your Star"}</h2>
                 )}
-                <span className="smj-status">
-                  <span className="smc-status-dot" aria-hidden />
-                  {star.fulfilledAt ? "It arrived" : "Still walking"}
-                </span>
+                <StatusChip surface="dark" tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
               </div>
               {mode === "journey" ? (
-                <button
-                  type="button"
-                  className="smj-icon"
-                  aria-label="Manage this star"
-                  aria-expanded={overlay === "menu"}
-                  onClick={() => setOverlay(overlay === "menu" ? null : "menu")}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden className="smj-dots">
-                    <circle cx="6" cy="12" r="1.6" />
-                    <circle cx="12" cy="12" r="1.6" />
-                    <circle cx="18" cy="12" r="1.6" />
-                  </svg>
-                </button>
+                <OverflowMenu
+                  surface="dark"
+                  label="Manage this Star"
+                  items={[
+                    { label: "Edit Star", icon: <IconPencil size={18} />, destructive: false, onSelect: () => setEditing(true) },
+                    { label: "Let this Star rest", icon: <MoonIcon />, destructive: true, onSelect: () => setOverlay("confirm-rest") },
+                  ]}
+                />
               ) : (
                 <span className="smj-icon" aria-hidden />
               )}
@@ -360,34 +359,31 @@ export function StarMemoryCard({
                           <SisiChatCharacter expression={face} />
                         </div>
                       )}
-                      <motion.div layout className="sms-paper paper-bg">
+                      <motion.div layout className="sms-paper ds-paper">
                         <AnimatePresence mode="wait" initial={false}>
                 {mode === "invite" && (
                   <motion.div key="invite" className="smc-content" {...fade}>
-                    <p className="smc-when">{placeholder ? "Tonight" : formatDate(star.createdAt)}</p>
-                    <h2 className="smc-title">{placeholder ? "a star, waiting" : star.wish || "your star"}</h2>
+                    <p className="t-meta smc-when">{placeholder ? "Tonight" : formatDate(star.createdAt)}</p>
+                    <h2 className="t-card-title smc-title">{placeholder ? "A Star, waiting" : star.wish || "Your Star"}</h2>
                     {placeholder ? (
                       <>
-                        <p className="smc-sentence">this star is waiting for your wish.</p>
-                        <div className="smc-actions">
-                          <button
-                            type="button"
-                            className="smc-link"
-                            onClick={() => {
-                              onClose();
-                              onCreateStar?.();
-                            }}
-                          >
-                            make a wish <span aria-hidden>→</span>
-                          </button>
-                        </div>
+                        <p className="t-body smc-sentence">This Star is waiting for your wish.</p>
+                        <PrimaryButton
+                          block
+                          onClick={() => {
+                            onClose();
+                            onCreateStar?.();
+                          }}
+                        >
+                          Make a wish
+                        </PrimaryButton>
                       </>
                     ) : (
                       <>
-                        <StatusMark arrived={!!star.fulfilledAt} />
-                        <button type="button" className="smc-journey-link smc-mt" onClick={() => setMode("journey")}>
-                          View its journey <span aria-hidden>→</span>
-                        </button>
+                        <StatusChip tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
+                        <TextAction className="smc-journey-link" onClick={() => setMode("journey")}>
+                          View journey <IconChevronRight size={16} />
+                        </TextAction>
                       </>
                     )}
                   </motion.div>
@@ -415,49 +411,42 @@ export function StarMemoryCard({
                 {mode === "picture-intro" && (
                   <motion.div key="picture-intro" className="smc-content" {...fade}>
                     <NavRow onBack={() => setMode("practice")} onClose={onClose} />
-                    <h2 className="smc-title smc-center">{star.wish}</h2>
+                    <h2 className="t-card-title smc-title smc-center">{star.wish}</h2>
                   </motion.div>
                 )}
 
                 {mode === "picture" && (
                   <motion.div key="picture" className="smc-content smc-center" {...fade}>
                     {/* silence is intentional: no words, no timer */}
-                    <button type="button" className="smc-quiet-link" onClick={() => setMode("note-ask")}>
+                    <TextAction className="smc-quiet-link" onClick={() => setMode("note-ask")}>
                       End quietly
-                    </button>
+                    </TextAction>
                   </motion.div>
                 )}
 
                 {mode === "note-ask" && (
                   <motion.div key="note-ask" className="smc-content" {...fade}>
-                    <button type="button" className="smc-primary" onClick={() => openReflect("note-ask")}>
+                    <PrimaryButton block onClick={() => openReflect("note-ask")}>
                       Reflect on today
-                    </button>
-                    <button type="button" className="smc-journey-link" onClick={() => setMode("done")}>
+                    </PrimaryButton>
+                    <TextAction className="smc-journey-link" onClick={() => setMode("done")}>
                       Not now
-                    </button>
+                    </TextAction>
                   </motion.div>
                 )}
 
                 {mode === "reflect" && (
                   <motion.div key="reflect" className="smc-content" {...fade}>
                     <NavRow onBack={() => setMode(reflectBack)} onClose={onClose} />
-                    <div className="smc-chips" role="radiogroup" aria-label="What kind of note">
+                    <div className="ds-chip-row smc-chips" role="group" aria-label="What kind of note">
                       {(Object.keys(KIND) as EntryKind[]).map((k) => (
-                        <button
-                          key={k}
-                          type="button"
-                          role="radio"
-                          aria-checked={kind === k}
-                          className={`smc-chip${kind === k ? " is-on" : ""}`}
-                          onClick={() => setKind(k)}
-                        >
+                        <FilterChip key={k} selected={kind === k} onClick={() => setKind(k)}>
                           {KIND[k].chip}
-                        </button>
+                        </FilterChip>
                       ))}
                     </div>
                     <textarea
-                      className="smc-entry"
+                      className="ds-field smc-entry"
                       rows={3}
                       maxLength={240}
                       autoFocus
@@ -480,46 +469,52 @@ export function StarMemoryCard({
                     {(signs ?? []).map((s, i) => (
                       <motion.article
                         key={s.id}
-                        className="sms-card paper-bg"
-                        style={{ clipPath: JOURNEY_NOTE_EDGES[i % 3], rotate: i % 2 ? 0.8 : -1 }}
+                        className="ds-memory sms-card"
+                        style={{ rotate: i % 2 ? 0.8 : -1 }}
                         initial={{ opacity: 0, y: -6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.35, delay: 0.1 + Math.min(i, 5) * 0.06, ease: SOFT }}
                       >
+                        <div className="ds-memory-sheet ds-paper">
+                          <p className="sms-date">
+                            {dayLabel(s.createdAt)}
+                            {s.kind ? ` · ${KIND[s.kind].label}` : s.momentType === "companion_note" ? " · A note from Sísí" : ""}
+                          </p>
+                          <p className="sms-text">{s.text}</p>
+                          {s.image && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img className="ds-memory-image" src={s.image} alt="" loading="lazy" />
+                          )}
+                        </div>
                         <span className="sms-bead" aria-hidden />
-                        {s.kind ? (
-                          <p className="sms-kind">{KIND[s.kind].label}</p>
-                        ) : s.momentType === "companion_note" ? (
-                          <p className="sms-kind">A note from Sísí</p>
-                        ) : null}
-                        {s.image && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img className="sms-photo" src={s.image} alt="" loading="lazy" />
-                        )}
-                        <p className="sms-text">{s.text}</p>
-                        <p className="sms-date">{dayLabel(s.createdAt)}</p>
                       </motion.article>
                     ))}
-                    <article className="sms-card sms-card--origin paper-bg" style={{ clipPath: JOURNEY_NOTE_EDGES[2], transform: "rotate(-0.5deg)" }}>
+                    <article className="ds-memory sms-card sms-card--origin" style={{ transform: "rotate(-0.5deg)" }}>
+                      <div className="ds-memory-sheet ds-paper">
+                        <p className="sms-date">{formatDate(star.createdAt)}</p>
+                        <p className="sms-text">Created this Star</p>
+                      </div>
                       <span className="sms-bead" aria-hidden />
-                      <p className="sms-text">Created this Star</p>
-                      <p className="sms-date">{formatDate(star.createdAt)}</p>
                     </article>
                   </>
                 )}
 
                 {mode === "saved" && saved && (
                   <motion.article
-                    className="sms-card paper-bg"
-                    style={{ clipPath: NOTE_EDGE, rotate: -1 }}
+                    className="ds-memory sms-card"
+                    style={{ rotate: -1 }}
                     initial={{ opacity: 0, y: 14, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.5, ease: SOFT }}
                   >
+                    <div className="ds-memory-sheet ds-paper">
+                      <p className="sms-date">
+                        {dayLabel(saved.createdAt)}
+                        {saved.kind ? ` · ${KIND[saved.kind].label}` : ""}
+                      </p>
+                      <p className="sms-text">{saved.text}</p>
+                    </div>
                     <span className="sms-bead" aria-hidden />
-                    {saved.kind && <p className="sms-kind">{KIND[saved.kind].label}</p>}
-                    <p className="sms-text">{saved.text}</p>
-                    <p className="sms-date">{dayLabel(saved.createdAt)}</p>
                   </motion.article>
                 )}
               </div>
@@ -536,109 +531,59 @@ export function StarMemoryCard({
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img className="sms-sisi" src="/assets/sisi-chat/sisi-chat-seated-neutral.webp" alt="" aria-hidden />
-                  {mode === "saved" && <p className="sms-status">Also saved in Moments.</p>}
-                  <button type="button" className="sms-secondary" onClick={onClose}>
+                  {mode === "saved" && <p className="t-meta sms-status">Also saved in Moments.</p>}
+                  <TextAction surface="dark" className="sms-secondary" onClick={onClose}>
                     Stay with my Star
-                  </button>
+                  </TextAction>
                 </div>
               )}
             </div>
 
             <div className="sms-controls">
               {mode === "journey" ? (
-                <button type="button" className="smc-primary sms-cta" onClick={() => setMode("practice")}>
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("practice")}>
                   Spend a moment with this Star
                 </button>
               ) : mode === "saved" || mode === "done" ? (
-                <button type="button" className="smc-primary sms-cta" onClick={() => onReturnToJourney?.()}>
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => onReturnToJourney?.()}>
                   Return to Journey
                 </button>
               ) : mode === "invite" && !placeholder ? (
-                <button type="button" className="smc-primary sms-cta" onClick={() => setMode("practice")}>
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("practice")}>
                   Yes, stay with me
                 </button>
               ) : mode === "picture-intro" ? (
-                <button type="button" className="smc-primary sms-cta" onClick={() => setMode("picture")}>
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("picture")}>
                   Begin
                 </button>
               ) : mode === "reflect" ? (
-                <button type="button" className="smc-primary sms-cta" disabled={!text.trim() || saving} onClick={save}>
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" disabled={!text.trim() || saving} onClick={save}>
                   Save to my Star
                 </button>
               ) : null}
             </div>
 
-            {/* the quiet ⋯ menu: edit the wish · let this star rest */}
-            <AnimatePresence>
-              {overlay && (
-                <motion.button
-                  type="button"
-                  aria-label="Close"
-                  className="smc-dim smj-dim"
-                  onClick={() => setOverlay(null)}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                />
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {overlay === "menu" && (
-                <motion.div
-                  key="menu"
-                  className="smc-menu smj-menu paper-bg"
-                  role="menu"
-                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                  transition={{ duration: 0.22, ease: EASE }}
-                >
-                  <button type="button" role="menuitem" onClick={() => { setOverlay(null); setEditing(true); }}>
-                    <PencilIcon /> edit star
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => setOverlay("confirm-rest")}>
-                    <MoonIcon /> let this star rest
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => setOverlay(null)}>
-                    <CloseIcon /> cancel
-                  </button>
-                </motion.div>
-              )}
-              {overlay === "confirm-rest" && (
-                <motion.div
-                  key="confirm"
-                  className="smc-confirm paper-bg"
-                  role="alertdialog"
-                  aria-label="Let this star rest?"
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                >
-                  <h3>let this star rest?</h3>
-                  <p>it will leave your star path, but stay safely in your moments.</p>
-                  <button type="button" className="smc-btn smc-btn--primary" onClick={() => onRest(star)}>
-                    let it rest
-                  </button>
-                  <button type="button" className="smc-btn" onClick={() => setOverlay(null)}>
-                    keep walking
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <ConfirmationDialog
+              open={overlay === "confirm-rest"}
+              title="Let this Star rest?"
+              message="It will leave your Star path, but stay safely in your Moments."
+              confirmLabel="Let it rest"
+              cancelLabel="Keep walking"
+              onConfirm={() => onRest(star)}
+              onCancel={() => setOverlay(null)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
       <style jsx global>{`
-        /* ── three-zone Star screen ── */
+        /* ── three-zone Star screen: header · scroll · controls ── */
         .sms-screen {
           --cta-height: 52px;
           --bottom-gap: 12px;
           /* --nav-total = tab height + margin + safe-area (shared with the dock) */
           --bottom-controls-height: calc(var(--nav-total) + var(--cta-height) + var(--bottom-gap));
-          position: absolute; inset: 0; z-index: 11; /* below the tabs (12) */
+          position: absolute; inset: 0; z-index: 11; /* below the tabs */
           display: flex; flex-direction: column; overflow: hidden;
           pointer-events: none;
         }
@@ -647,7 +592,7 @@ export function StarMemoryCard({
           flex: none; position: relative; z-index: 3;
           display: flex; align-items: flex-start; gap: 6px;
           padding: var(--header-top) max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
-          background: linear-gradient(to bottom, rgba(3, 7, 10, 0.72) 60%, rgba(3, 7, 10, 0));
+          background: linear-gradient(to bottom, rgba(16, 45, 50, 0.72) 60%, rgba(16, 45, 50, 0));
         }
         .sms-scroll {
           flex: 1; min-height: 0; position: relative; z-index: 1;
@@ -657,438 +602,83 @@ export function StarMemoryCard({
         }
         .sms-scroll::-webkit-scrollbar { display: none; }
         .sms-path { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-        /* the thread runs from the Star down through every note */
+        /* the thread runs from the Star down through every note (Star Gold family) */
         .sms-thread {
           position: absolute; z-index: 0; left: 50%; top: 44px; bottom: 28px; width: 1.2px; margin-left: -0.6px;
-          background: rgba(241, 226, 184, 0.8);
+          background: var(--paper-80);
         }
         .sms-star { position: relative; z-index: 1; width: 88px; height: 88px; display: flex; align-items: center; justify-content: center; }
         .sms-star-inner { display: block; width: 48px; height: 48px; transform: scale(1.7); }
-        .sms-card {
-          position: relative; z-index: 2; width: min(76vw, 300px); height: auto; margin: 0;
-          padding: 16px 18px 14px; color: #2b2f45; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-        }
+        .sms-card { position: relative; z-index: 2; width: min(76vw, 300px); margin: 0; color: var(--sisi-ink); }
+        .sms-card .ds-memory-sheet { padding: 18px 18px 16px; }
         .sms-card--origin { width: min(60vw, 240px); text-align: center; }
-        .sms-bead { position: absolute; top: 4px; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: #e9b949; }
-        .sms-kind { margin: 0 0 6px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13.5px; line-height: 1.2; color: rgba(43, 47, 69, 0.6); }
-        .sms-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px; margin: 0 0 8px; }
-        .sms-text { margin: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; line-height: 1.35; overflow-wrap: break-word; }
-        .sms-date { margin: 7px 0 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14px; line-height: 1.2; color: rgba(43, 47, 69, 0.6); }
-        .sms-completion { display: flex; flex-direction: column; align-items: center; gap: 0; margin-top: 28px; }
+        .sms-bead { position: absolute; top: 3px; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: var(--sisi-gold); }
+        .sms-text { margin: 6px 0 0; font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); overflow-wrap: break-word; white-space: pre-wrap; }
+        .sms-date { margin: 0; font-family: var(--font-ui); font-size: var(--text-meta); line-height: var(--leading-meta); color: var(--ink-60); }
+        .sms-completion { display: flex; flex-direction: column; align-items: center; margin-top: 28px; }
         .sms-say { display: flex; justify-content: flex-end; width: min(86vw, 330px); }
         .sms-sisi { display: block; width: 92px; height: auto; margin: 10px 0 0 min(40vw, 150px); pointer-events: none; user-select: none; }
-        .sms-status { margin: 16px 0 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14px; line-height: 1.3; color: rgba(247, 241, 227, 0.72); }
-        .sms-secondary {
-          margin-top: 24px; min-height: 44px; padding: 0 18px; border: 0; background: transparent; cursor: pointer;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; color: rgba(247, 241, 227, 0.9);
-        }
+        .sms-status { margin: 16px 0 0; color: var(--paper-60); }
+        .sms-secondary { margin-top: 20px; }
         .sms-controls {
           position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
           height: calc(var(--bottom-controls-height) + 36px);
-          padding: 36px max(22px, var(--safe-right)) 0 max(22px, var(--safe-left));
+          padding: 36px max(20px, var(--safe-right)) 0 max(20px, var(--safe-left));
           /* a soft dark fade for readability — never an opaque panel */
-          background: linear-gradient(to bottom, rgba(3, 7, 10, 0) 0%, rgba(3, 7, 10, 0.72) 45%, rgba(3, 7, 10, 0.82) 100%);
+          background: linear-gradient(to bottom, rgba(16, 45, 50, 0) 0%, rgba(16, 45, 50, 0.72) 45%, rgba(16, 45, 50, 0.82) 100%);
           pointer-events: none;
         }
-        .sms-cta { pointer-events: auto; height: var(--cta-height); min-height: var(--cta-height); }
+        .sms-cta { pointer-events: auto; min-height: var(--cta-height); }
         .sms-stage { position: relative; z-index: 2; width: min(100%, 400px); display: flex; flex-direction: column; }
         /* bubble tail (≈29px in from its right edge) points at Sísí (72px in from the paper's right) */
         .sms-say--card { width: 100%; justify-content: flex-end; padding-right: 43px; margin-bottom: 72px; min-height: 1px; }
-        .sms-say--card .sisi-speech { max-width: min(76vw, 290px); }
         .sms-paper-wrap { position: relative; }
         .sms-paper-wrap.is-quiet { width: min(60%, 220px); margin: 0 auto; }
         .sms-paper-wrap.is-quiet .smc-sisi { right: 50%; transform: scale(0.74) translateX(50%); }
         .sms-paper {
-          position: relative; z-index: 1; padding: 20px 22px 18px; color: #2b2f45; clip-path: ${TORN_EDGE};
-          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+          position: relative; z-index: 1; padding: var(--space-5) var(--space-5) var(--space-5);
+          border-radius: var(--paper-radius); box-shadow: 0 8px 22px rgba(16, 45, 50, 0.4);
         }
         .sms-screen .smc-sisi { z-index: 2; } /* paws over the paper edge */
-        .smc-primary:disabled { opacity: 0.5; }
         /* the world's copy of the open Star steps aside (the screen draws it) */
         html.sms-open .sw-star.is-selected { opacity: 0 !important; }
 
-        /* Sísí on the paper's edge (right), her words above her */
+        /* Sísí on the paper's edge (right) */
         .smc-sisi { position: absolute; top: 0; right: 72px; width: 0; height: 0; z-index: 3; transform: scale(0.74); transform-origin: 0 0; pointer-events: none; }
-        .smc-say { position: absolute; right: 42px; bottom: calc(100% + 84px); z-index: 4; display: flex; justify-content: flex-end; pointer-events: auto; }
-        .smc-say .sisi-speech { max-width: min(78vw, 300px); }
-        .smc-card.is-note .smc-sisi { right: 20px; }
-        .smc-card.is-note .smc-say { right: -8px; }
-        .smc-mt { margin-top: 12px; }
+        .smc-content { position: relative; }
         .smc-center { text-align: center; }
-        .smc-card.is-quiet { left: 30%; right: 30%; }
-        .smc-card.is-quiet .smc-sisi { right: 50%; transform: scale(0.74) translateX(50%); }
-        .smc-quiet-link {
-          display: block; width: 100%; min-height: 44px; border: 0; background: transparent; cursor: pointer;
-          font-family: var(--font-editorial), Georgia, serif; font-size: 15px; color: rgba(24, 51, 58, 0.62);
-        }
-        .smc-chips { display: flex; gap: 8px; margin: 0 0 10px; }
-        .smc-chip {
-          flex: 1; min-height: 42px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(43, 47, 69, 0.14);
-          background: rgba(255, 255, 255, 0.5); color: #2b2f45; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
-        }
-        .smc-chip.is-on { background: #3d74d8; border-color: #3d74d8; color: #f7f2e3; }
-        .smc-status-line { margin: 0 0 10px; text-align: center; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13.5px; color: rgba(247, 241, 227, 0.72); }
-        .smc-saved-kind { margin: 0 0 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(43, 47, 69, 0.58); }
-        .smc-body { margin: 10px 0 2px; font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; line-height: 1.3; color: #2b2f45; }
-        .smc-support { margin: 0 0 14px; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; line-height: 1.38; color: rgba(43, 47, 69, 0.66); }
-        .smc-primary {
-          display: block; width: 100%; min-height: 48px; border: 0; border-radius: 999px; cursor: pointer;
-          background: #3d74d8; color: #f7f2e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px;
-        }
-        .smc-primary:disabled { opacity: 0.45; cursor: default; }
-        .smc-journey-link {
-          display: block; margin: 8px auto 0; min-height: 44px; padding: 0 12px; border: 0; background: transparent; cursor: pointer;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; color: #3d74d8;
-        }
-        .smc-journey-link--light { color: rgba(247, 241, 227, 0.9); }
-        .smc-navrow { display: flex; justify-content: space-between; margin: -6px -10px 2px; }
-        .smc-navbtn {
-          width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer; color: rgba(43, 47, 69, 0.72);
-          display: inline-flex; align-items: center; justify-content: center;
-        }
-        .smc-navbtn svg { width: 20px; height: 20px; }
-        .smc-q { font-size: clamp(19px, 5.4vw, 22px); margin-bottom: 12px; }
-        .smc-choices { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 4px; }
+        .smc-when { margin: 0 0 4px; color: var(--ink-60); }
+        .smc-title { margin: 0 0 10px; }
+        .smc-sentence { margin: 0 0 20px; color: var(--ink-80); }
+        .smc-journey-link { display: flex; margin: 12px auto 0; }
+        .smc-quiet-link { display: flex; margin: 0 auto; }
+        .smc-navrow { display: flex; justify-content: space-between; margin: -8px -10px 4px; }
+        .smc-chips { margin: 0 0 12px; }
+        .smc-entry { margin: 0; }
+        .smc-choices { display: flex; flex-direction: column; gap: 10px; margin: 4px 0; }
         .smc-choice {
-          display: flex; align-items: center; gap: 14px; width: 100%; min-height: 76px; padding: 12px 16px; text-align: left;
-          border-radius: 14px; border: 1px solid rgba(43, 47, 69, 0.12); background: rgba(255, 255, 255, 0.5); cursor: pointer;
-          transition: background 0.2s ease, border-color 0.2s ease;
+          display: flex; align-items: center; gap: 14px; width: 100%; min-height: 72px; padding: 12px 16px; text-align: left;
+          border-radius: 14px; border: 1px solid var(--ink-14); background: var(--paper-60); cursor: pointer; color: var(--sisi-ink);
+          transition: border-color var(--motion-instant) ease;
         }
-        .smc-choice:hover, .smc-choice:focus-visible { background: rgba(255, 255, 255, 0.75); border-color: rgba(61, 116, 216, 0.35); outline: none; }
-        .smc-choice-icon { flex: 0 0 34px; width: 34px; height: 34px; color: #3d74d8; }
+        .smc-choice:hover { border-color: var(--ink-35); }
+        .smc-choice-icon { flex: 0 0 32px; width: 32px; height: 32px; color: var(--sisi-ink); }
         .smc-choice-icon svg { width: 100%; height: 100%; }
         .smc-choice-text { display: flex; flex-direction: column; gap: 3px; }
-        .smc-choice-title { font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; color: #2b2f45; }
-        .smc-choice-desc { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; line-height: 1.3; color: rgba(43, 47, 69, 0.64); }
-        .smc-entry {
-          width: 100%; resize: none; padding: 12px 14px; margin: 0 0 12px; border-radius: 10px;
-          border: 1px solid rgba(43, 47, 69, 0.16); background: rgba(255, 255, 255, 0.55); outline: none;
-          font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; line-height: 1.35; color: #2b2f45;
-        }
-        .smc-entry::placeholder { font-style: italic; color: rgba(43, 47, 69, 0.4); }
-        /* saved: a small torn note on the thread; the actions sit below it */
-        .smc-card.is-note { left: 18%; right: 18%; bottom: calc(var(--nav-total) + 132px); }
-        .smc-card.is-note .smc-paper { padding: 18px 18px 14px; }
-        .smc-saved-text { margin: 0 0 8px; font-family: var(--font-fraunces), Georgia, serif; font-size: 17px; line-height: 1.32; color: #2b2f45; }
-        .smc-saved-when { margin: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14px; color: rgba(43, 47, 69, 0.6); }
-        .smc-after-line { margin: 0 0 12px; text-align: center; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15.5px; line-height: 1.4; color: rgba(247, 241, 227, 0.86); }
-        .smc-after-thought { text-align: center; margin-bottom: 6px; }
-        .smc-after-thought .smc-after-line { margin-bottom: 2px; font-style: normal; font-family: var(--font-fraunces), Georgia, serif; font-size: 16px; }
-        .smc-after-kicker { margin: 0 0 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(247, 241, 227, 0.6); }
-        .smc-after-keep { min-height: 40px; margin-bottom: 6px; padding: 0 8px; border: 0; background: transparent; cursor: pointer; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px; color: #f1e2b8; }
-        .smc-after-keep:disabled { color: rgba(247, 241, 227, 0.55); cursor: default; }
-        .smc-after {
-          position: absolute; z-index: 23; left: max(22px, var(--safe-left)); right: max(22px, var(--safe-right));
-          bottom: calc(var(--nav-total) + 14px);
-        }
+        .smc-choice-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title); }
+        .smc-choice-desc { font-family: var(--font-editorial); font-size: var(--text-body); line-height: 1.3; color: var(--ink-60); }
 
-        /* ── full journey ── */
-        .smj-root { position: absolute; inset: 0; z-index: 22; pointer-events: none; }
-        .smj-root > * { pointer-events: auto; }
-        .smj-head {
-          position: absolute; left: 0; right: 0; top: var(--header-top); z-index: 3;
-          display: flex; align-items: flex-start; gap: 6px; padding: 0 max(8px, var(--safe-right)) 0 max(8px, var(--safe-left));
+        /* ── full journey header ── */
+        .smj-icon { flex: 0 0 44px; width: 44px; height: 44px; }
+        .smj-titles { flex: 1; min-width: 0; padding-top: 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+        .smj-title {
+          margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title);
+          line-height: var(--leading-title); color: var(--sisi-paper); overflow-wrap: anywhere;
         }
-        .smj-icon {
-          flex: 0 0 44px; width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer;
-          color: rgba(247, 241, 227, 0.85); display: inline-flex; align-items: center; justify-content: center;
-        }
-        .smj-icon svg { width: 20px; height: 20px; }
-        .smj-dots { fill: rgba(247, 241, 227, 0.85); }
-        .smj-titles { flex: 1; min-width: 0; padding-top: 6px; }
-        .smj-title { margin: 0 0 4px; font-family: var(--font-fraunces), Georgia, serif; font-weight: 400; font-size: clamp(22px, 6.4vw, 27px); line-height: 1.2; color: #f7f1e3; }
-        .smj-status { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 15px; color: rgba(247, 241, 227, 0.8); }
-        .smj-edit { padding: 10px 12px; border-radius: 6px; margin-bottom: 6px; }
-        .smj-scroll {
-          position: absolute; left: 0; right: 0; bottom: calc(var(--nav-total) + 80px);
-          overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;
-          -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
-          mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
-        }
-        .smj-col { position: relative; width: min(66vw, 260px); transform: translateX(-50%); padding: 18px 0 40px; display: flex; flex-direction: column; gap: 26px; align-items: center; }
-        .smj-thread {
-          position: absolute; top: -34px; bottom: 30px; width: 1.2px; left: calc(50% + var(--thread-x, 0px));
-          background: rgba(241, 226, 184, 0.8);
-        }
-        .smj-note {
-          position: relative; width: 100%; padding: 14px 16px 12px; color: #2b2f45;
-          display: flex; flex-direction: column; gap: 4px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-        }
-        .smj-bead { position: absolute; top: 3px; left: calc(50% - 3px + var(--thread-x, 0px)); width: 6px; height: 6px; border-radius: 50%; background: #e9b949; }
-        .smj-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px; margin: 2px 0 4px; }
-        .smj-kind { font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(43, 47, 69, 0.58); }
-        .smj-text { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16.5px; line-height: 1.34; }
-        .smj-when { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13.5px; color: rgba(43, 47, 69, 0.58); }
-        .smj-note--origin { width: 78%; text-align: center; align-items: center; }
-        .smj-foot { position: absolute; left: max(22px, var(--safe-left)); right: max(22px, var(--safe-right)); bottom: calc(var(--nav-total) + 16px); }
-        .smj-dim { position: fixed !important; }
-        /* the ⋯ menu on the full journey: a small paper menu right under ⋯
-           (more specific than .smc-menu, which is anchored to the bottom) */
-        .smc-menu.smj-menu {
-          position: absolute; top: calc(var(--header-top) + 46px); right: 12px; bottom: auto; left: auto;
-          height: auto; min-width: 200px; transform-origin: top right;
-        }
-        .smj-icon:focus { outline: none; }
-        .smj-icon:focus-visible { outline: 1.5px solid rgba(247, 241, 227, 0.7); outline-offset: 2px; border-radius: 50%; }
-        .smc-backdrop {
-          position: absolute;
-          inset: 0;
-          border: 0;
-          padding: 0;
-          background: transparent;
-          /* Below the tab bar (z 12) so "Journey" still works while a card
-             is open (it closes the card first, then descends). */
-          z-index: 11;
-          pointer-events: auto;
-          -webkit-tap-highlight-color: transparent;
-        }
-        .smc-line {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          overflow: visible;
-          pointer-events: none;
-          z-index: 21;
-        }
-        .smc-line path {
-          fill: none;
-          stroke: #f1e2b8;
-          stroke-width: 1.2;
-          stroke-linecap: round;
-          opacity: 0.9;
-        }
-        .smc-bead { fill: #e9b949; }
-        .smc-card {
-          position: absolute;
-          left: max(18px, var(--safe-left));
-          right: max(18px, var(--safe-right));
-          bottom: calc(var(--nav-total) + 16px);
-          z-index: 22;
-          pointer-events: auto;
-        }
-        .smc-card.is-expanded { bottom: calc(var(--nav-total) + 8px); }
-        .smc-shadow {
-          position: absolute;
-          inset: 12px 6px -8px 6px;
-          background: rgba(0, 0, 0, 0.45);
-          border-radius: 10px;
-          filter: blur(14px);
-          pointer-events: none;
-        }
-        .smc-paper {
-          position: relative;
-          height: 100%;
-          padding: 20px 22px 20px;
-          clip-path: ${TORN_EDGE};
-          color: #2b2f45;
-          overflow: hidden;
-        }
-        .smc-handle {
-          position: absolute;
-          top: 9px;
-          left: 50%;
-          width: 34px;
-          height: 3px;
-          margin-left: -17px;
-          border-radius: 3px;
-          background: rgba(43, 47, 69, 0.18);
-        }
-        .smc-content { position: relative; height: 100%; }
-        .smc-when {
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 13px;
-          color: rgba(43, 47, 69, 0.6);
-          margin: 4px 0 4px;
-        }
-        .smc-title {
-          font-family: var(--font-fraunces), Georgia, serif;
-          font-weight: 400;
-          font-size: clamp(19px, 5.4vw, 22px);
-          line-height: 1.25;
-          margin: 0 0 8px;
-        }
-        .smc-title--lg { font-size: clamp(21px, 6vw, 25px); margin-bottom: 14px; }
-        .smc-sentence {
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 16px;
-          line-height: 1.4;
-          color: rgba(43, 47, 69, 0.82);
-          margin: 0 0 12px;
-        }
-        .smc-rule { height: 1px; background: rgba(43, 47, 69, 0.13); margin: 0 0 10px; }
-        .smc-actions { display: flex; justify-content: flex-end; }
-        .smc-link {
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 16px;
-          color: var(--journey-cobalt);
-          background: transparent;
-          border: 0;
-          padding: 4px 0;
-          cursor: pointer;
-        }
-        .smc-link--strong { font-weight: 600; }
-
-        .smc-timeline { display: flex; flex-direction: column; }
-        .smc-moments {
-          flex: 1;
-          min-height: 0;
-          overflow-y: auto;
-          padding-right: 4px;
-          -webkit-overflow-scrolling: touch;
-        }
-        .smc-moment {
-          padding: 10px 0 12px;
-          border-bottom: 1px solid rgba(43, 47, 69, 0.1);
-        }
-        .smc-moment:last-child { border-bottom: 0; }
-        .smc-moment.is-quiet .smc-moment-text { font-style: italic; color: rgba(43, 47, 69, 0.6); }
-        .smc-moment-when {
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 12px;
-          color: rgba(43, 47, 69, 0.55);
-          margin: 0 0 3px;
-        }
-        .smc-moment-text,
-        .smc-empty {
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 16px;
-          line-height: 1.4;
-          margin: 0;
-        }
-        .smc-empty { font-style: italic; color: rgba(43, 47, 69, 0.55); padding-top: 6px; }
-        .smc-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding-top: 12px;
-        }
-        .smc-status {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-style: italic;
-          font-size: 15px;
-          color: rgba(43, 47, 69, 0.75);
-        }
-        .smc-status-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: var(--journey-cobalt);
-          box-shadow: 0 0 0 3px rgba(59, 91, 184, 0.15);
-        }
-        .smc-status.is-arrived .smc-status-dot {
-          background: var(--gold-mustard);
-          box-shadow: 0 0 0 3px rgba(212, 168, 42, 0.18);
-        }
-        .smc-more {
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          border: 1px solid rgba(43, 47, 69, 0.12);
-          background: rgba(255, 255, 255, 0.45);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-        }
-        .smc-more svg { width: 20px; height: 20px; fill: rgba(43, 47, 69, 0.75); }
-
-        .smc-edit-input {
-          width: 100%;
-          resize: none;
-          font-family: var(--font-fraunces), Georgia, serif;
-          font-size: 21px;
-          line-height: 1.25;
-          color: #2b2f45;
-          background: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(43, 47, 69, 0.15);
-          border-radius: 8px;
-          padding: 6px 8px;
-          outline: none;
-        }
-        .smc-edit-actions { display: flex; justify-content: flex-end; gap: 18px; margin: 4px 0 8px; }
-
-        .smc-dim {
-          position: absolute;
-          inset: 0;
-          border: 0;
-          padding: 0;
-          background: rgba(36, 34, 40, 0.38);
-          z-index: 5;
-          cursor: default;
-        }
-        .smc-menu {
-          position: absolute;
-          right: 18px;
-          bottom: 68px;
-          z-index: 6;
-          min-width: 210px;
-          padding: 6px 4px;
-          border-radius: 10px;
-          box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
-          transform-origin: bottom right;
-        }
-        .smc-menu button {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          width: 100%;
-          padding: 12px 14px;
-          border: 0;
-          background: transparent;
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 16px;
-          color: #2b2f45;
-          text-align: left;
-          cursor: pointer;
-        }
-        .smc-menu button + button { border-top: 1px solid rgba(43, 47, 69, 0.1); }
-        .smc-menu svg { width: 18px; height: 18px; flex-shrink: 0; }
-        .smc-confirm {
-          position: absolute;
-          left: 16px;
-          right: 16px;
-          top: 16%;
-          z-index: 6;
-          padding: 24px 22px 20px;
-          border-radius: 12px;
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-          text-align: center;
-        }
-        .smc-confirm h3 {
-          font-family: var(--font-fraunces), Georgia, serif;
-          font-weight: 400;
-          font-size: 22px;
-          margin: 0 0 10px;
-        }
-        .smc-confirm p {
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 15px;
-          line-height: 1.4;
-          color: rgba(43, 47, 69, 0.75);
-          margin: 0 0 18px;
-        }
-        .smc-btn {
-          display: block;
-          width: 100%;
-          height: 44px;
-          margin-top: 10px;
-          border-radius: 999px;
-          border: 1px solid rgba(43, 47, 69, 0.14);
-          background: rgba(255, 255, 255, 0.5);
-          font-family: var(--font-eb-garamond), Georgia, serif;
-          font-size: 16px;
-          color: var(--journey-cobalt);
-          cursor: pointer;
-        }
-        .smc-btn--primary {
-          background: var(--journey-cobalt);
-          border-color: var(--journey-cobalt);
-          color: #f7f2e3;
-        }
+        .smj-edit { width: 100%; padding: 10px 12px; border-radius: var(--paper-radius); }
+        .smc-edit-input { font-size: var(--text-card-title); }
+        .smc-edit-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 8px 0 0; }
+        .smc-edit-actions .ds-btn { min-height: 44px; }
       `}</style>
     </MotionConfig>
   );
@@ -1103,23 +693,16 @@ const fade = {
 function NavRow({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
   return (
     <div className="smc-navrow">
-      <button type="button" className="smc-navbtn" aria-label="Back" onClick={onBack}>
-        <ArrowLeft />
-      </button>
-      <button type="button" className="smc-navbtn" aria-label="Close" onClick={onClose}>
-        <CloseIcon />
-      </button>
+      <IconButton label="Back" onClick={onBack}>
+        <IconBack />
+      </IconButton>
+      <IconButton label="Close" onClick={onClose}>
+        <IconClose />
+      </IconButton>
     </div>
   );
 }
 
-function ArrowLeft() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 12H5M11 6l-6 6 6 6" />
-    </svg>
-  );
-}
 /** Picture it — an eye, gently open */
 function EyeIcon() {
   return (
@@ -1148,73 +731,16 @@ function LeafIcon() {
     </svg>
   );
 }
-/** Something good — a small, refined sun */
-function SunIcon() {
-  return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-      <circle cx="16" cy="16" r="5.2" />
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => {
-        const r = (a * Math.PI) / 180;
-        return <line key={a} x1={16 + Math.cos(r) * 8.6} y1={16 + Math.sin(r) * 8.6} x2={16 + Math.cos(r) * 11.6} y2={16 + Math.sin(r) * 11.6} />;
-      })}
-    </svg>
-  );
-}
-/** A step I took — a sprout */
-function SproutIcon() {
-  return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 27V15" />
-      <path d="M16 17c0-4.5-3.2-7.4-8-7.4 0 4.6 3.4 7.4 8 7.4z" />
-      <path d="M16 15c0-4.2 3-7.2 7.8-7.2 0 4.4-3.2 7.2-7.8 7.2z" />
-      <path d="M11 27h10" />
-    </svg>
-  );
-}
 
-function PencilIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />
-    </svg>
-  );
-}
 function MoonIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
     </svg>
   );
 }
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <line x1="6" y1="6" x2="18" y2="18" />
-      <line x1="18" y1="6" x2="6" y2="18" />
-    </svg>
-  );
-}
 
-/** Deterministic torn-paper edge (clip-path polygon). */
-const TORN_EDGE = (() => {
-  const pts: string[] = [];
-  const jag = (i: number, seed: number) => 0.9 * Math.abs((Math.sin(i * 12.9898 + seed) * 43758.5453) % 1);
-  const N = 28;
-  for (let i = 0; i <= N; i++) pts.push(`${((i / N) * 100).toFixed(2)}% ${(jag(i, 1) * 1.4).toFixed(2)}%`);
-  for (let i = 1; i <= N; i++) pts.push(`${(100 - jag(i, 2) * 1.1).toFixed(2)}% ${((i / N) * 100).toFixed(2)}%`);
-  for (let i = N - 1; i >= 0; i--) pts.push(`${((i / N) * 100).toFixed(2)}% ${(100 - jag(i, 3) * 1.4).toFixed(2)}%`);
-  for (let i = N - 1; i >= 1; i--) pts.push(`${(jag(i, 4) * 1.1).toFixed(2)}% ${((i / N) * 100).toFixed(2)}%`);
-  return `polygon(${pts.join(", ")})`;
-})();
 
-function StatusMark({ arrived }: { arrived: boolean }) {
-  return (
-    <span className={`smc-status${arrived ? " is-arrived" : ""}`}>
-      <span className="smc-status-dot" aria-hidden />
-      {arrived ? "It arrived" : "Still walking"}
-    </span>
-  );
-}
 
 function formatDate(iso: string): string {
   try {

@@ -41,7 +41,7 @@ export function SpendTimeCTA({ onClick }: { onClick: () => void }) {
           position: absolute;
           inset: 8px 8px -4px 8px;
           border-radius: 18px;
-          background: rgba(10, 20, 40, 0.35);
+          background: rgba(16, 45, 50, 0.35);
           filter: blur(10px);
         }
         .spend-cta__paper {
@@ -49,9 +49,9 @@ export function SpendTimeCTA({ onClick }: { onClick: () => void }) {
           display: block;
           padding: 17px 20px;
           clip-path: ${EDGE};
-          font-family: var(--font-fraunces), Georgia, serif;
+          font-family: var(--font-editorial);
           font-size: clamp(17px, 4.8vw, 19px);
-          color: #2b2f45;
+          color: var(--sisi-ink);
           text-align: center;
         }
       `}</style>

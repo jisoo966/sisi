@@ -44,7 +44,7 @@ export async function captureJourneyScreenshot(): Promise<CaptureResult> {
   ctx.imageSmoothingQuality = "high";
 
   // Background fill — fallback
-  ctx.fillStyle = "#F5F4EC";
+  ctx.fillStyle = "#f5efdd";
   ctx.fillRect(0, 0, outW, outH);
 
   // Draw video frame with *object-cover* logic

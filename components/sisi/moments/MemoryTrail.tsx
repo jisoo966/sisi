@@ -17,6 +17,7 @@ import {
 } from "@/lib/moments";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { MomentCapture } from "@/components/sisi/journey-v2/MomentCapture";
+import { MomentDetail, MomentsSharedStyles, RestDetail } from "./shared";
 
 /**
  * MemoryTrail — the Moments tab.
@@ -208,6 +209,7 @@ export function MemoryTrail() {
         </>
       )}
 
+      <MomentsSharedStyles />
       {/* ── 3. A Moment unfolds ── */}
       <AnimatePresence>
         {open && (
@@ -218,10 +220,14 @@ export function MemoryTrail() {
             star={open.item.starId ? starById.get(open.item.starId) : undefined}
             onClose={() => setOpen(null)}
             onViewStar={viewStar}
+            stars={walkingStars(stars)}
             onSaved={() => {
-              setOpen(null);
               reload();
               toast("Kept.");
+            }}
+            onDeleted={() => {
+              setOpen(null);
+              reload();
             }}
           />
         )}
@@ -270,7 +276,7 @@ export function MemoryTrail() {
         )}
       </AnimatePresence>
 
-      <div className="journey-nav-host">
+      <div className="ds-nav-host journey-nav-host">
         <BottomNavV2 theme="light" activeTab="moments" />
       </div>
 
@@ -280,7 +286,7 @@ export function MemoryTrail() {
           min-height: 100svh;
           padding-bottom: 130px;
           overflow-x: hidden;
-          color: #2b2f45;
+          color: var(--sisi-ink);
           --safe-top: env(safe-area-inset-top, 0px);
           --safe-bottom: env(safe-area-inset-bottom, 0px);
           --safe-left: env(safe-area-inset-left, 0px);
@@ -289,11 +295,11 @@ export function MemoryTrail() {
           --nav-margin: clamp(6px, 2vw, 12px);
           --nav-total: calc(var(--nav-height) + var(--nav-margin) + var(--safe-bottom));
           --stage-padding: clamp(16px, 5vw, 24px);
-          --serif: var(--font-eb-garamond), Georgia, serif;
-          --display: var(--font-fraunces), Georgia, serif;
+          --serif: var(--font-editorial);
+          --display: var(--font-editorial);
         }
         @media (min-width: 500px) {
-          .mt-root { max-width: 430px; margin: 0 auto; box-shadow: 0 0 60px rgba(0, 0, 0, 0.12); }
+          .mt-root { max-width: 430px; margin: 0 auto; box-shadow: 0 0 60px rgba(16, 45, 50, 0.12); }
         }
         .mt-crop { position: relative; display: block; }
         .mt-art { position: absolute; max-width: none; pointer-events: none; user-select: none; }
@@ -302,45 +308,45 @@ export function MemoryTrail() {
         .mt-header { position: relative; padding: 0 24px; }
         .mt-night {
           position: absolute; left: 0; right: 0; top: 0; height: calc(118px + var(--safe-top));
-          overflow: hidden; background: #06101f;
+          overflow: hidden; background: var(--sisi-ink);
           clip-path: polygon(0% 0%, 100% 0%, 100% 86%, 93% 90%, 86% 85%, 78% 91%, 70% 87%, 61% 93%, 52% 88%, 44% 94%, 35% 89%, 27% 95%, 18% 90%, 9% 96%, 0% 91%);
         }
         .mt-night-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
         .mt-night-star { position: absolute; width: 38px; left: 50%; top: calc(26px + var(--safe-top)); }
         .mt-night-thread {
           position: absolute; width: 60px; left: calc(50% + 26px); top: calc(46px + var(--safe-top));
-          fill: none; stroke: #f1e2b8; stroke-width: 1; opacity: 0.8;
+          fill: none; stroke: var(--sisi-paper); stroke-width: 1; opacity: 0.8;
         }
         .mt-camera {
           position: absolute; right: 18px; top: calc(28px + var(--safe-top)); width: 46px; height: 46px;
-          border-radius: 50%; border: 0; background: #f7f2e3; color: #2b2f45;
+          border-radius: 50%; border: 0; background: var(--sisi-paper); color: var(--sisi-ink);
           display: inline-flex; align-items: center; justify-content: center;
-          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25); cursor: pointer; z-index: 2;
+          box-shadow: 0 3px 10px rgba(16, 45, 50, 0.25); cursor: pointer; z-index: 2;
         }
         .mt-camera svg { width: 22px; height: 22px; }
         .mt-title {
           position: relative; margin: 0; padding-top: calc(124px + var(--safe-top));
           font-family: var(--display); font-weight: 400; font-size: clamp(34px, 10vw, 42px); letter-spacing: -0.01em;
         }
-        .mt-sub { position: relative; margin: 4px 0 0; font-family: var(--serif); font-size: 18px; color: rgba(43, 47, 69, 0.72); }
-        .mt-empty { padding: 60px 32px; text-align: center; font-family: var(--serif); font-style: italic; color: rgba(43, 47, 69, 0.6); }
+        .mt-sub { position: relative; margin: 4px 0 0; font-family: var(--serif); font-size: 18px; color: rgba(16, 45, 50, 0.72); }
+        .mt-empty { padding: 60px 32px; text-align: center; font-family: var(--serif); font-style: italic; color: rgba(16, 45, 50, 0.6); }
         .mt-primary {
           margin-top: 16px; height: 46px; padding: 0 26px; border: 0; border-radius: 999px;
-          background: #3d74d8; color: #f7f2e3; font-family: var(--serif); font-size: 17px; cursor: pointer;
+          background: var(--sisi-ink); color: var(--sisi-paper); font-family: var(--serif); font-size: 17px; cursor: pointer;
         }
 
         /* Paper pieces */
         .mt-slip { position: relative; padding: 16px 20px 14px; }
         .mt-slip > :not(.mt-art) { position: relative; }
         .mt-text { display: block; font-family: var(--serif); font-size: 17px; line-height: 1.34; margin: 0 0 6px; }
-        .mt-when { display: block; font-family: var(--serif); font-size: 13.5px; color: rgba(43, 47, 69, 0.58); }
+        .mt-when { display: block; font-family: var(--serif); font-size: 13.5px; color: rgba(16, 45, 50, 0.58); }
         .mt-pc { position: relative; aspect-ratio: 428 / 567; }
-        .mt-pc > .mt-art:first-child { filter: drop-shadow(0 6px 10px rgba(31, 42, 68, 0.16)); }
+        .mt-pc > .mt-art:first-child { filter: drop-shadow(0 6px 10px rgba(16, 45, 50, 0.16)); }
         .mt-pc-win { position: absolute; left: 9.35%; top: 11.64%; width: 79.21%; height: 70.9%; overflow: hidden; }
         .mt-pc-win img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .mt-pc-date {
           position: absolute; left: 10%; right: 10%; top: 84%; text-align: center;
-          font-family: var(--font-caveat), cursive; font-size: 17px; color: rgba(43, 47, 69, 0.7);
+          font-family: var(--font-editorial); font-size: 17px; color: rgba(16, 45, 50, 0.7);
         }
         .mt-cardbtn { display: block; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit; }
 
@@ -384,14 +390,14 @@ export function MemoryTrail() {
         .mt-sign span {
           position: absolute; left: 3%; top: 13%; width: 84%; height: 34%;
           display: flex; align-items: center; justify-content: center;
-          font-family: var(--display); font-size: 15px; color: #2b2f45; transform: rotate(-1.5deg);
+          font-family: var(--display); font-size: 15px; color: var(--sisi-ink); transform: rotate(-1.5deg);
         }
         .mt-birth { position: relative; height: 76px; }
         .mt-sparkle { position: absolute; top: 6px; width: 58px; border: 0; padding: 0; background: transparent; cursor: pointer; }
         .mt-sparkle .mt-crop { animation: mt-breathe 2.8s ease-in-out infinite; }
         .mt-birth-cap {
           position: absolute; top: 20px; font-family: var(--serif); font-style: italic; font-size: 14.5px;
-          line-height: 1.3; color: rgba(43, 47, 69, 0.66);
+          line-height: 1.3; color: rgba(16, 45, 50, 0.66);
         }
         @keyframes mt-breathe {
           0%, 100% { transform: scale(0.94); opacity: 0.86; }
@@ -404,46 +410,46 @@ export function MemoryTrail() {
         .mt-rest-art { width: 70%; margin: 0 auto 6px; animation: mt-sway 5s ease-in-out infinite; }
         @keyframes mt-sway { 0%, 100% { transform: translateX(-1px) rotate(-0.3deg); } 50% { transform: translateX(1.5px) rotate(0.3deg); } }
         .mt-rest-title { font-family: var(--display); font-size: 25px; margin: 0 0 4px; }
-        .mt-rest-wish { font-family: var(--serif); font-size: 16px; margin: 0 0 6px; color: rgba(43, 47, 69, 0.8); }
-        .mt-rest-meta { font-family: var(--serif); font-size: 14px; color: rgba(43, 47, 69, 0.55); margin: 0 0 14px; }
+        .mt-rest-wish { font-family: var(--serif); font-size: 16px; margin: 0 0 6px; color: rgba(16, 45, 50, 0.8); }
+        .mt-rest-meta { font-family: var(--serif); font-size: 14px; color: rgba(16, 45, 50, 0.55); margin: 0 0 14px; }
         .mt-rest-btn {
-          height: 40px; padding: 0 22px; border: 0; border-radius: 999px; background: #3d74d8; color: #f7f2e3;
+          height: 40px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--sisi-ink); color: var(--sisi-paper);
           font-family: var(--serif); font-size: 16px; cursor: pointer;
         }
 
         /* Detail — the paper opens in place */
-        .mt-dim { position: fixed; inset: 0; z-index: 50; background: rgba(30, 28, 44, 0.3); border: 0; padding: 0; }
+        .mt-dim { position: fixed; inset: 0; z-index: 50; background: rgba(16, 45, 50, 0.3); border: 0; padding: 0; }
         .mt-stage { position: fixed; inset: 0; z-index: 51; display: grid; place-items: center; pointer-events: none; }
         .mt-detail {
           position: relative; pointer-events: auto; width: min(88vw, 380px); max-height: 84svh; overflow-y: auto;
-          padding: 34px 28px 28px; color: #2b2f45; filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.28));
+          padding: 34px 28px 28px; color: var(--sisi-ink); filter: drop-shadow(0 16px 30px rgba(16, 45, 50, 0.28));
           scrollbar-width: none;
         }
         .mt-detail > :not(.mt-art) { position: relative; }
         .mt-close {
           position: absolute !important; right: 14px; top: 14px; width: 36px; height: 36px; border: 0; background: transparent;
-          color: rgba(43, 47, 69, 0.7); cursor: pointer; font-size: 24px; line-height: 1; z-index: 2;
+          color: rgba(16, 45, 50, 0.7); cursor: pointer; font-size: 24px; line-height: 1; z-index: 2;
         }
         .mt-d-pc { width: 80%; margin: 4px auto 14px; transform: rotate(-1.5deg); }
         .mt-dtext { font-family: var(--display); font-size: 22px; line-height: 1.32; margin: 8px 0 10px; }
         .mt-dinput {
           width: 100%; resize: none; padding: 10px 12px; margin: 8px 0 10px; border-radius: 10px;
-          border: 1px solid rgba(43, 47, 69, 0.16); background: rgba(255, 255, 255, 0.55);
-          font-family: var(--display); font-size: 19px; color: #2b2f45; outline: none;
+          border: 1px solid rgba(16, 45, 50, 0.16); background: rgba(245, 239, 221, 0.55);
+          font-family: var(--display); font-size: 19px; color: var(--sisi-ink); outline: none;
         }
-        .mt-rule { height: 1px; background: rgba(43, 47, 69, 0.13); margin: 14px 0; }
+        .mt-rule { height: 1px; background: rgba(16, 45, 50, 0.13); margin: 14px 0; }
         .mt-star-row {
           display: flex; align-items: center; gap: 12px; width: 100%; padding: 2px 0; border: 0; background: transparent;
-          text-align: left; cursor: pointer; font-family: var(--serif); font-size: 17px; color: #2b2f45;
+          text-align: left; cursor: pointer; font-family: var(--serif); font-size: 17px; color: var(--sisi-ink);
         }
-        .mt-star-row .chev { margin-left: auto; color: #3d74d8; font-size: 22px; }
+        .mt-star-row .chev { margin-left: auto; color: var(--sisi-ink); font-size: 22px; }
         .mt-actions { display: flex; gap: 10px; margin-top: 18px; }
         .mt-btn {
-          flex: 1; height: 46px; border-radius: 999px; border: 1px solid rgba(43, 47, 69, 0.16); background: rgba(255, 255, 255, 0.5);
-          font-family: var(--serif); font-size: 17px; color: #2b2f45; cursor: pointer;
+          flex: 1; height: 46px; border-radius: 999px; border: 1px solid rgba(16, 45, 50, 0.16); background: rgba(245, 239, 221, 0.5);
+          font-family: var(--serif); font-size: 17px; color: var(--sisi-ink); cursor: pointer;
           display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .mt-btn--primary { flex: 1.3; border: 0; background: #3d74d8; color: #f7f2e3; }
+        .mt-btn--primary { flex: 1.3; border: 0; background: var(--sisi-ink); color: var(--sisi-paper); }
         .mt-btn img { width: 20px; height: 20px; }
         .mt-rest-list .mt-text { font-size: 17px; }
         .mt-overlay {
@@ -453,7 +459,7 @@ export function MemoryTrail() {
         .mt-overlay > * { pointer-events: auto; }
         .mt-note {
           position: fixed; left: 50%; bottom: 110px; z-index: 55; margin: 0; transform: translateX(-50%);
-          padding: 12px 18px; font-family: var(--serif); font-size: 15px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+          padding: 12px 18px; font-family: var(--serif); font-size: 15px; box-shadow: 0 6px 18px rgba(16, 45, 50, 0.2);
         }
         @media (prefers-reduced-motion: reduce) {
           .mt-sparkle .mt-crop, .mt-rest-art { animation: none; }
@@ -712,170 +718,6 @@ function Trail({
 
 /* ── 3. A Moment unfolds ──────────────────────────────────────────── */
 
-function Unfold({ from, label, onClose, children }: { from: Origin; label: string; onClose: () => void; children: React.ReactNode }) {
-  const vw = typeof window !== "undefined" ? window.innerWidth : 390;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 844;
-  const W = Math.min(vw * 0.88, 380);
-  const start = from
-    ? { x: from.x - vw / 2, y: from.y - vh / 2, scale: Math.max(0.35, Math.min(0.9, from.w / W)), opacity: 0.4 }
-    : { x: 0, y: 20, scale: 0.94, opacity: 0 };
-  return (
-    <>
-      <motion.button
-        type="button"
-        aria-label="Close"
-        className="mt-dim"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      <div className="mt-stage">
-        <motion.div
-          className="mt-detail"
-          role="dialog"
-          aria-label={label}
-          initial={start}
-          animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-          exit={{ ...start, opacity: 0, transition: { duration: 0.3 } }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <ArtFill art={ART.paper} />
-          <button type="button" className="mt-close" aria-label="Close" onClick={onClose}>×</button>
-          {children}
-        </motion.div>
-      </div>
-    </>
-  );
-}
-
-function MomentDetail({
-  item,
-  from,
-  star,
-  onClose,
-  onViewStar,
-  onSaved,
-}: {
-  item: MomentItem;
-  from: Origin;
-  star?: Star;
-  onClose: () => void;
-  onViewStar: (id: string) => void;
-  onSaved: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(item.text);
-  const [busy, setBusy] = useState(false);
-
-  const save = async () => {
-    const t = draft.trim();
-    if (!t || busy) return;
-    setBusy(true);
-    if (item.postcardId) await updatePostcardText(item.postcardId, t);
-    if (item.signId) await updateSign(item.signId, t);
-    onSaved();
-  };
-
-  return (
-    <Unfold from={from} label="Moment" onClose={onClose}>
-      {item.image && <Postcard image={item.image} className="mt-d-pc" />}
-      {editing ? (
-        <textarea className="mt-dinput" rows={3} maxLength={240} value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} />
-      ) : (
-        <p className="mt-dtext">{item.text}</p>
-      )}
-      <p className="mt-when">{whenLabel(item.at, true)}</p>
-      {star && (
-        <>
-          <div className="mt-rule" />
-          <button type="button" className="mt-star-row" onClick={() => onViewStar(star.id)}>
-            <Crop art={ART.stamp} style={{ width: 30, flex: "0 0 auto" }} />
-            <span>{star.wish}</span>
-            <span className="chev" aria-hidden>›</span>
-          </button>
-        </>
-      )}
-      <div className="mt-actions">
-        {editing ? (
-          <>
-            <button type="button" className="mt-btn" onClick={() => { setDraft(item.text); setEditing(false); }}>Cancel</button>
-            <button type="button" className="mt-btn mt-btn--primary" disabled={busy || !draft.trim()} onClick={save}>Save</button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="mt-btn" onClick={() => setEditing(true)}>✎ Edit</button>
-            {star && (
-              <button type="button" className="mt-btn mt-btn--primary" onClick={() => onViewStar(star.id)}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/sisi-star-mark-painted-512.png" alt="" /> View Star
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    </Unfold>
-  );
-}
-
-/* ── 4. A Star at Rest — its memories ─────────────────────────────── */
-
-function RestDetail({
-  item,
-  from,
-  moments,
-  onClose,
-  onReturned,
-}: {
-  item: RestItem;
-  from: Origin;
-  moments: Sign[];
-  onClose: () => void;
-  onReturned: () => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <Unfold from={from} label="A Star at Rest" onClose={onClose}>
-      <Crop art={ART.rest} style={{ width: "52%", margin: "0 auto 4px" }} />
-      <p className="mt-dtext" style={{ textAlign: "center" }}>{item.star.wish}</p>
-      <p className="mt-when" style={{ textAlign: "center" }}>This Star is resting.</p>
-      <div className="mt-rule" />
-      <div className="mt-rest-list">
-        {moments.length === 0 ? (
-          <p className="mt-text" style={{ fontStyle: "italic", color: "rgba(43,47,69,0.55)" }}>No moments were kept for this Star.</p>
-        ) : (
-          moments
-            .slice()
-            .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-            .map((m) => (
-              <div key={m.id} style={{ marginBottom: 12 }}>
-                <span className="mt-when">{whenLabel(m.createdAt)}</span>
-                <span className="mt-text">{m.text}</span>
-              </div>
-            ))
-        )}
-      </div>
-      <div className="mt-actions">
-        <button
-          type="button"
-          className="mt-btn mt-btn--primary"
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            await unrestStar(item.star.id);
-            onReturned();
-          }}
-        >
-          Return to the sky
-        </button>
-      </div>
-    </Unfold>
-  );
-}
-
-/* ── small pieces ─────────────────────────────────────────────────── */
-
-/** Stretches an artwork's painted area (its `box`) over the parent box. */
 function ArtFill({ art }: { art: Art }) {
   const [x0, y0, x1, y1] = art.box;
   const bw = x1 - x0;

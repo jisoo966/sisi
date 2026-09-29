@@ -51,6 +51,7 @@ import { CreateStarFlow } from "@/components/sisi/journey-v2/CreateStarFlow";
 import { EveningReflection, eveningDue } from "@/components/sisi/journey-v2/EveningReflection";
 import { earnLight } from "@/lib/littleLights";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
+import { IconPlus, SecondaryButton } from "@/components/ds";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
 
@@ -500,7 +501,7 @@ export default function JourneyPage() {
   }, [arriveStarId, isStarView, busy, worldStars]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Safe-area tint follows the environment actually on screen.
-  usePageBg(env === "night" ? "#03070a" : "#4384e3");
+  usePageBg("var(--sisi-ink)");
 
   // The world walks only in the meadow, with no sheet open and no camera
   // move in progress (after a return, walking resumes once we've landed).
@@ -990,10 +991,10 @@ export default function JourneyPage() {
             env === "night" && isStarView && !busy && !openStar && !newStarOpen && !leavingTo ? " is-shown" : ""
           }`}
         >
-          <span className="stars-top-title">My Stars</span>
-          <button type="button" className="stars-new" onClick={startNewStar}>
-            + New Star
-          </button>
+          <h2 className="stars-top-title">My Stars</h2>
+          <SecondaryButton surface="dark" className="stars-new" onClick={startNewStar}>
+            <IconPlus size={18} /> New Star
+          </SecondaryButton>
         </div>
 
         <NewStarSky
@@ -1015,7 +1016,7 @@ export default function JourneyPage() {
             <motion.button
               key="finish-walk"
               type="button"
-              className="walk-finish"
+              className="ds-btn ds-btn--secondary ds-on-dark walk-finish"
               onClick={() => setWalkLine("finish-ask")}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 1.2, duration: 0.6 } }}

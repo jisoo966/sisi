@@ -6,7 +6,7 @@ import { loadSigns, loadStars } from "@/lib/myStars";
 
 /**
  * WrittenMoments — the words noticed along the way (one-sentence practices,
- * signs, evening reflections, what was kept from a talk with SiSi), each
+ * signs, evening reflections, what was kept from a talk with Sísí), each
  * shown with the Star it belongs to. Newest first.
  */
 export function WrittenMoments() {
@@ -27,8 +27,8 @@ export function WrittenMoments() {
   if (items === null) return null;
   if (items.length === 0) {
     return (
-      <p className="font-sentient text-[15px] italic text-journey-navy/55 mt-10 text-center">
-        your moments will gather here as you walk.
+      <p className="t-body italic text-journey-navy/55 mt-10 text-center">
+        Your moments will gather here as you walk.
       </p>
     );
   }
@@ -38,13 +38,13 @@ export function WrittenMoments() {
       {items.map(({ sign, star }) => (
         <div
           key={sign.id}
-          className="rounded-[6px] bg-[#fbf6ea] px-5 py-4 shadow-[0_2px_10px_rgba(31,42,68,0.08)]"
+          className="rounded-[6px] bg-paper px-5 py-4 shadow-[0_2px_10px_rgba(16, 45, 50,0.08)]"
           style={{ clipPath: EDGE }}
         >
-          <p className="font-sentient text-[12px] text-journey-navy/55">{formatWhen(sign.createdAt)}</p>
-          <p className="font-sentient text-[17px] leading-snug text-journey-navy/90 mt-1">{sign.text}</p>
+          <p className="t-meta text-journey-navy/55">{formatWhen(sign.createdAt)}</p>
+          <p className="t-dialogue text-journey-navy/90 mt-1">{sign.text}</p>
           {star && (
-            <p className="font-sentient text-[12px] italic text-journey-navy/50 mt-2">✦ {star.wish}</p>
+            <p className="t-meta italic text-journey-navy/50 mt-2">✦ {star.wish}</p>
           )}
         </div>
       ))}

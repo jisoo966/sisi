@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment, loadMoments, type MomentType } from "@/lib/momentStore";
-import { tornEdge } from "@/lib/tornEdge";
+import { FilterChip, FocusPaper, IconButton, IconSend, PrimaryButton, ReplyChip, StarGlyph, TextAction } from "@/components/ds";
 import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
 
 /**
@@ -28,8 +27,6 @@ import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/jo
  * (source sisi_conversation, one canonical Moment).
  */
 
-const PAPER_EDGE = tornEdge(51, 30, 0.9);
-const NOTE_EDGE = tornEdge(61, 14, 2.4);
 /** A reply is prepared with a thoughtful look, held at least this long. */
 const MIN_THINK_MS = 700;
 /** Invisible markers Sísí may add (see app/api/chat): stripped from the text. */
@@ -273,388 +270,242 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     return null;
   };
 
+  const titleId = "sisi-talk-title";
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* The world stays visible; the tabs below stay usable. */}
-          <motion.button
-            type="button"
-            aria-label="Close conversation"
-            onClick={onClose}
-            className="companion-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+    <FocusPaper
+      open={open}
+      onClose={keep ? () => setKeep(null) : onClose}
+      title={<h2 id={titleId} className="cs-sr">Talk with Sísí</h2>}
+      titleId={titleId}
+      closeLabel="Close conversation"
+      tall
+      className="companion-sheet"
+      bodyRef={keep ? undefined : scrollRef}
+      decoration={<SisiChatCharacter expression={expr} still={scrolling} />}
+      onBodyScroll={() => {
+        // hold still while the user scrolls
+        setScrolling(true);
+        clearTimeout(scrollTimer.current);
+        scrollTimer.current = setTimeout(() => setScrolling(false), 450);
+      }}
+      footer={
+        keep ? (
+          <div className="ds-actions" style={{ marginTop: 0 }}>
+            <PrimaryButton
+              block
+              loading={keepBusy}
+              disabled={!keep.text.trim() || (keep.mode === "star" && !keep.starId)}
+              onClick={confirmKeep}
+            >
+              {keep.mode === "star" ? "Save to my Star" : "Keep this in Moments"}
+            </PrimaryButton>
+            <TextAction onClick={() => setKeep(null)}>Not now</TextAction>
+          </div>
+        ) : (
+          <form
+            className="cs-input-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                // typing: Sísí turns to listen
+                if (e.target.value && !sending && expr !== "listening") setExpr("listening");
+              }}
+              placeholder="Share anything…"
+              aria-label="Share anything"
+              disabled={sending}
+              className="ds-field cs-input"
+              autoComplete="off"
+            />
+            <IconButton type="submit" label="Send" className="cs-send" disabled={!draft.trim() || sending}>
+              <IconSend size={18} />
+            </IconButton>
+          </form>
+        )
+      }
+    >
+      <p className="cs-sr" role="status" aria-live="polite">
+        {sending ? "Sísí is thinking…" : ""}
+      </p>
+
+      {keep ? (
+        /* ── keep, with an editable preview ── */
+        <div className="cs-keep" role="group" aria-label={keep.mode === "star" ? "Add to a Star" : "Keep this in Moments"}>
+          <p className="t-card-title cs-keep-title">{keep.mode === "star" ? "Which Star does this belong to?" : "Keep this in Moments"}</p>
+          <textarea
+            className="ds-field"
+            rows={3}
+            maxLength={240}
+            value={keep.text}
+            aria-label="What to keep"
+            onChange={(e) => setKeep({ ...keep, text: e.target.value })}
           />
 
-          <motion.aside
-            role="dialog"
-            aria-label="Talk with Sísí"
-            className="companion-sheet"
-            initial={{ y: "105%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "108%" }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {/* Sísí rests on the paper, paws over its top edge. */}
-            <SisiChatCharacter expression={expr} still={scrolling} />
-            <div className="paper paper-bg" aria-hidden />
-            <p className="sr-only" role="status" aria-live="polite">
-              {sending ? "Sísí is thinking…" : ""}
+          {keep.mode === "moment" ? (
+            <p className="ds-helper cs-keep-source">
+              <BubbleIcon /> From a conversation with Sísí
             </p>
-
-            {keep ? (
-              /* ── 4a / 4b: keep, with an editable preview ── */
-              <div className="keep" role="group" aria-label={keep.mode === "star" ? "Add to a Star" : "Save as a Moment"}>
-                <div className="keep-head">
-                  <p className="keep-title">{keep.mode === "star" ? "Which Star does this belong to?" : "Save as a Moment"}</p>
-                  <button type="button" className="icon-btn" aria-label="Cancel" onClick={() => setKeep(null)}>
-                    <CloseIcon />
+          ) : (
+            <>
+              <div className="cs-star-list" role="radiogroup" aria-label="Which Star">
+                {stars.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={keep.starId === s.id}
+                    className="ds-star-row cs-star-row"
+                    onClick={() => setKeep({ ...keep, starId: s.id })}
+                  >
+                    <span className="cs-star-thumb">
+                      {thumbs[s.id] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumbs[s.id]} alt="" />
+                      ) : (
+                        <StarGlyph size={18} />
+                      )}
+                    </span>
+                    <span className="ds-star-row-main"><span className="ds-star-row-title">{s.wish}</span></span>
+                    <span className={`cs-radio${keep.starId === s.id ? " is-on" : ""}`} aria-hidden />
                   </button>
-                </div>
-                <div className="quote">
-                  <span className="quote-mark" aria-hidden>“</span>
-                  <textarea
-                    rows={3}
-                    maxLength={240}
-                    value={keep.text}
-                    aria-label="What to keep"
-                    onChange={(e) => setKeep({ ...keep, text: e.target.value })}
-                  />
-                </div>
-
-                {keep.mode === "moment" ? (
-                  <p className="keep-source">
-                    <BubbleIcon /> A conversation with Sísí
-                  </p>
-                ) : (
-                  <>
-                    <div className="star-list" role="radiogroup" aria-label="Which Star">
-                      {stars.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={keep.starId === s.id}
-                          className="star-row"
-                          onClick={() => setKeep({ ...keep, starId: s.id })}
-                        >
-                          <span className="star-thumb">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={thumbs[s.id] ?? "/assets/sisi-star-mark-painted-512.png"} alt="" className={thumbs[s.id] ? "" : "is-mark"} />
-                          </span>
-                          <span className="star-wish">{s.wish}</span>
-                          <span className={`radio${keep.starId === s.id ? " is-on" : ""}`} aria-hidden />
-                        </button>
-                      ))}
-                    </div>
-                    <p className="keep-q">What kind of note is this?</p>
-                    <div className="seg">
-                      {([
-                        ["something_good", "Something good"],
-                        ["small_step", "A small step"],
-                      ] as const).map(([t, label]) => (
-                        <button
-                          key={t}
-                          type="button"
-                          aria-pressed={keep.type === t}
-                          className={`seg-btn${keep.type === t ? " is-on" : ""}`}
-                          onClick={() => setKeep({ ...keep, type: t })}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  className="primary"
-                  disabled={keepBusy || !keep.text.trim() || (keep.mode === "star" && !keep.starId)}
-                  onClick={confirmKeep}
-                >
-                  {keep.mode === "star" ? "Save to my Star" : "Save Moment"}
-                </button>
-                <button type="button" className="pill pill--quiet" onClick={() => setKeep(null)}>
-                  Cancel
-                </button>
+                ))}
               </div>
+              <p className="ds-label" style={{ margin: "8px 0 0" }}>What kind of note is this?</p>
+              <div className="ds-chip-row">
+                {([
+                  ["something_good", "Something good"],
+                  ["small_step", "A small step"],
+                ] as const).map(([t, label]) => (
+                  <FilterChip key={t} selected={keep.type === t} onClick={() => setKeep({ ...keep, type: t })}>
+                    {label}
+                  </FilterChip>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="cs-thread">
+          {/* 1 · Sísí welcomes you */}
+          <div className="cs-greet">
+            <p className="t-screen-title cs-greet-h">I’m here.</p>
+            {opening ? (
+              <p className="t-dialogue cs-sisi" style={{ textAlign: "left" }}>{opening}</p>
             ) : (
-              <>
-                <div
-                  className="scroll"
-                  ref={scrollRef}
-                  onScroll={() => {
-                    // hold still while the user scrolls
-                    setScrolling(true);
-                    clearTimeout(scrollTimer.current);
-                    scrollTimer.current = setTimeout(() => setScrolling(false), 450);
-                  }}
-                >
-                  {/* 1 · Sísí welcomes you */}
-                  <div className="greet">
-                    <p className="greet-h">I’m here.</p>
-                    {opening ? (
-                      <p className="note note-sisi" style={{ clipPath: NOTE_EDGE }}>{opening}</p>
-                    ) : (
-                      <p className="greet-q">What’s on your mind?</p>
+              <p className="t-dialogue cs-greet-q">What’s on your mind?</p>
+            )}
+          </div>
+          {!hasTalked && (
+            <div className="ds-chip-row cs-chips" aria-label="Ways to begin">
+              {STARTERS.map((st) => (
+                <ReplyChip key={st.label} onClick={() => send(st.say)}>
+                  {st.label}
+                </ReplyChip>
+              ))}
+            </div>
+          )}
+
+          {messages.map((m, i) => {
+            if (m.from === "saved")
+              return (
+                <p key={m.id} className="t-meta cs-saved">
+                  <CheckIcon /> {m.text}
+                </p>
+              );
+            if (m.from === "user")
+              return (
+                <p key={m.id} className="t-body cs-user">
+                  {m.text}
+                </p>
+              );
+            const p = pillsFor(m);
+            return (
+              <div key={m.id} className="cs-turn">
+                <p className="t-dialogue cs-sisi">
+                  {m.text || (sending && i === messages.length - 1 ? "…" : "")}
+                </p>
+                {p?.chips && (
+                  <div className="ds-chip-row cs-chips" aria-label="Quick replies">
+                    {p.chips.map((c) => (
+                      <ReplyChip key={c.label} onClick={c.act}>
+                        {c.label}
+                      </ReplyChip>
+                    ))}
+                  </div>
+                )}
+                {p?.primary && (
+                  <div className="cs-suggest">
+                    <PrimaryButton onClick={p.primary.act}>{p.primary.label}</PrimaryButton>
+                    {p.secondary && <TextAction onClick={p.secondary.act}>{p.secondary.label}</TextAction>}
+                    {p.lock && (
+                      <p className="t-helper cs-lock">
+                        <LockIcon /> Nothing is saved unless you choose.
+                      </p>
                     )}
                   </div>
-                  {!hasTalked && (
-                    <div className="chips" aria-label="Ways to begin">
-                      {STARTERS.map((s) => (
-                        <button key={s.label} type="button" className="chip" onClick={() => send(s.say)}>
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {messages.map((m, i) => {
-                    if (m.from === "saved")
-                      return (
-                        <p key={m.id} className="saved-chip">
-                          <CheckIcon /> {m.text}
-                        </p>
-                      );
-                    if (m.from === "user")
-                      return (
-                        <p key={m.id} className="note note-user">
-                          {m.text}
-                        </p>
-                      );
-                    const p = pillsFor(m);
-                    const isLast = lastSisi?.id === m.id;
-                    return (
-                      <div key={m.id} className="turn">
-                        <div className="note note-sisi" style={{ clipPath: NOTE_EDGE }}>
-                          {m.text || (sending && i === messages.length - 1 ? "…" : "")}
-                        </div>
-                        {isLast && m.text && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img className="coral" src="/V2/moments/coral-star-stamp.png" alt="" aria-hidden />
-                        )}
-                        {p?.chips && (
-                          <div className="chips" aria-label="Quick replies">
-                            {p.chips.map((c) => (
-                              <button key={c.label} type="button" className="chip" onClick={c.act}>
-                                {c.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {p?.primary && (
-                          <div className="suggest">
-                            <button type="button" className="suggest-btn" onClick={p.primary.act}>
-                              {p.primary.label}
-                            </button>
-                            {p.secondary && (
-                              <button type="button" className="suggest-link" onClick={p.secondary.act}>
-                                {p.secondary.label}
-                              </button>
-                            )}
-                            {p.lock && (
-                              <p className="lock">
-                                <LockIcon /> Nothing is saved unless you choose.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <form
-                  className="input-row"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    send();
-                  }}
-                >
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={draft}
-                    onChange={(e) => {
-                      setDraft(e.target.value);
-                      // typing: Sísí turns to listen
-                      if (e.target.value && !sending && expr !== "listening") setExpr("listening");
-                    }}
-                    placeholder="Share anything…"
-                    aria-label="Share anything"
-                    disabled={sending}
-                    className="input"
-                  />
-                  <button type="submit" disabled={!draft.trim() || sending} aria-label="Send" className="send-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 19V5M6 11l6-6 6 6" />
-                    </svg>
-                  </button>
-                </form>
-              </>
-            )}
-          </motion.aside>
-
-          <style jsx global>{`
-            .companion-backdrop {
-              position: fixed; left: 0; right: 0; top: 0;
-              /* the tabs stay reachable */
-              bottom: var(--nav-total, 84px);
-              background: rgba(20, 28, 52, 0.12); z-index: 30; border: 0; padding: 0;
-            }
-            .companion-sheet {
-              position: fixed; z-index: 31;
-              left: max(10px, var(--safe-left, 0px)); right: max(10px, var(--safe-right, 0px));
-              top: max(24%, calc(var(--safe-top, 0px) + 150px));
-              bottom: calc(var(--nav-total, 84px) + 6px);
-              display: flex; flex-direction: column;
-              filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.25));
-            }
-            @media (min-width: 500px) {
-              .companion-sheet { left: 50%; right: auto; width: 410px; margin-left: -205px; }
-            }
-            .companion-sheet .paper { position: absolute; inset: 0; z-index: 1; clip-path: ${PAPER_EDGE}; }
-            .companion-sheet .sr-only {
-              position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-            }
-            .companion-sheet .scroll, .companion-sheet .input-row, .companion-sheet .keep { position: relative; z-index: 2; }
-
-            .companion-sheet .scroll {
-              flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain;
-              padding: 44px 18px 10px; display: flex; flex-direction: column; gap: 12px;
-            }
-            .companion-sheet .greet { text-align: center; padding: 6px 0 4px; }
-            .companion-sheet .greet-h { margin: 0 0 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 27px; color: #1d2744; }
-            .companion-sheet .greet-q { margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-size: 18px; color: #2b2f45; }
-            .companion-sheet .greet .note-sisi { margin: 8px auto 0; text-align: left; }
-
-            .companion-sheet .note { margin: 0; padding: 12px 14px; font-size: 16px; line-height: 1.42; }
-            .companion-sheet .note-user {
-              align-self: flex-end; max-width: 82%; border-radius: 3px;
-              background: rgba(143, 172, 224, 0.3); color: #243157;
-              font-family: var(--font-eb-garamond), Georgia, serif;
-            }
-            .companion-sheet .turn { position: relative; display: flex; flex-direction: column; gap: 10px; }
-            .companion-sheet .note-sisi {
-              align-self: flex-start; max-width: 88%; background: #efe5d0; color: #2b2f45;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16.5px;
-              box-shadow: 0 2px 6px rgba(43, 47, 69, 0.08);
-            }
-            .companion-sheet .coral { position: absolute; top: 44px; right: 4px; width: 22px; height: 22px; opacity: 0.9; pointer-events: none; }
-
-            .companion-sheet .pills { display: flex; flex-direction: column; gap: 8px; padding: 2px 8px; }
-            .companion-sheet .pill {
-              min-height: 44px; border-radius: 999px; cursor: pointer;
-              border: 1px solid rgba(43, 47, 69, 0.1); background: #f8f2e4; color: #2b2f45;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
-              box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 5px rgba(43, 47, 69, 0.08);
-            }
-            .companion-sheet .pill:hover { background: #fbf7ee; }
-            .companion-sheet .pill--quiet { color: rgba(43, 47, 69, 0.7); }
-            /* compact reply chips (wrap), never a stack of full-width buttons */
-            .companion-sheet .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
-            .companion-sheet .chip {
-              min-height: 38px; padding: 0 14px; border-radius: 999px; cursor: pointer;
-              border: 1px solid rgba(61, 116, 216, 0.3); background: #f8f2e4; color: #2b4f9e;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
-            }
-            .companion-sheet .suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 0 2px; }
-            .companion-sheet .suggest-btn {
-              min-height: 42px; padding: 0 18px; border-radius: 999px; cursor: pointer; border: 0;
-              background: #3d74d8; color: #f7f2e3; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px;
-              max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-            }
-            .companion-sheet .suggest-link {
-              min-height: 42px; padding: 0 4px; border: 0; background: transparent; cursor: pointer;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px; color: #3d74d8;
-            }
-            .companion-sheet .suggest .lock { flex-basis: 100%; justify-content: flex-start; }
-            .companion-sheet .lock {
-              display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px 0 0;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 13px; color: rgba(43, 47, 69, 0.55);
-            }
-            .companion-sheet .lock svg { width: 12px; height: 12px; }
-            .companion-sheet .saved-chip {
-              display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0;
-              padding: 10px 12px; border-radius: 3px; background: rgba(143, 163, 140, 0.22); color: #3d4d3b;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
-            }
-            .companion-sheet .saved-chip svg { width: 16px; height: 16px; flex: 0 0 auto; }
-
-            .companion-sheet .input-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px 16px; }
-            .companion-sheet .input {
-              flex: 1; min-width: 0; height: 46px; border-radius: 999px; padding: 0 18px; outline: none;
-              border: 1px solid rgba(43, 47, 69, 0.14); background: #fffdf7; color: #2b2f45;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px;
-            }
-            .companion-sheet .input::placeholder { color: rgba(43, 47, 69, 0.45); font-style: italic; }
-            .companion-sheet .send-btn {
-              flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; border: 0; cursor: pointer;
-              background: #9aa0ad; color: #fff; display: inline-flex; align-items: center; justify-content: center;
-            }
-            .companion-sheet .send-btn:enabled { background: #3d74d8; }
-            .companion-sheet .send-btn:disabled { opacity: 0.6; cursor: default; }
-            .companion-sheet .send-btn svg { width: 18px; height: 18px; }
-
-            /* keep panels */
-            .companion-sheet .keep { flex: 1; min-height: 0; overflow-y: auto; padding: 40px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
-            .companion-sheet .keep-head { display: flex; align-items: center; justify-content: center; position: relative; min-height: 44px; }
-            .companion-sheet .keep-title { margin: 0; padding: 0 40px; text-align: center; font-family: var(--font-fraunces), Georgia, serif; font-size: 19px; color: #1d2744; }
-            .companion-sheet .icon-btn {
-              position: absolute; right: -6px; top: 0; width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer;
-              color: rgba(43, 47, 69, 0.6); display: inline-flex; align-items: center; justify-content: center;
-            }
-            .companion-sheet .icon-btn svg { width: 18px; height: 18px; }
-            .companion-sheet .quote { position: relative; background: #efe5d0; padding: 12px 14px 10px 26px; box-shadow: 0 2px 6px rgba(43, 47, 69, 0.08); }
-            .companion-sheet .quote-mark { position: absolute; left: 10px; top: 6px; font-family: var(--font-fraunces), Georgia, serif; font-size: 22px; color: rgba(43, 47, 69, 0.45); }
-            .companion-sheet .quote textarea {
-              width: 100%; resize: none; border: 0; background: transparent; outline: none; color: #2b2f45;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; line-height: 1.42;
-            }
-            .companion-sheet .keep-source { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 6px; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; color: rgba(43, 47, 69, 0.7); }
-            .companion-sheet .keep-source svg { width: 16px; height: 16px; }
-            .companion-sheet .star-list { display: flex; flex-direction: column; gap: 6px; }
-            .companion-sheet .star-row {
-              display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 6px; border: 0; border-radius: 6px;
-              background: transparent; cursor: pointer; text-align: left;
-            }
-            .companion-sheet .star-row:hover { background: rgba(255, 255, 255, 0.4); }
-            .companion-sheet .star-thumb { flex: 0 0 60px; width: 60px; height: 42px; border-radius: 3px; overflow: hidden; background: #0b1b38; display: flex; align-items: center; justify-content: center; }
-            .companion-sheet .star-thumb img { width: 100%; height: 100%; object-fit: cover; }
-            .companion-sheet .star-thumb img.is-mark { width: 26px; height: 26px; object-fit: contain; }
-            .companion-sheet .star-wish { flex: 1; min-width: 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15.5px; color: #2b2f45; }
-            .companion-sheet .radio { flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(61, 116, 216, 0.6); position: relative; }
-            .companion-sheet .radio.is-on::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #3d74d8; }
-            .companion-sheet .keep-q { margin: 6px 0 0; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 14.5px; color: rgba(43, 47, 69, 0.7); }
-            .companion-sheet .seg { display: flex; gap: 8px; }
-            .companion-sheet .seg-btn {
-              flex: 1; min-height: 40px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(43, 47, 69, 0.14);
-              background: #f8f2e4; color: #2b2f45; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 15px;
-            }
-            .companion-sheet .seg-btn.is-on { background: #3d74d8; border-color: #3d74d8; color: #f7f2e3; }
-            .companion-sheet .primary {
-              min-height: 48px; margin-top: 6px; border: 0; border-radius: 999px; cursor: pointer; background: #3d74d8; color: #f7f2e3;
-              font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px;
-            }
-            .companion-sheet .primary:disabled { opacity: 0.45; cursor: default; }
-          `}</style>
-        </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
-    </AnimatePresence>
+
+      <style jsx global>{`
+        /* the conversation paper leaves room above for Sísí resting on it */
+        .companion-sheet.ds-focus { max-height: min(78dvh, calc(100dvh - var(--safe-top) - 150px - var(--ds-kb, 0px))) !important; }
+        .companion-sheet.ds-focus--tall { height: min(78dvh, calc(100dvh - var(--safe-top) - 150px - var(--ds-kb, 0px))); }
+        .companion-sheet .ds-focus-head { min-height: 44px; padding-top: 4px; }
+        .companion-sheet .ds-focus-body { padding-top: 4px; }
+        .cs-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        .cs-thread { display: flex; flex-direction: column; gap: var(--space-3); }
+        .cs-greet { text-align: center; padding: 0 0 4px; }
+        .cs-greet-h { margin: 0 0 6px; }
+        .cs-greet-q { margin: 0; }
+        .cs-greet .cs-sisi { margin-top: 8px; }
+        /* Sísí speaks in the editorial voice, straight onto the paper */
+        .cs-sisi { margin: 0; align-self: flex-start; max-width: 92%; color: var(--sisi-ink); white-space: pre-wrap; }
+        .cs-turn { display: flex; flex-direction: column; gap: var(--space-3); }
+        /* the person's words: a soft blue note on the right */
+        .cs-user {
+          margin: 0; align-self: flex-end; max-width: 82%; padding: 10px 14px; border-radius: 14px 14px 4px 14px;
+          background: var(--blue-20); color: var(--sisi-ink); white-space: pre-wrap;
+        }
+        .cs-chips { padding: 0; }
+        .cs-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+        .cs-lock { flex-basis: 100%; display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ink-60); }
+        .cs-lock svg { width: 12px; height: 12px; }
+        .cs-saved { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0; color: var(--ink-80); }
+        .cs-saved svg { width: 16px; height: 16px; flex: 0 0 auto; }
+        .cs-input-row { display: flex; align-items: center; gap: var(--space-2); }
+        .cs-input { flex: 1; min-width: 0; border-radius: 999px; padding: 0 18px; }
+        .cs-send { background: var(--sisi-ink); color: var(--sisi-paper); }
+        .cs-send:hover:not(:disabled) { background: var(--ink-80); }
+        .cs-keep { display: flex; flex-direction: column; gap: var(--space-3); }
+        .cs-keep-title { margin: 0; text-align: center; }
+        .cs-keep-source { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; }
+        .cs-keep-source svg { width: 16px; height: 16px; }
+        .cs-star-list { display: flex; flex-direction: column; gap: var(--space-2); }
+        .cs-star-row[aria-checked="true"] { border-color: var(--sisi-ink); }
+        .cs-star-thumb {
+          flex: 0 0 52px; width: 52px; height: 38px; border-radius: 4px; overflow: hidden; background: var(--sisi-ink);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .cs-star-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .cs-radio { flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink-35); position: relative; }
+        .cs-radio.is-on { border-color: var(--sisi-ink); }
+        .cs-radio.is-on::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--sisi-ink); }
+      `}</style>
+    </FocusPaper>
   );
 }
 
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">

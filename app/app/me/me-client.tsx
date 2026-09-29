@@ -25,9 +25,9 @@ type Goal = {
 };
 
 const VOICES = [
-  { id: "sisi_soft", label: "sísí soft", sub: "warm, like a wise older sister" },
-  { id: "sisi_whisper", label: "sísí whisper", sub: "quiet, contemplative" },
-  { id: "sisi_grounded", label: "sísí grounded", sub: "deep, confident" },
+  { id: "sisi_soft", label: "Sísí soft", sub: "warm, like a wise older sister" },
+  { id: "sisi_whisper", label: "Sísí whisper", sub: "quiet, contemplative" },
+  { id: "sisi_grounded", label: "Sísí grounded", sub: "deep, confident" },
 ];
 
 const REMINDER_OPTIONS = [
@@ -105,12 +105,12 @@ export default function MeClient({
   const manifestedGoals = goals.filter((g) => g.status === "manifested");
 
   return (
-    <main className="min-h-screen bg-[#F5EFE6]">
+    <main className="min-h-dvh bg-paper">
       <header className="flex items-center justify-between px-6 pt-8 pb-4">
-        <Link href="/app" className="font-garamond text-sm text-[#6B5648] hover:text-[#3D2E25] transition-colors">
+        <Link href="/app" className="t-body text-ink/80 hover:text-ink transition-colors">
           ← back
         </Link>
-        <span className="font-fraunces text-lg text-[#3D2E25]">me</span>
+        <span className="t-card-title text-ink">me</span>
         <div className="w-12" />
       </header>
 
@@ -123,16 +123,16 @@ export default function MeClient({
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center pt-4"
         >
-          <div className="w-16 h-16 bg-[#3D2E25] flex items-center justify-center mx-auto mb-4">
-            <span className="font-caveat text-[#D4A82A] text-2xl">✦</span>
+          <div className="w-16 h-16 bg-ink flex items-center justify-center mx-auto mb-4">
+            <span className="t-screen-title text-ink/70">✦</span>
           </div>
-          <h1 className="font-fraunces text-3xl text-[#3D2E25]">
+          <h1 className="t-display text-ink">
             {profile?.display_name ?? "love"}
           </h1>
-          <p className="font-garamond italic text-[#8FA38C] text-sm mt-1">{email}</p>
+          <p className="ds-helper italic text-ink/60 mt-1">{email}</p>
           {memberSince && (
-            <p className="font-garamond text-xs text-[#8FA38C]/60 mt-1">
-              with sísí since {memberSince}
+            <p className="t-meta text-ink/60 mt-1">
+              with Sísí since {memberSince}
             </p>
           )}
         </motion.div>
@@ -149,28 +149,28 @@ export default function MeClient({
             { value: manifestedGoals.length, label: "manifested" },
             { value: captureCount, label: "captured" },
           ].map((stat) => (
-            <div key={stat.label} className="bg-[#FAF6F0] border border-[#3D2E25]/8 py-4 text-center">
-              <p className="font-fraunces text-2xl text-[#3D2E25]">{stat.value}</p>
-              <p className="font-garamond italic text-xs text-[#8FA38C] mt-0.5">{stat.label}</p>
+            <div key={stat.label} className="bg-paper border border-ink/8 py-4 text-center">
+              <p className="t-screen-title text-ink">{stat.value}</p>
+              <p className="t-meta italic text-ink/60 mt-0.5">{stat.label}</p>
             </div>
           ))}
         </motion.div>
 
         {/* Subscription */}
-        <div className="bg-[#FAF6F0] border border-[#3D2E25]/8 p-5">
+        <div className="bg-paper border border-ink/8 p-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-1">plan</p>
-              <p className="font-fraunces text-lg text-[#3D2E25] capitalize">
+              <p className="t-meta text-ink/60 mb-1">plan</p>
+              <p className="t-card-title text-ink capitalize">
                 {profile?.subscription_status ?? "free"}
               </p>
             </div>
             {profile?.subscription_status !== "premium" && (
               <Link
                 href="/upgrade"
-                className="font-garamond text-sm border border-[#D4A82A] text-[#D4A82A] px-4 py-2 hover:bg-[#D4A82A] hover:text-[#3D2E25] transition-all"
+                className="ds-btn ds-btn--secondary"
               >
-                upgrade
+                Upgrade
               </Link>
             )}
           </div>
@@ -178,22 +178,22 @@ export default function MeClient({
 
         {/* Display name */}
         <div>
-          <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-3">
-            your name
+          <p className="t-meta text-ink/60 mb-3">
+            Your name
           </p>
           <input
             type="text"
             value={displayName}
             onChange={(e) => { setDisplayName(e.target.value); setSaved(false); }}
-            placeholder="what do i call you?"
-            className="w-full bg-transparent border-b border-[#3D2E25]/30 focus:border-[#D4A82A] outline-none py-3 font-garamond text-base text-[#3D2E25] placeholder-[#6B5648]/40 transition-colors"
+            placeholder="What should I call you?"
+            className="ds-field w-full"
           />
         </div>
 
         {/* Sísí voice */}
         <div>
-          <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-3">
-            sísí's voice
+          <p className="t-meta text-ink/60 mb-3">
+            Sísí's voice
           </p>
           <div className="flex flex-col gap-2">
             {VOICES.map((v) => (
@@ -202,18 +202,18 @@ export default function MeClient({
                 onClick={() => { setVoice(v.id); setSaved(false); }}
                 className={`flex items-center justify-between p-4 border transition-all text-left ${
                   voice === v.id
-                    ? "bg-[#3D2E25] text-[#F5EFE6] border-[#3D2E25]"
-                    : "bg-[#FAF6F0] text-[#6B5648] border-[#3D2E25]/8 hover:border-[#3D2E25]/30"
+                    ? "bg-ink text-paper border-ink"
+                    : "bg-paper text-ink/80 border-ink/8 hover:border-ink/30"
                 }`}
               >
                 <div>
-                  <p className="font-garamond text-sm">{v.label}</p>
-                  <p className={`font-garamond italic text-xs mt-0.5 ${voice === v.id ? "text-[#D4A82A]" : "text-[#8FA38C]"}`}>
+                  <p className="t-body">{v.label}</p>
+                  <p className={`font-garamond italic text-xs mt-0.5 ${voice === v.id ? "text-ink/70" : "text-ink/60"}`}>
                     {v.sub}
                   </p>
                 </div>
                 {voice === v.id && (
-                  <span className="font-caveat text-[#D4A82A] text-lg">✦</span>
+                  <span className="t-card-title text-ink/70">✦</span>
                 )}
               </button>
             ))}
@@ -222,8 +222,8 @@ export default function MeClient({
 
         {/* Reminder times */}
         <div>
-          <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-3">
-            reminder times
+          <p className="t-meta text-ink/60 mb-3">
+            Reminder times
           </p>
           <div className="grid grid-cols-4 gap-2">
             {REMINDER_OPTIONS.map(({ time, label }) => (
@@ -232,8 +232,8 @@ export default function MeClient({
                 onClick={() => toggleReminder(time)}
                 className={`py-3 font-garamond text-sm border transition-all ${
                   reminders.includes(time)
-                    ? "bg-[#3D2E25] text-[#F5EFE6] border-[#3D2E25]"
-                    : "text-[#6B5648] border-[#3D2E25]/20 hover:border-[#3D2E25]/40"
+                    ? "bg-ink text-paper border-ink"
+                    : "text-ink/80 border-ink/20 hover:border-ink/40"
                 }`}
               >
                 {label}
@@ -248,24 +248,24 @@ export default function MeClient({
           disabled={saving}
           className={`w-full py-4 font-garamond text-base transition-all ${
             saved
-              ? "bg-[#8FA38C] text-[#F5EFE6]"
-              : "bg-[#3D2E25] text-[#F5EFE6] hover:bg-[#3A302A]"
+              ? "bg-ink/60 text-paper"
+              : "bg-ink text-paper hover:bg-ink"
           } disabled:opacity-40`}
         >
-          {saving ? "saving..." : saved ? "saved ✦" : "save changes"}
+          {saving ? "saving..." : saved ? "Saved" : "Save changes"}
         </button>
 
         {/* Active goals */}
         {activeGoals.length > 0 && (
           <div>
-            <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-3">
-              what you are calling in
+            <p className="t-meta text-ink/60 mb-3">
+              What you are calling in
             </p>
             <div className="flex flex-col gap-2">
               {activeGoals.map((goal) => (
-                <div key={goal.id} className="bg-[#FAF6F0] border border-[#3D2E25]/8 p-4 flex items-start gap-3">
-                  <span className="font-caveat text-[#D4A82A] text-lg mt-0.5">◇</span>
-                  <p className="font-garamond text-[#3D2E25] text-sm leading-relaxed">
+                <div key={goal.id} className="bg-paper border border-ink/8 p-4 flex items-start gap-3">
+                  <span className="t-card-title text-ink/70 mt-0.5">◇</span>
+                  <p className="t-body text-ink">
                     {goal.content}
                   </p>
                 </div>
@@ -275,12 +275,12 @@ export default function MeClient({
         )}
 
         {/* Sign out */}
-        <div className="pt-4 border-t border-[#3D2E25]/10">
+        <div className="pt-4 border-t border-ink/10">
           <button
             onClick={signOut}
-            className="w-full py-4 font-garamond text-sm text-[#6B5648]/60 hover:text-[#3D2E25] transition-colors"
+            className="t-body w-full py-4 text-ink/60 hover:text-ink transition-colors"
           >
-            sign out
+            Sign out
           </button>
         </div>
       </div>

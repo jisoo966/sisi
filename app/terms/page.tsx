@@ -11,23 +11,23 @@ export const metadata = {
  */
 export default function TermsPage() {
   return (
-    <main className="min-h-svh bg-[#f7f2e3] px-[24px] py-[52px] pb-[80px]">
+    <main className="min-h-dvh bg-paper px-[24px] py-[52px] pb-[80px]">
       <div className="max-w-[640px] mx-auto">
         <Link
           href="/"
-          className="font-sentient text-[13px] text-journey-navy/60 hover:text-journey-navy transition-colors"
+          className="t-body text-journey-navy/60 hover:text-journey-navy transition-colors"
         >
           ← back
         </Link>
 
-        <h1 className="font-fraunces text-[36px] text-journey-navy mt-[24px] mb-[8px]">
+        <h1 className="t-display text-journey-navy mt-[24px] mb-[8px]">
           Terms of Service
         </h1>
-        <p className="font-sentient italic text-[14px] text-journey-navy/60 mb-[36px]">
+        <p className="ds-helper italic text-journey-navy/60 mb-[36px]">
           Last updated: July 14, 2026
         </p>
 
-        <div className="font-sentient text-[16px] text-journey-navy leading-[1.7] space-y-[24px]">
+        <div className="t-body text-journey-navy space-y-[24px]">
           <p>
             By using Sísí, you agree to these terms. They&apos;re short. Read
             them once — that&apos;s enough.
@@ -173,7 +173,7 @@ function Section({
 }) {
   return (
     <section className="space-y-[12px]">
-      <h2 className="font-fraunces text-[22px] text-journey-navy mt-[16px]">
+      <h2 className="t-screen-title text-journey-navy mt-[16px]">
         {title}
       </h2>
       {children}

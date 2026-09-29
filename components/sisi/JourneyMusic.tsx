@@ -78,7 +78,7 @@ export function JourneyMusic({
     return (
       <div
         aria-hidden
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/40 shadow-sm"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/40 backdrop-blur-md border border-paper/40 text-journey-navy/40 shadow-sm"
       >
         <svg
           width="14"
@@ -113,7 +113,7 @@ export function JourneyMusic({
         aria-label={playing ? "Pause ambient sound" : "Play ambient sound"}
         disabled={!available}
         whileTap={{ scale: 0.9 }}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/40 backdrop-blur-md border border-white/40 text-journey-navy/80 shadow-sm hover:bg-white/60 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/40 backdrop-blur-md border border-paper/40 text-journey-navy/80 shadow-sm hover:bg-paper/60 transition disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {playing ? (
           // playing — 4개 막대 (음파 느낌)

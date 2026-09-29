@@ -19,7 +19,12 @@ import { useLayoutEffect, useRef, useState } from "react";
  * `children` may replace or follow the message (e.g. small actions).
  */
 
-export type TailPosition = "bottom-right" | "bottom-left" | "bottom-center" | "no-tail";
+export type TailPosition =
+  | "bottom-right" | "bottom-left" | "bottom-center" | "no-tail"
+  // design-system shorthands
+  | "right" | "left" | "center" | "none";
+
+const TAIL_ALIAS: Record<string, string> = { right: "bottom-right", left: "bottom-left", center: "bottom-center", none: "no-tail" };
 
 type Props = {
   message?: React.ReactNode;
@@ -66,12 +71,13 @@ export function SisiSpeechBubble({
   }, []);
 
   const Tag = onClick ? motion.button : motion.div;
+  const tail = TAIL_ALIAS[tailPosition] ?? tailPosition;
   return (
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`sisi-speech sisi-speech--${tailPosition} sisi-speech--${align} ${className}`}
+      className={`sisi-speech sisi-speech--${tail} sisi-speech--${align} ${className}`}
       initial={{ opacity: 0, y: 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       // closing: fade and lift slightly
@@ -102,25 +108,27 @@ export function SisiSpeechBubble({
           padding: 14px 18px 16px;
           box-sizing: border-box;
           border: 0;
-          color: #18333a;
-          background-color: #f5efdd;
+          color: var(--sisi-ink);
+          background-color: var(--sisi-paper);
           /* the supplied paper tile (seamless, 256px) repeats — never stretched */
-          background-image: url("/assets/ui/paper-grain.webp");
+          background-image: var(--paper-grain);
           background-repeat: repeat;
           background-size: 180px 180px;
           border-radius: 15px 13px 17px 12px;
-          box-shadow: 0 3px 8px rgba(9, 35, 42, 0.12), inset 0 0 14px rgba(120, 98, 63, 0.05);
-          font-family: var(--font-editorial, var(--font-eb-garamond)), Georgia, serif;
-          font-size: clamp(14px, 3.8vw, 17px);
-          line-height: 1.35;
+          box-shadow: 0 3px 8px rgba(16, 45, 50, 0.12), inset 0 0 14px rgba(16, 45, 50, 0.05);
+          font-family: var(--font-editorial);
+          font-weight: 400;
+          font-size: var(--text-dialogue);
+          line-height: var(--leading-dialogue);
+          letter-spacing: -0.01em;
           text-align: center;
           overflow-wrap: break-word;
           white-space: normal;
           transform-origin: 70% 100%;
           -webkit-tap-highlight-color: transparent;
         }
-        button.sisi-speech { cursor: pointer; font: inherit; font-family: var(--font-editorial, var(--font-eb-garamond)), Georgia, serif; font-size: clamp(14px, 3.8vw, 17px); color: #18333a; }
-        button.sisi-speech:focus-visible { outline: 1.5px solid rgba(24, 51, 58, 0.5); outline-offset: 3px; }
+        button.sisi-speech { cursor: pointer; font: inherit; font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); color: var(--sisi-ink); }
+        button.sisi-speech:focus-visible { outline: 2px solid var(--ink-60); outline-offset: 3px; }
         .sisi-speech--left { text-align: left; }
         .sisi-speech--right { text-align: right; }
         .sisi-speech-clip { position: relative; overflow: hidden; }
@@ -134,8 +142,8 @@ export function SisiSpeechBubble({
           bottom: -13px;
           width: 22px;
           height: 18px;
-          background: #f5efdd url("/assets/ui/paper-grain.webp") 0 0 / 180px 180px repeat;
-          filter: drop-shadow(0 3px 2px rgba(9, 35, 42, 0.08));
+          background: var(--sisi-paper) url("/assets/ui/paper-grain.webp") 0 0 / 180px 180px repeat;
+          filter: drop-shadow(0 3px 2px rgba(16, 45, 50, 0.08));
         }
         .sisi-speech--bottom-right { transform-origin: calc(100% - 30px) 100%; }
         .sisi-speech--bottom-right::after { right: 22px; clip-path: polygon(0 0, 100% 0, 32% 100%); }

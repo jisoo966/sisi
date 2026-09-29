@@ -77,7 +77,7 @@ export function JourneyScene({
   }, [mounted]);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#F5F4EC]">
+    <div className="absolute inset-0 overflow-hidden bg-paper">
       {/* Background — video가 메인. Poster는 SSR + load 전 fallback */}
       {mounted ? (
         <video
@@ -108,8 +108,8 @@ export function JourneyScene({
       {/* Soft cream vignette — UI element들이 *환경에 자연스럽게 녹아들도록*.
           상단은 status bar 영역까지 노란 하늘이 edge-to-edge로 보이도록 최소화. */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-[40px] bg-gradient-to-b from-[#F5F4EC]/10 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-[180px] bg-gradient-to-t from-[#F5F4EC]/20 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-[40px] bg-gradient-to-b from-paper/10 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-[180px] bg-gradient-to-t from-paper/20 to-transparent" />
       </div>
     </div>
   );
@@ -175,10 +175,10 @@ export function FoxShadow({
         className="w-full h-full"
         style={{
           background: `radial-gradient(ellipse at 50% 30%,
-            rgba(115, 125, 175, ${intensity}) 0%,
-            rgba(130, 140, 185, ${intensity * 0.75}) 25%,
-            rgba(150, 158, 195, ${intensity * 0.4}) 55%,
-            rgba(170, 178, 205, ${intensity * 0.15}) 80%,
+            rgba(113, 152, 216), ${intensity}) 0%,
+            rgba(113, 152, 216), ${intensity * 0.75}) 25%,
+            rgba(113, 152, 216), ${intensity * 0.4}) 55%,
+            rgba(113, 152, 216), ${intensity * 0.15}) 80%,
             transparent 100%)`,
           borderRadius: "50%",
           filter: "blur(5px)",

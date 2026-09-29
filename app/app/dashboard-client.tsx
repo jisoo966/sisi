@@ -90,10 +90,10 @@ export default function DashboardClient({
   const name = displayName ?? "love";
 
   return (
-    <div className="min-h-screen bg-[#F5EFE6] flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-dvh bg-paper flex flex-col max-w-md mx-auto relative">
       {/* Header */}
       <header className="flex items-center justify-between px-5 pt-8 pb-2">
-        <span className="font-fraunces text-2xl text-[#3D2E25] tracking-wide">
+        <span className="t-screen-title text-ink">
           Sísí
         </span>
         <div className="flex items-center gap-4">
@@ -115,22 +115,22 @@ export default function DashboardClient({
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="px-5 pt-4 pb-5"
         >
-          <h1 className="font-fraunces text-5xl text-[#3D2E25] leading-tight">
+          <h1 className="t-display text-ink">
             hi, {name}.
           </h1>
         </motion.div>
 
         {/* Tabs */}
         <div className="px-5 mb-5">
-          <div className="flex border border-dashed border-[#3D2E25]/40 p-1 gap-1">
+          <div className="flex border border-dashed border-ink/40 p-1 gap-1">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2 font-garamond text-xs uppercase tracking-widest transition-all ${
                   activeTab === tab
-                    ? "bg-[#3D2E25] text-[#F5EFE6]"
-                    : "text-[#6B5648] hover:text-[#3D2E25]"
+                    ? "bg-ink text-paper"
+                    : "text-ink/80 hover:text-ink"
                 }`}
               >
                 {tab}
@@ -146,7 +146,7 @@ export default function DashboardClient({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="bg-[#FAF6F0] border border-[#3D2E25]/10 overflow-hidden"
+              className="bg-paper border border-ink/10 overflow-hidden"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,28 +156,28 @@ export default function DashboardClient({
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-3 left-3">
-                  <span className="font-garamond text-xs bg-[#D4A82A] text-[#3D2E25] px-3 py-1">
-                    active
+                  <span className="ds-chip ds-status">
+                    Active
                   </span>
                 </div>
               </div>
               <div className="p-4 flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="font-garamond text-xs text-[#8FA38C] uppercase tracking-widest mb-1">
-                    your vision
+                  <p className="t-meta text-ink/60 mb-1">
+                    Your vision
                   </p>
-                  <p className="font-fraunces text-xl text-[#3D2E25] leading-snug">
+                  <p className="t-card-title text-ink">
                     {goals[0]?.content ?? "your manifestation"}
                   </p>
-                  <p className="font-garamond italic text-[#6B5648] text-sm mt-1">
+                  <p className="ds-helper italic text-ink/80 mt-1">
                     {affirmation}
                   </p>
                 </div>
                 <Link
                   href="/vision-board"
-                  className="w-10 h-10 bg-[#3D2E25] flex items-center justify-center ml-4 shrink-0"
+                  className="w-10 h-10 bg-ink flex items-center justify-center ml-4 shrink-0"
                 >
-                  <span className="text-[#F5EFE6] text-sm">▶</span>
+                  <span className="text-paper text-sm">▶</span>
                 </Link>
               </div>
             </motion.div>
@@ -188,36 +188,36 @@ export default function DashboardClient({
               transition={{ delay: 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
               <Link href="/vision-board">
-                <div className="bg-[#3D2E25] overflow-hidden">
+                <div className="bg-ink overflow-hidden">
                   <div className="relative aspect-[4/3] flex flex-col items-center justify-center">
                     <div className="absolute inset-0 opacity-10">
                       {[...Array(4)].map((_, i) => (
                         <div
                           key={i}
-                          className="absolute border border-[#D4A82A]"
+                          className="absolute border border-star"
                           style={{ inset: `${i * 14}px` }}
                         />
                       ))}
                     </div>
-                    <p className="font-caveat text-4xl text-[#D4A82A] mb-3 relative z-10">✦</p>
-                    <p className="font-fraunces text-lg text-[#F5EFE6] relative z-10 italic">
-                      your vision awaits
+                    <p className="t-display text-ink/70 mb-3 relative z-10">✦</p>
+                    <p className="t-card-title text-paper relative z-10 italic">
+                      Your vision awaits
                     </p>
                   </div>
                   <div className="p-4 flex items-start justify-between">
                     <div>
-                      <p className="font-garamond text-xs text-[#D4A82A]/70 uppercase tracking-widest mb-1">
-                        create now
+                      <p className="t-meta text-ink/70 mb-1">
+                        Create now
                       </p>
-                      <p className="font-fraunces text-xl text-[#F5EFE6]">
-                        living vision board
+                      <p className="t-card-title text-paper">
+                        Living vision board
                       </p>
-                      <p className="font-garamond italic text-[#F5EFE6]/60 text-sm mt-1">
-                        ai-generated, just for you
+                      <p className="ds-helper italic text-paper/60 mt-1">
+                        Ai-generated, just for you
                       </p>
                     </div>
-                    <div className="w-10 h-10 border border-[#D4A82A] flex items-center justify-center ml-4 shrink-0">
-                      <span className="text-[#D4A82A] text-sm">▶</span>
+                    <div className="w-10 h-10 border border-star flex items-center justify-center ml-4 shrink-0">
+                      <span className="text-ink/70 text-sm">▶</span>
                     </div>
                   </div>
                 </div>
@@ -227,13 +227,13 @@ export default function DashboardClient({
         </div>
 
         {/* Marquee */}
-        <div className="overflow-hidden border-y border-[#3D2E25]/10 py-3 mb-6">
+        <div className="overflow-hidden border-y border-ink/10 py-3 mb-6">
           <motion.div
             animate={{ x: ["0%", "-50%"] }}
             transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
             className="flex whitespace-nowrap"
           >
-            <span className="font-garamond italic text-sm text-[#6B5648] pr-0">
+            <span className="ds-helper italic text-ink/80 pr-0">
               {MARQUEE_TEXT}{MARQUEE_TEXT}
             </span>
           </motion.div>
@@ -242,12 +242,12 @@ export default function DashboardClient({
         {/* Goals section */}
         <div className="px-5 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest">
-              what you are calling in
+            <p className="t-meta text-ink/60">
+              What you are calling in
             </p>
             <Link
               href="/goals/new"
-              className="font-garamond text-xs text-[#D4A82A] hover:text-[#3D2E25] transition-colors"
+              className="t-meta text-ink/70 hover:text-ink transition-colors"
             >
               + add
             </Link>
@@ -263,15 +263,15 @@ export default function DashboardClient({
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex items-start gap-4 bg-[#FAF6F0] border border-[#3D2E25]/8 p-4"
+                    className="flex items-start gap-4 bg-paper border border-ink/8 p-4"
                   >
-                    <div className="font-caveat text-[#D4A82A] text-xl mt-0.5">◇</div>
+                    <div className="t-card-title text-ink/70 mt-0.5">◇</div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-garamond text-[#3D2E25] leading-relaxed">
+                      <p className="font-garamond text-ink leading-relaxed">
                         {goal.content}
                       </p>
                       {days !== null && (
-                        <p className="font-garamond italic text-xs text-[#8FA38C] mt-1">
+                        <p className="t-meta italic text-ink/60 mt-1">
                           {days > 0 ? `${days} days away` : days === 0 ? "today." : "it is here."}
                         </p>
                       )}
@@ -283,10 +283,10 @@ export default function DashboardClient({
           ) : (
             <Link
               href="/goals/new"
-              className="block border border-dashed border-[#3D2E25]/20 p-5 text-center hover:border-[#D4A82A]/50 transition-colors"
+              className="block border border-dashed border-ink/20 p-5 text-center hover:border-star/50 transition-colors"
             >
-              <p className="font-garamond italic text-[#6B5648]">
-                what are you calling in?
+              <p className="font-garamond italic text-ink/80">
+                What are you calling in?
               </p>
             </Link>
           )}
@@ -294,9 +294,9 @@ export default function DashboardClient({
 
         {/* Daily affirmation block */}
         <div className="px-5 mb-6">
-          <div className="bg-[#3D2E25] px-6 py-8 text-center">
-            <p className="font-caveat text-[#D4A82A] text-2xl mb-3">✦</p>
-            <p className="font-fraunces text-xl text-[#F5EFE6] italic leading-relaxed">
+          <div className="bg-ink px-6 py-8 text-center">
+            <p className="t-screen-title text-ink/70 mb-3">✦</p>
+            <p className="t-card-title text-paper italic">
               "{affirmation}"
             </p>
           </div>
@@ -304,12 +304,12 @@ export default function DashboardClient({
 
         {/* Explore grid */}
         <div className="px-5">
-          <p className="font-garamond text-xs text-[#6B5648]/60 uppercase tracking-widest mb-4">
-            explore sísí
+          <p className="t-meta text-ink/60 mb-4">
+            Explore Sísí
           </p>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { href: "/chat", symbol: "◎", label: "chat with sísí", sub: "wise friend guidance" },
+              { href: "/chat", symbol: "◎", label: "chat with Sísí", sub: "wise friend guidance" },
               { href: "/meditations", symbol: "☽", label: "meditations", sub: "5 categories" },
               { href: "/timeline", symbol: "◇", label: "timeline", sub: "your journey" },
               { href: "/app/me", symbol: "✦", label: "my profile", sub: "voice & settings" },
@@ -317,11 +317,11 @@ export default function DashboardClient({
               <Link
                 key={item.href}
                 href={item.href}
-                className="border border-[#3D2E25]/10 bg-[#FAF6F0] p-4 hover:border-[#D4A82A]/40 transition-colors"
+                className="border border-ink/10 bg-paper p-4 hover:border-star/40 transition-colors"
               >
-                <p className="font-caveat text-xl text-[#D4A82A] mb-2">{item.symbol}</p>
-                <p className="font-garamond text-[#3D2E25] text-sm">{item.label}</p>
-                <p className="font-garamond italic text-[#8FA38C] text-xs mt-0.5">{item.sub}</p>
+                <p className="t-card-title text-ink/70 mb-2">{item.symbol}</p>
+                <p className="t-body text-ink">{item.label}</p>
+                <p className="t-meta italic text-ink/60 mt-0.5">{item.sub}</p>
               </Link>
             ))}
           </div>
@@ -329,7 +329,7 @@ export default function DashboardClient({
       </div>
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#FAF6F0] border-t border-[#3D2E25]/10">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-paper border-t border-ink/10">
         <div className="flex">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -339,11 +339,11 @@ export default function DashboardClient({
                 key={item.href}
                 href={item.href}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                  isActive ? "text-[#D4A82A]" : "text-[#6B5648]/50 hover:text-[#6B5648]"
+                  isActive ? "text-ink/70" : "text-ink/50 hover:text-ink/80"
                 }`}
               >
                 <Icon active={isActive} />
-                <span className="font-garamond text-[10px] uppercase tracking-widest">
+                <span className="t-meta">
                   {item.label}
                 </span>
               </Link>
@@ -358,7 +358,7 @@ export default function DashboardClient({
 // Icons
 function BellIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3D2E25" strokeWidth="1.5">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--sisi-ink)" strokeWidth="1.5">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
@@ -366,7 +366,7 @@ function BellIcon() {
 }
 function MenuIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3D2E25" strokeWidth="1.5">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--sisi-ink)" strokeWidth="1.5">
       <line x1="3" y1="6" x2="21" y2="6" />
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="3" y1="18" x2="21" y2="18" />
@@ -375,7 +375,7 @@ function MenuIcon() {
 }
 function HomeIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#D4A82A" : "#6B5648"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--sisi-gold)" : "rgba(16, 45, 50, 0.8)"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
@@ -383,7 +383,7 @@ function HomeIcon({ active }: { active: boolean }) {
 }
 function ManifestIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#D4A82A" : "#6B5648"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--sisi-gold)" : "rgba(16, 45, 50, 0.8)"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
     </svg>
@@ -391,7 +391,7 @@ function ManifestIcon({ active }: { active: boolean }) {
 }
 function MeIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#D4A82A" : "#6B5648"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--sisi-gold)" : "rgba(16, 45, 50, 0.8)"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
@@ -399,14 +399,14 @@ function MeIcon({ active }: { active: boolean }) {
 }
 function ChatIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#D4A82A" : "#6B5648"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--sisi-gold)" : "rgba(16, 45, 50, 0.8)"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 function ListenIcon({ active }: { active: boolean }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#D4A82A" : "#6B5648"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--sisi-gold)" : "rgba(16, 45, 50, 0.8)"} strokeWidth="1.5" opacity={active ? 1 : 0.5}>
       <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
       <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
     </svg>

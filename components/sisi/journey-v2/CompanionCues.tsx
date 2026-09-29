@@ -1,5 +1,6 @@
 "use client";
 
+import { IconButton, IconClose } from "@/components/ds";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createMoment } from "@/lib/momentStore";
@@ -199,14 +200,13 @@ export function CompanionCues({
             className="cc-thought"
             corner={
               shown.key.startsWith("thought-") || shown.onDismiss ? (
-                <button
-                  type="button"
+                <IconButton
                   className="cc-x"
-                  aria-label="Dismiss"
+                  label="Dismiss"
                   onClick={shown.key.startsWith("thought-") ? dismissThought : shown.onDismiss}
                 >
-                  ×
-                </button>
+                  <IconClose size={18} />
+                </IconButton>
               ) : undefined
             }
           >
@@ -216,7 +216,7 @@ export function CompanionCues({
               <div className="cc-actions">
                 <button
                   type="button"
-                  className="cc-link"
+                  className="ds-text-action cc-link"
                   disabled={kept}
                   onClick={async () => {
                     setKept(true);
@@ -227,7 +227,7 @@ export function CompanionCues({
                 </button>
                 <button
                   type="button"
-                  className="cc-link"
+                  className="ds-text-action cc-link"
                   onClick={() => {
                     finishTodaysThought();
                     setOpenThought(false);
@@ -241,7 +241,7 @@ export function CompanionCues({
             ) : shown.actions?.length ? (
               <div className="cc-actions cc-actions--wrap">
                 {shown.actions.map((a) => (
-                  <button key={a.label} type="button" className={`cc-link${a.quiet ? " cc-link--quiet" : ""}`} onClick={a.act}>
+                  <button key={a.label} type="button" className={`ds-text-action cc-link${a.quiet ? " cc-link--quiet" : ""}`} onClick={a.act}>
                     {a.label}
                   </button>
                 ))}
@@ -263,44 +263,17 @@ export function CompanionCues({
           display: flex; flex-direction: column; align-items: flex-end;
         }
         .cc-root > * { pointer-events: auto; }
-        .cc-thought.sisi-speech { padding: 14px 38px 10px 18px; }
-        .cc-thought-text { margin: 0; font-family: var(--font-editorial), Georgia, serif; font-size: clamp(15px, 4vw, 16.5px); line-height: 1.34; }
-        .cc-thought .cc-actions { justify-content: flex-start; gap: 14px; white-space: nowrap; }
-        .cc-thought .cc-actions--wrap { flex-wrap: wrap; row-gap: 0; }
-        .cc-link--quiet { color: rgba(24, 51, 58, 0.6) !important; }
-        .cc-thought .cc-link { font-size: 15px; }
-        .cc-thought .cc-kicker { color: rgba(24, 51, 58, 0.6); }
-        .cc-thought .cc-x { color: rgba(24, 51, 58, 0.5); }
-        /* a speech bubble from Sísí: warm ivory, rounded, tail down to her */
-        .cc-bubble {
-          position: relative; display: block; margin: 0; padding: 12px 20px 13px; text-align: center; cursor: pointer;
-          border: 1px solid rgba(43, 47, 69, 0.08); border-radius: 18px; background: #f8f1e2; color: #2b2f45;
-          box-shadow: 0 6px 16px rgba(10, 18, 30, 0.18);
-        }
-        .cc-bubble::after {
-          content: ""; position: absolute; left: 30%; bottom: -11px; width: 18px; height: 16px; background: #f8f1e2;
-          clip-path: polygon(0 0, 100% 0, 18% 100%);
-          filter: drop-shadow(0 2px 1px rgba(10, 18, 30, 0.06));
-        }
-        .cc-bubble--thought { cursor: default; padding: 14px 40px 10px 18px; text-align: left; }
-        .cc-bubble-text { display: block; font-family: var(--font-eb-garamond), Georgia, serif; font-size: 17px; line-height: 1.32; }
-        .cc-bubble-text em { font-style: italic; }
-        .cc-bubble-text--thought { font-family: var(--font-fraunces), Georgia, serif; font-size: 16.5px; margin: 0; }
+        .cc-thought.sisi-speech { padding: 14px 40px 8px 18px; }
+        .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); }
+        .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); }
+        .cc-actions { display: flex; gap: 4px 14px; margin: 4px 0 0 -12px; }
+        .cc-thought .cc-actions--wrap { flex-wrap: wrap; }
+        .cc-link { color: var(--sisi-ink); font-weight: 500; }
+        .cc-link--quiet { color: var(--ink-60) !important; font-weight: 400; }
+        .cc-link:disabled { color: var(--ink-60); opacity: 1; }
+        .cc-x { position: absolute !important; right: 0; top: 0; color: var(--ink-60); }
         .cc-lines { position: absolute; pointer-events: none; }
-        .cc-lines span { position: absolute; left: 0; top: 0; width: 11px; height: 2px; border-radius: 2px; background: rgba(247, 241, 227, 0.9); transform-origin: 0 50%; }
-        .cc-kicker { margin: 0 0 4px; font-family: var(--font-eb-garamond), Georgia, serif; font-style: italic; font-size: 13px; color: rgba(43, 47, 69, 0.6); }
-        .cc-text { margin: 0; font-family: var(--font-fraunces), Georgia, serif; font-size: 16.5px; line-height: 1.34; }
-        .cc-text--hint { font-family: var(--font-eb-garamond), Georgia, serif; font-size: 16px; }
-        .cc-actions { display: flex; gap: 16px; margin-top: 6px; }
-        .cc-link {
-          min-height: 40px; padding: 0; border: 0; background: transparent; cursor: pointer;
-          font-family: var(--font-editorial), Georgia, serif; font-size: 15.5px; color: #3d74d8;
-        }
-        .cc-link:disabled { color: rgba(43, 47, 69, 0.55); cursor: default; }
-        .cc-x {
-          position: absolute; right: 2px; top: 2px; width: 40px; height: 40px; border: 0; background: transparent;
-          font-size: 20px; color: rgba(43, 47, 69, 0.5); cursor: pointer;
-        }
+        .cc-lines span { position: absolute; left: 0; top: 0; width: 11px; height: 2px; border-radius: 2px; background: var(--paper-90); transform-origin: 0 50%; }
         .cc-spark {
           position: relative; left: calc(var(--cat-width) * 0.42); width: 44px; height: 44px; padding: 10px;
           border: 0; background: transparent; cursor: pointer; animation: cc-breathe 3s ease-in-out infinite;

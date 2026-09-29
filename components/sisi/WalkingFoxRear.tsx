@@ -7,7 +7,7 @@ import { useId } from "react";
  *
  * Shadow 기법:
  *   1. 같은 fox webp를 *복제*
- *   2. SVG feColorMatrix로 *journey-navy #1F2A44* 로 recolor
+ *   2. SVG feColorMatrix로 *journey-navy var(--sisi-ink)* 로 recolor
  *   3. scaleY(-1)로 뒤집기
  *   4. scaleX + skewX + translateX로 *왼쪽으로 크게 stretch* → 형체 흐릿하게
  *   5. blur + 낮은 opacity + multiply blend → dusty navy shadow
@@ -36,7 +36,7 @@ export function WalkingFoxRear({
       className={`relative pointer-events-none ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* SVG filter: journey-navy #1F2A44 */}
+      {/* SVG filter: journey-navy var(--sisi-ink) */}
       <svg
         width="0"
         height="0"

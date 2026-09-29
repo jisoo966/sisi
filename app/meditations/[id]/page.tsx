@@ -105,11 +105,11 @@ export default function MeditationPlayerPage() {
 
   if (!meditation) {
     return (
-      <main className="min-h-screen bg-[#F5EFE6] flex items-center justify-center">
+      <main className="min-h-dvh bg-paper flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="font-caveat text-4xl text-[#D4A82A]"
+          className="t-display text-paper/70"
         >
           ✦
         </motion.div>
@@ -120,7 +120,7 @@ export default function MeditationPlayerPage() {
   const symbol = CATEGORY_SYMBOLS[meditation.category] ?? "✦";
 
   return (
-    <main className="min-h-screen bg-[#3D2E25] flex flex-col">
+    <main className="min-h-dvh bg-ink flex flex-col">
       <audio
         ref={audioRef}
         src={meditation.audio_url}
@@ -131,7 +131,7 @@ export default function MeditationPlayerPage() {
 
       {/* Header */}
       <header className="flex items-center justify-between px-6 pt-8 pb-4">
-        <Link href="/meditations" className="font-garamond text-sm text-[#F5EFE6]/50 hover:text-[#F5EFE6] transition-colors">
+        <Link href="/meditations" className="t-body text-paper/50 hover:text-paper transition-colors">
           ← back
         </Link>
         <div className="w-12" />
@@ -143,19 +143,19 @@ export default function MeditationPlayerPage() {
         <motion.div
           animate={playing ? { scale: [1, 1.08, 1] } : {}}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="font-caveat text-7xl text-[#D4A82A] mb-8"
+          className="font-caveat text-7xl text-paper/70 mb-8"
         >
           {symbol}
         </motion.div>
 
-        <p className="font-garamond text-sm text-[#D4A82A]/70 uppercase tracking-widest mb-3">
+        <p className="t-meta text-paper/70 mb-3">
           {meditation.category.replace("_", " ")}
         </p>
-        <h1 className="font-fraunces text-3xl text-[#F5EFE6] mb-4 leading-snug">
+        <h1 className="t-display text-paper mb-4">
           {meditation.title}
         </h1>
         {meditation.description && (
-          <p className="font-garamond italic text-[#F5EFE6]/50 leading-relaxed max-w-xs">
+          <p className="font-garamond italic text-paper/50 leading-relaxed max-w-xs">
             {meditation.description}
           </p>
         )}
@@ -164,9 +164,9 @@ export default function MeditationPlayerPage() {
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-garamond italic text-[#D4A82A] text-sm mt-4"
+            className="ds-helper italic text-paper/70 mt-4"
           >
-            you showed up for yourself today.
+            You showed up for yourself today.
           </motion.p>
         )}
       </div>
@@ -181,16 +181,16 @@ export default function MeditationPlayerPage() {
             max={duration || 100}
             value={currentTime}
             onChange={handleSeek}
-            className="w-full accent-[#D4A82A] h-px bg-[#F5EFE6]/20 appearance-none cursor-pointer"
+            className="w-full accent-star h-px bg-paper/20 appearance-none cursor-pointer"
             style={{
-              background: `linear-gradient(to right, #D4A82A ${progress}%, rgba(245,239,230,0.2) ${progress}%)`,
+              background: `linear-gradient(to right, var(--sisi-gold) ${progress}%, rgba(245, 239, 221,0.2) ${progress}%)`,
             }}
           />
           <div className="flex justify-between mt-2">
-            <span className="font-garamond text-xs text-[#F5EFE6]/40">
+            <span className="t-meta text-paper/40">
               {formatTime(currentTime)}
             </span>
-            <span className="font-garamond text-xs text-[#F5EFE6]/40">
+            <span className="t-meta text-paper/40">
               {duration ? formatTime(duration) : "--:--"}
             </span>
           </div>
@@ -201,26 +201,26 @@ export default function MeditationPlayerPage() {
           {/* Rewind 15s */}
           <button
             onClick={() => { if (audioRef.current) audioRef.current.currentTime -= 15; }}
-            className="font-garamond text-[#F5EFE6]/40 hover:text-[#F5EFE6] transition-colors text-sm"
+            className="t-body text-paper/40 hover:text-paper transition-colors"
           >
             −15s
           </button>
 
           <button
             onClick={togglePlay}
-            className="w-16 h-16 rounded-full border-2 border-[#D4A82A] flex items-center justify-center hover:bg-[#D4A82A]/10 transition-colors"
+            className="ds-btn ds-btn--secondary"
           >
             {playing ? (
-              <span className="text-[#D4A82A] text-xl font-light">⏸</span>
+              <span className="text-paper/70 text-xl font-light">⏸</span>
             ) : (
-              <span className="text-[#D4A82A] text-xl ml-1">▶</span>
+              <span className="text-paper/70 text-xl ml-1">▶</span>
             )}
           </button>
 
           {/* Forward 15s */}
           <button
             onClick={() => { if (audioRef.current) audioRef.current.currentTime += 15; }}
-            className="font-garamond text-[#F5EFE6]/40 hover:text-[#F5EFE6] transition-colors text-sm"
+            className="t-body text-paper/40 hover:text-paper transition-colors"
           >
             +15s
           </button>

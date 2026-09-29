@@ -98,7 +98,7 @@ export default function MomentPage() {
   }
 
   return (
-    <main className="relative min-h-svh w-full overflow-hidden bg-[#F5F4EC]">
+    <main className="relative min-h-dvh w-full overflow-hidden bg-paper">
       {/* Viewfinder — 캡쳐 후 /moment/write로 이동 (통일된 write UI 사용) */}
       <>
           <JourneyScene />
@@ -118,13 +118,13 @@ export default function MomentPage() {
 
           {/* Viewfinder brackets */}
           <div className="absolute inset-0 z-10 pointer-events-none">
-            <div className="absolute left-[12%] top-[33%] h-[60px] w-[60px] border-l-[3px] border-t-[3px] border-white/95 rounded-tl-[10px]" />
-            <div className="absolute right-[12%] top-[33%] h-[60px] w-[60px] border-r-[3px] border-t-[3px] border-white/95 rounded-tr-[10px]" />
-            <div className="absolute left-[12%] bottom-[36%] h-[60px] w-[60px] border-l-[3px] border-b-[3px] border-white/95 rounded-bl-[10px]" />
-            <div className="absolute right-[12%] bottom-[36%] h-[60px] w-[60px] border-r-[3px] border-b-[3px] border-white/95 rounded-br-[10px]" />
+            <div className="absolute left-[12%] top-[33%] h-[60px] w-[60px] border-l-[3px] border-t-[3px] border-paper/95 rounded-tl-[10px]" />
+            <div className="absolute right-[12%] top-[33%] h-[60px] w-[60px] border-r-[3px] border-t-[3px] border-paper/95 rounded-tr-[10px]" />
+            <div className="absolute left-[12%] bottom-[36%] h-[60px] w-[60px] border-l-[3px] border-b-[3px] border-paper/95 rounded-bl-[10px]" />
+            <div className="absolute right-[12%] bottom-[36%] h-[60px] w-[60px] border-r-[3px] border-b-[3px] border-paper/95 rounded-br-[10px]" />
           </div>
 
-          <div className="relative z-20 flex h-svh flex-col">
+          <div className="relative z-20 flex h-dvh flex-col">
             <div className="pt-[28px] px-[21px]">
               <BackButton />
             </div>
@@ -132,8 +132,8 @@ export default function MomentPage() {
             <div className="flex-1" />
 
             <div className="px-[21px] pb-[42px]">
-              <div className="rounded-[39px] bg-white/60 backdrop-blur-md border-2 border-white px-[28px] py-[30px] shadow-sm flex items-center gap-4">
-                <p className="font-sentient flex-1 text-[20px] leading-[1.3] text-journey-navy">
+              <div className="rounded-[39px] bg-paper/60 backdrop-blur-md border-2 border-paper px-[28px] py-[30px] shadow-sm flex items-center gap-4">
+                <p className="t-card-title flex-1 text-journey-navy">
                   Would you like to keep
                   <br />
                   this moment?
@@ -141,8 +141,8 @@ export default function MomentPage() {
                 <button
                   onClick={takePhoto}
                   disabled={capturing}
-                  aria-label="capture moment"
-                  className="h-[51px] w-[51px] flex items-center justify-center rounded-full bg-journey-purple/60 backdrop-blur-sm border border-white/50 text-journey-navy shrink-0 hover:bg-journey-purple/80 active:scale-95 transition disabled:opacity-50"
+                  aria-label="Capture a moment"
+                  className="ds-icon-btn ds-icon-btn--filled shrink-0"
                 >
                   <svg
                     width="22"
@@ -165,7 +165,7 @@ export default function MomentPage() {
       {flashing && (
         <div
           key="camera-flash"
-          className="absolute inset-0 bg-white z-50 pointer-events-none"
+          className="absolute inset-0 bg-paper z-50 pointer-events-none"
           style={{
             animation: "camera-flash 0.7s ease-out forwards",
           }}

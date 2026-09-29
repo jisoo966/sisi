@@ -12,7 +12,7 @@ export function PaperToast({ message }: { message: string | null }) {
       {message && (
         <motion.div
           key={message}
-          className="paper-toast paper-bg"
+          className="paper-toast ds-paper"
           role="status"
           initial={{ opacity: 0, y: 24, rotate: -1.2 }}
           animate={{ opacity: 1, y: 0, rotate: -0.8 }}
@@ -29,14 +29,13 @@ export function PaperToast({ message }: { message: string | null }) {
               width: min(80vw, 320px);
               padding: 14px 18px;
               text-align: center;
-              font-family: var(--font-eb-garamond), Georgia, serif;
-              font-size: 15px;
-              color: #2b2f45;
+              font-family: var(--font-editorial);
+              font-size: var(--text-body);
+              line-height: var(--leading-body);
               z-index: 23;
               pointer-events: none;
-              clip-path: polygon(0% 6%, 8% 0%, 22% 4%, 40% 1%, 58% 5%, 76% 0%, 92% 4%, 100% 1%,
-                99% 50%, 100% 96%, 86% 100%, 68% 95%, 50% 100%, 30% 96%, 14% 100%, 0% 95%, 1% 50%);
-              box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+              border-radius: 3px;
+              box-shadow: var(--paper-shadow);
             }
           `}</style>
         </motion.div>

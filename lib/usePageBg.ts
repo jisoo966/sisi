@@ -10,8 +10,8 @@ import { useEffect } from "react";
  * PWA로 설치되면 status bar가 투명해져서 어차피 body 색이 자연스레 이어짐.
  *
  * 예:
- *   usePageBg("#F5E9C8"); // Journey 노란 하늘 톤
- *   usePageBg("#1a1737"); // My Stars 밤하늘 톤
+ *   usePageBg("#f5efdd"); // Journey 노란 하늘 톤
+ *   usePageBg("#102d32"); // My Stars 밤하늘 톤
  */
 export function usePageBg(color: string) {
   useEffect(() => {

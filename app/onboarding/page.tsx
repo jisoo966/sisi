@@ -1,5 +1,6 @@
 "use client";
 
+import { PrimaryButton } from "@/components/ds";
 import { useState, useEffect } from "react";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import { motion } from "framer-motion";
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
  */
 export default function OnboardingPage() {
   // 밤하늘 gradient 톤 — safe area까지 dark navy로
-  usePageBg("#1a1737");
+  usePageBg("var(--sisi-ink)");
 
   const router = useRouter();
   const [name, setName] = useState("");
@@ -110,10 +111,10 @@ export default function OnboardingPage() {
   if (!ready) {
     return (
       <main
-        className="relative min-h-svh w-full overflow-hidden"
+        className="relative min-h-dvh w-full overflow-hidden"
         style={{
           background:
-            "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
+            "var(--sisi-ink)",
         }}
       />
     );
@@ -121,17 +122,17 @@ export default function OnboardingPage() {
 
   return (
     <main
-      className="relative min-h-svh w-full overflow-hidden"
+      className="relative min-h-dvh w-full overflow-hidden"
       style={{
         background:
-          "linear-gradient(180deg, #1a1737 0%, #2a2456 45%, #3a4a72 100%)",
+          "var(--sisi-ink)",
       }}
     >
       {/* Starry background */}
       <StarField />
 
       {/* Content */}
-      <div className="relative z-10 flex min-h-svh flex-col px-[24px] pt-[52px] pb-[42px]">
+      <div className="relative z-10 flex min-h-dvh flex-col px-[20px] pt-[calc(var(--safe-top)+40px)] pb-[calc(32px+var(--safe-bottom))]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -139,11 +140,9 @@ export default function OnboardingPage() {
           className="flex-1 flex flex-col"
         >
           <div className="mt-[80px] mb-[36px]">
-            <p className="font-sentient italic text-[16px] text-white mb-3">
-              hello, love.
-            </p>
-            <h1 className="font-sentient text-[32px] text-white leading-[1.2]">
-              what should sísí
+            <p className="t-affirmation text-paper/80 mb-3">Hello, love.</p>
+            <h1 id="name-q" className="t-display text-paper">
+              What should Sísí
               <br />
               call you?
             </h1>
@@ -153,23 +152,23 @@ export default function OnboardingPage() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value.slice(0, 40))}
-            placeholder="your name"
+            placeholder="Your name"
+            aria-labelledby="name-q"
             autoFocus
-            className="font-sentient text-[22px] text-white placeholder:text-white/40 bg-transparent border-b border-white/40 focus:border-white/80 outline-none pb-3 mb-3 transition-colors"
+            autoComplete="given-name"
+            className="ds-field onb-field mb-3"
           />
-          <p className="font-sentient italic text-[13px] text-white/60">
-            or whatever feels like you.
-          </p>
+          <p className="ds-helper" style={{ color: "var(--paper-60)" }}>Or whatever feels like you.</p>
 
           <div className="flex-1" />
 
-          <button
-            onClick={handleSubmit}
-            disabled={!name.trim() || saving}
-            className="font-sentient text-[16px] rounded-[24px] bg-[#B19CD9] text-journey-navy h-[56px] w-full shadow-lg hover:brightness-105 active:scale-98 disabled:opacity-40 transition"
-          >
-            {saving ? "..." : name.trim() ? "continue ✦" : "continue"}
-          </button>
+          <PrimaryButton surface="dark" block loading={saving} disabled={!name.trim()} onClick={handleSubmit}>
+            Continue
+          </PrimaryButton>
+          <style jsx global>{`
+            .onb-field { background: var(--paper-14); border-color: var(--paper-35); color: var(--sisi-paper); font-size: var(--text-card-title); }
+            .onb-field::placeholder { color: var(--paper-35); }
+          `}</style>
         </motion.div>
       </div>
     </main>
@@ -195,13 +194,13 @@ function StarField() {
       {stars.map((s, i) => (
         <motion.div
           key={i}
-          className="absolute rounded-full bg-white"
+          className="absolute rounded-full bg-paper"
           style={{
             top: s.top,
             left: s.left,
             width: s.size,
             height: s.size,
-            boxShadow: `0 0 ${s.size * 2}px rgba(255,236,189,0.6)`,
+            boxShadow: `0 0 ${s.size * 2}px rgba(245, 239, 221,0.6)`,
           }}
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{
