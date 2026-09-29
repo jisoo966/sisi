@@ -21,12 +21,13 @@ const IDLE = "/V2/fox-walk/fox-walk-preview.png";
 const COLS = 6;
 const ROWS = 5;
 const FRAMES = 30;
-const STEP_FRAMES = FRAMES / 2; // two steps per cycle; frames 0 and 15 are step boundaries
+/** the sheet is the original 3.6s loop: 4 walk cycles = 8 steps */
+const STEP_FRAMES = FRAMES / 8;
 
 const MOVING_V = 6; // px/s — below this the world is effectively still
-const MIN_RATE = 0.8; // cycles/s while moving
-const MAX_RATE = 2.3; // cycles/s cap
-const PX_PER_CYCLE = 150; // world px travelled per full cycle at mid speeds
+const MIN_RATE = 0.2; // sheets/s while moving (≈ a slow walk)
+const MAX_RATE = 0.75; // sheets/s cap (≈ 2.7× the Journey pace)
+const PX_PER_CYCLE = 115; // world px per sheet — the Journey's pace (32px/s × 3.6s)
 const FLIP_V = 18;
 
 export type TrailFoxHandle = {
@@ -107,7 +108,7 @@ export const TrailFox = forwardRef<TrailFoxHandle, { onTap?: () => void; rootRef
       // 2px step-synced lift while walking (never sinks below the path)
       const b = bobRef.current;
       if (b) {
-        const y = st.walking ? -2.2 * (0.5 - 0.5 * Math.cos(2 * Math.PI * 2 * st.phase)) : 0;
+        const y = st.walking ? -2.2 * (0.5 - 0.5 * Math.cos(2 * Math.PI * 8 * st.phase)) : 0;
         b.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
       }
     },

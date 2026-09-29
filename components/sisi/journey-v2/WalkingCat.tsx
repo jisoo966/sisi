@@ -29,7 +29,12 @@ const LOOK_AT_YOU_SRC = "/V2/fox-walk/fox-look-at-you.png";
 const COLS = 6;
 const ROWS = 5;
 const FRAMES = 30;
-const CYCLES_PER_S = 1000 / 900; // one full cycle (two steps) per 900ms at 100%
+/**
+ * The sheet holds the original 3.6s walk loop (4 walk cycles = 8 steps, one
+ * cycle ≈ 900ms). At 100% it plays exactly as before: once per 3.6s.
+ */
+const SHEET_PER_S = 1000 / 3600;
+const STEPS = 8; // steps in one pass of the sheet
 /** below this speed factor she finishes her step and stands */
 const STOP_AT_FACTOR = 0.2;
 
@@ -77,7 +82,7 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
   }, []);
 
   useEffect(() => {
-    let phase = 0; // 0…1 through the cycle (steps at 0 and 0.5)
+    let phase = 0; // 0…1 through the sheet (8 steps)
     let isWalking = false;
     let finishing = false;
     let frame = -1;
@@ -100,11 +105,11 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
 
       if (isWalking) {
         // cadence follows the world (at least a slow step while finishing)
-        const rate = CYCLES_PER_S * Math.max(finishing ? 0.45 : 0, f.factor);
-        const prevStep = Math.floor(phase * 2);
+        const rate = SHEET_PER_S * Math.max(finishing ? 0.45 : 0, f.factor);
+        const prevStep = Math.floor(phase * STEPS);
         phase = (phase + rate * f.dt) % 1;
-        if (finishing && Math.floor(phase * 2) !== prevStep) {
-          phase = Math.floor(phase * 2) / 2;
+        if (finishing && Math.floor(phase * STEPS) !== prevStep) {
+          phase = Math.floor(phase * STEPS) / STEPS;
           isWalking = false;
           finishing = false;
           setWalking(false);
@@ -125,7 +130,7 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
       const target = isWalking ? Math.min(1, f.factor / 0.6) : 0;
       env += (target - env) * Math.min(f.dt * 6, 1);
       const amp = 2.5 + 0.5 * Math.sin(f.now / 2300); // 2–3px, slowly varying
-      const y = -amp * env * (0.5 - 0.5 * Math.cos(4 * Math.PI * phase));
+      const y = -amp * env * (0.5 - 0.5 * Math.cos(2 * Math.PI * STEPS * phase)); // one lift per step
       const el = bobRef.current;
       if (el) {
         el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
