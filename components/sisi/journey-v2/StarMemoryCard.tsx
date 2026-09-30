@@ -6,7 +6,7 @@ import type { Sign, Star } from "@/lib/myStars";
 import { addSign, fulfillStar, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { addFulfilledFlower } from "@/lib/pathGifts";
 import { SisiGlint } from "@/components/sisi/magic/SisiGlint";
-import { awardStarlight, localDate } from "@/lib/starlight";
+import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
 import {
   ConfirmationDialog,
   FilterChip,
@@ -82,7 +82,7 @@ type Props = {
 };
 
 export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
-type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate" | "ceremony" | "fulfilled";
+type Mode = "invite" | "practice" | "picture-intro" | "picture" | "picture-done" | "picture-note" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate" | "ceremony" | "fulfilled";
 type Overlay = null | "confirm-rest" | "confirm-fulfil";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -103,10 +103,8 @@ const PRACTICES = [
 const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpression }>> = {
   invite: { text: <>Your Star is still here.<br />Shall we spend a quiet moment with it?</>, face: "listening" },
   practice: { text: "How would you like to be with your Star today?", face: "listening" },
-  "picture-intro": {
-    text: <>Picture this wish as part of an ordinary day.<br />Where are you? How do you feel?</>,
-    face: "comfort",
-  },
+  "picture-done": { text: "Keep that feeling with you.", face: "comfort" },
+  "picture-note": { text: "What did you see?", face: "listening" },
   "note-ask": { text: "Would you like to leave a small note for this Star?", face: "listening" },
   reflect: { text: "What would you like your Star to remember about today?", face: "listening" },
   saved: { text: "I’ll keep this close to your Star.", face: "comfort" },
@@ -114,7 +112,20 @@ const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpressio
   celebrate: { text: "Your Star is here.", face: "comfort" },
   fulfilled: { text: <>You carried this wish all the way here.<br />It will keep shining in your sky.</>, face: "comfort" },
 };
-const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort" };
+const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort", "picture-intro": "comfort" };
+
+/**
+ * Picture it — a 30–45 second guided visualization (no countdown).
+ * Prompts crossfade (never stacked). Starlight only after MIN_MS.
+ */
+const PICTURE_PROMPTS: { at: number; text: React.ReactNode }[] = [
+  { at: 0, text: "See an ordinary day where this is already part of your life." },
+  { at: 15000, text: <>Notice where you are.<br />Notice how you feel.</> },
+  { at: 30000, text: "Hold that feeling gently." },
+];
+const PICTURE_MIN_MS = 20000;
+const PICTURE_TOTAL_MS = 42000;
+const FINISH_SHOWN_AFTER_MS = 8000;
 
 
 export function StarMemoryCard({
@@ -271,6 +282,63 @@ export function StarMemoryCard({
     setMode("fulfilled");
   };
 
+  // ── Picture it ──
+  const [picStart, setPicStart] = useState<number | null>(null);
+  const [picPrompt, setPicPrompt] = useState(0);
+  const [picFinish, setPicFinish] = useState(false);
+  const [picLight, setPicLight] = useState<string | null>(null);
+  const [picGlint, setPicGlint] = useState<{ x: number; y: number } | null>(null);
+  const [picBright, setPicBright] = useState(false);
+  const [picNote, setPicNote] = useState("");
+  const [picSaving, setPicSaving] = useState(false);
+  const beginPicture = () => {
+    setPicStart(Date.now());
+    setPicPrompt(0);
+    setPicFinish(false);
+    setPicLight(null);
+    setMode("picture");
+  };
+  const completePicture = async () => {
+    const elapsed = picStart ? Date.now() - picStart : 0;
+    setPicStart(null);
+    setMode("picture-done");
+    if (elapsed < PICTURE_MIN_MS || placeholder) return; // finished early: no Starlight
+    // the Star brightens once, the glint blooms, +1 (once per Star per day)
+    setPicBright(true);
+    setTimeout(() => setPicBright(false), 1600);
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(".sms-star");
+      const r = el?.getBoundingClientRect();
+      if (r) setPicGlint({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    }, 350);
+    const res = await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id, silent: true });
+    setPicLight(starlightMessage(res));
+  };
+  useEffect(() => {
+    if (mode !== "picture" || !picStart) return;
+    const timers = [
+      ...PICTURE_PROMPTS.slice(1).map((p, i) => setTimeout(() => setPicPrompt(i + 1), p.at)),
+      setTimeout(() => setPicFinish(true), FINISH_SHOWN_AFTER_MS),
+      setTimeout(() => completePicture(), PICTURE_TOTAL_MS),
+    ];
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, picStart]);
+  const savePictureNote = async () => {
+    const t = picNote.trim();
+    if (!t || picSaving) return;
+    setPicSaving(true);
+    try {
+      const sign = await addSign(star.id, t, "manual"); // a Moment on this Star
+      setSigns((list) => [sign, ...(list ?? [])]);
+      onEntrySaved?.(sign);
+      setPicNote("");
+      setMode("journey");
+    } finally {
+      setPicSaving(false);
+    }
+  };
+
   /** the chosen card settles (0.98), the others fade, then the practice begins */
   const [picked, setPicked] = useState<string | null>(null);
   const pick = (id: (typeof PRACTICES)[number]["id"]) => {
@@ -292,7 +360,8 @@ export function StarMemoryCard({
   // share the rest of the screen, and the global tabs step aside.
   const focus = mode === "practice";
   /** the global tabs step aside during the choice and the completion moments */
-  const hideNav = focus || completion || mode === "ceremony";
+  const picturing = mode === "picture" || mode === "picture-done" || mode === "picture-note";
+  const hideNav = focus || completion || mode === "ceremony" || picturing;
   useEffect(() => {
     const el = document.documentElement;
     if (hideNav) {
@@ -305,7 +374,13 @@ export function StarMemoryCard({
   }, [hideNav]);
   useEffect(() => () => document.documentElement.classList.remove("sms-focus"), []);
   const hasControls =
-    mode === "journey" || completion || (mode === "invite" && !placeholder) || mode === "picture-intro" || mode === "reflect";
+    mode === "journey" ||
+    completion ||
+    (mode === "invite" && !placeholder) ||
+    mode === "picture-intro" ||
+    mode === "picture-done" ||
+    mode === "picture-note" ||
+    mode === "reflect";
   // each step starts with its Star in view (not wherever the last one scrolled)
   useLayoutEffect(() => {
     listRef.current?.scrollTo({ top: 0 });
@@ -344,7 +419,7 @@ export function StarMemoryCard({
         {onScreen && (
           <motion.div
             key="sms"
-            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion ? " is-completion" : ""}`}
+            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-done" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}`}
             style={{ ["--star-top" as string]: `${Math.max(8, anchor.y - 44)}px` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -412,8 +487,8 @@ export function StarMemoryCard({
               }}
             >
               <div className={`sms-path${shine ? ` is-${shine}` : ""}`}>
-                <span className="sms-thread" aria-hidden />
-                <div className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" ? " is-shining" : ""}`} aria-hidden>
+                <span className={`sms-thread${mode === "picture" ? " is-flowing" : ""}`} aria-hidden />
+                <div className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? " is-breathing" : ""}`} aria-hidden>
                   <span className="sms-star-inner">
                     <StarLayers staged revealed focused />
                   </span>
@@ -422,7 +497,7 @@ export function StarMemoryCard({
                 {!hasHeader && (
                   <div className="sms-stage">
                     {/* Sísí's words above her; she rests on the paper's edge */}
-                    {!placeholder && (
+                    {!placeholder && mode !== "picture" && (
                       <div className="sms-say sms-say--card" aria-live="polite">
                         <AnimatePresence mode="wait">
                           {say && (
@@ -431,8 +506,23 @@ export function StarMemoryCard({
                         </AnimatePresence>
                       </div>
                     )}
+                    {mode === "picture" && (
+                      <div className="smp-prompt" aria-live="polite">
+                        <AnimatePresence mode="wait">
+                          <motion.p
+                            key={picPrompt}
+                            className="smp-prompt-text"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1, transition: { duration: 1.6, ease: "easeInOut" } }}
+                            exit={{ opacity: 0, transition: { duration: 1.2, ease: "easeInOut" } }}
+                          >
+                            {PICTURE_PROMPTS[picPrompt].text}
+                          </motion.p>
+                        </AnimatePresence>
+                      </div>
+                    )}
                     <motion.div
-                      className={`sms-paper-wrap${mode === "picture" ? " is-quiet" : ""}`}
+                      className={`sms-paper-wrap${mode === "picture" ? " is-slim" : ""}`}
                       layout
                       initial={{ y: 40, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
@@ -502,23 +592,52 @@ export function StarMemoryCard({
                 {mode === "picture-intro" && (
                   <motion.div key="picture-intro" className="smc-content" {...fade}>
                     <NavRow onBack={() => setMode("practice")} onClose={onClose} />
-                    <h2 className="t-card-title smc-title smc-center">{star.wish}</h2>
+                    <p className="t-meta smp-kicker">Picture it</p>
+                    <p className="t-dialogue smp-lead">Imagine this wish as part of an ordinary day.</p>
+                    <p className="t-affirmation smp-questions">
+                      Where are you?
+                      <br />
+                      What are you doing?
+                      <br />
+                      How do you feel?
+                    </p>
+                    <p className="t-meta smp-star-label">Your Star</p>
+                    <h2 className="t-card-title smc-title">{star.wish}</h2>
                   </motion.div>
                 )}
 
                 {mode === "picture" && (
                   <motion.div key="picture" className="smc-content smc-center" {...fade}>
-                    {/* silence is intentional: no words, no timer */}
-                    <TextAction
-                      className="smc-quiet-link"
-                      onClick={() => {
-                        setMode("note-ask");
-                        // "Picture it" completed: once per Star per day
-                        if (!placeholder) awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id });
-                      }}
-                    >
-                      End quietly
-                    </TextAction>
+                    {/* no countdown; a quiet way to finish appears after a while */}
+                    <motion.div initial={false} animate={{ opacity: picFinish ? 1 : 0 }} transition={{ duration: 1.2 }}>
+                      <TextAction className="smc-quiet-link" disabled={!picFinish} onClick={completePicture}>
+                        Finish
+                      </TextAction>
+                    </motion.div>
+                  </motion.div>
+                )}
+
+                {mode === "picture-done" && (
+                  <motion.div key="picture-done" className="smc-content" {...fade}>
+                    <p className="t-meta smc-when">Picture it</p>
+                    <h2 className="t-card-title smc-title">{star.wish}</h2>
+                    {picLight && <p className="t-body smp-light">{picLight}</p>}
+                  </motion.div>
+                )}
+
+                {mode === "picture-note" && (
+                  <motion.div key="picture-note" className="smc-content" {...fade}>
+                    <NavRow onBack={() => setMode("picture-done")} onClose={() => setMode("journey")} />
+                    <textarea
+                      className="ds-field smc-entry"
+                      rows={3}
+                      maxLength={240}
+                      autoFocus
+                      value={picNote}
+                      placeholder="A window with morning light, and the kettle on."
+                      aria-label="What did you see?"
+                      onChange={(e) => setPicNote(e.target.value)}
+                    />
                   </motion.div>
                 )}
 
@@ -620,6 +739,14 @@ export function StarMemoryCard({
 
             </div>
 
+            {mode === "picture" && (
+              <div className="smp-close">
+                <IconButton surface="dark" label="Stop and return to my Star" onClick={() => { setPicStart(null); setMode("journey"); }}>
+                  <IconClose />
+                </IconButton>
+              </div>
+            )}
+            {picGlint && <SisiGlint at={picGlint} size={96} onDone={() => setPicGlint(null)} />}
             {hasControls && <div className="sms-controls">
               {mode === "journey" ? (
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => startPractice("journey")}>
@@ -646,8 +773,26 @@ export function StarMemoryCard({
                   Spend a quiet moment
                 </button>
               ) : mode === "picture-intro" ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("picture")}>
-                  Begin
+                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={beginPicture}>
+                  I’m ready
+                </button>
+              ) : mode === "picture-done" ? (
+                <div className="sms-cta-pair">
+                  <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("journey")}>
+                    Return to my Star
+                  </button>
+                  <TextAction surface="dark" className="sms-cta-secondary" onClick={() => setMode("picture-note")}>
+                    Write what I saw
+                  </TextAction>
+                </div>
+              ) : mode === "picture-note" ? (
+                <button
+                  type="button"
+                  className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta"
+                  disabled={!picNote.trim() || picSaving}
+                  onClick={savePictureNote}
+                >
+                  Save to my Star
                 </button>
               ) : mode === "reflect" ? (
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" disabled={!text.trim() || saving} onClick={save}>
@@ -860,6 +1005,43 @@ export function StarMemoryCard({
           .sms-path .sms-card > .ds-memory-sheet { transition: opacity 300ms linear; transform: none !important; }
           .sms-path.is-climb .sms-thread::after { animation: none; }
           .sms-star.is-shining .sms-star-inner { animation: none; filter: brightness(1.2); }
+        }
+
+        /* ── Picture it ── */
+        .smp-kicker { margin: 0 0 6px; color: var(--ink-60); }
+        .smp-lead { margin: 0 0 10px; }
+        .smp-questions { margin: 0 0 16px; color: var(--ink-80); font-size: var(--text-body); line-height: 1.5; }
+        .smp-star-label { margin: 0 0 2px; color: var(--ink-60); }
+        .smp-light { margin: 10px 0 0; color: var(--ink-80); }
+        /* active: the paper becomes a slim ledge for Sísí; the Star and the words hold the screen */
+        .sms-paper-wrap.is-slim .sms-paper { padding: 8px 16px calc(8px + var(--safe-bottom)); min-height: 64px; display: flex; align-items: center; justify-content: center; }
+        .sms-screen.is-picturing .sms-paper-wrap.is-slim { margin-top: auto; }
+        .sms-screen.is-picturing .sms-stage { flex: 1 1 auto; min-height: 58dvh; justify-content: flex-end; }
+        .smp-prompt { display: flex; align-items: center; justify-content: center; min-height: 120px; padding: 0 28px; margin-bottom: 112px; }
+        .smp-prompt-text {
+          position: relative; margin: 0; padding: 18px 26px; text-align: center; color: var(--paper-90);
+          /* a soft pool of night behind the words, so the thread never runs through them */
+          background: radial-gradient(closest-side, rgba(16, 45, 50, 0.92) 55%, rgba(16, 45, 50, 0));
+          font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue);
+        }
+        .smp-close { position: absolute; z-index: 4; top: calc(var(--safe-top) + 8px); right: max(8px, var(--safe-right)); pointer-events: auto; }
+        /* the Star breathes; a small warm light travels slowly along the thread */
+        .sms-star.is-breathing .sms-star-inner { animation: smp-breathe 6.5s ease-in-out infinite; }
+        @keyframes smp-breathe {
+          0%, 100% { transform: scale(1.7); opacity: 0.9; }
+          50% { transform: scale(1.78); opacity: 1; }
+        }
+        .sms-thread.is-flowing::before {
+          content: ""; position: absolute; left: -2.4px; top: 0; width: 6px; height: 6px; border-radius: 50%;
+          background: var(--sisi-gold); box-shadow: 0 0 6px 2px rgba(241, 196, 94, 0.4);
+          animation: smp-flow 9s ease-in-out infinite;
+        }
+        @keyframes smp-flow { 0% { top: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+          /* same timing and words: a soft opacity shift, a still glow */
+          .sms-star.is-breathing .sms-star-inner { animation: smp-breathe-soft 6.5s ease-in-out infinite; transform: scale(1.7); }
+          @keyframes smp-breathe-soft { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+          .sms-thread.is-flowing::before { animation: none; top: 40%; opacity: 0.8; }
         }
 
         /* tabs stepped aside: the controls sit on the safe area instead */

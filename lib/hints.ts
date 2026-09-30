@@ -5,11 +5,12 @@
  *   capture     Journey Capture: "Save something from the life you’re walking through."
  *   starSaved   first Star reflection: "Saved to your Star. You can also find this in Moments."
  *   moments     first Moments visit: "Your life along the way"
+ *   tapStar     Star World: "Tap your Star" (until a Star has been tapped once)
  *
  * Once dismissed (or the thing it explains has been done) it never returns.
  */
 
-export type HintKey = "talk" | "capture" | "starSaved" | "moments";
+export type HintKey = "talk" | "capture" | "starSaved" | "moments" | "tapStar";
 const KEY = "sisi:hints-v1";
 
 function read(): Record<string, true> {

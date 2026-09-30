@@ -40,7 +40,7 @@ export function StarlightFeedback() {
     () =>
       onStarlight((r: AwardResult) => {
         const text = starlightMessage(r);
-        if (!text) return;
+        if (!text || r.silent) return;
         const id = ++n.current;
         // let the saved paper settle and the Star brighten first
         setTimeout(() => {

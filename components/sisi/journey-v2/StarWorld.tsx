@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { StarLayers } from "./StarLayers";
 import { SkyDecor } from "@/components/sisi/magic/SkyDecor";
+import { hintDone, markHint } from "@/lib/hints";
 
 /**
  * StarWorld — the user's stars, above the clouds (inside .jw-night).
@@ -279,9 +280,13 @@ export function StarWorld({
   };
 
   // A quiet hint under the Current Star until the user taps a star once.
-  const [hinted, setHinted] = useState(false);
+  // shown only until a Star has been tapped for the first time (ever)
+  const [hinted, setHinted] = useState(true);
+  useEffect(() => setHinted(hintDone("tapStar")), []);
   useEffect(() => {
-    if (selectedId) setHinted(true);
+    if (!selectedId) return;
+    setHinted(true);
+    markHint("tapStar");
   }, [selectedId]);
 
   // Press feedback per star.

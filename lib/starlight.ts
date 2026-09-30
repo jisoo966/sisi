@@ -54,6 +54,8 @@ export type LedgerRow = {
 };
 
 export type AwardResult = {
+  /** the caller shows its own feedback (no global note / glint) */
+  silent?: boolean;
   /** Starlight actually added (0 when already rewarded or today's light is full) */
   awarded: number;
   /** today's maximum was reached (nothing, or less, was added) */
@@ -187,6 +189,8 @@ export async function awardStarlight(input: {
   source: keyof typeof STARLIGHT_AMOUNT;
   sourceId: string;
   starId?: string | null;
+  /** the screen shows its own words and glint */
+  silent?: boolean;
 }): Promise<AwardResult> {
   const want = STARLIGHT_AMOUNT[input.source];
   const today = localDate();
@@ -211,7 +215,7 @@ export async function awardStarlight(input: {
         balance: r.balance,
         unlocked: crossed(before, r.balance),
       };
-      afterAward(result);
+      afterAward({ ...result, silent: input.silent });
       return result;
     }
     console.warn("award_starlight unavailable, keeping Starlight on this device:", error?.message);
@@ -241,7 +245,7 @@ export async function awardStarlight(input: {
     writeLocal(next);
     return { awarded: amount, duplicate: false, capped: amount < want, balance, unlocked } as AwardResult;
   });
-  afterAward(result);
+  afterAward({ ...result, silent: input.silent });
   return result;
 }
 
