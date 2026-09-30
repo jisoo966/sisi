@@ -1,5 +1,6 @@
 "use client";
 
+import { fxAnchorRef } from "@/lib/fxAnchors";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
@@ -89,7 +90,7 @@ export function SisiChatCharacter({ expression, still = false }: { expression: S
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className={`scc-stage${still ? " is-still" : ""}`} aria-hidden="true">
+      <div className={`scc-stage${still ? " is-still" : ""}`} aria-hidden="true" ref={(el) => fxAnchorRef("sisi", el, { fx: 0.5, fy: 0.62 })}>
         <AnimatePresence initial={false}>
           <motion.div
             key={shown}

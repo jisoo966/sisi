@@ -4,13 +4,18 @@
  * The four supplied sheets (Starlight Trail · Star Birth · Fulfilled Bloom ·
  * Ambient Magic) are cropped into separate transparent sprites by
  * `scripts/crop-effects.py` into /public/sisi-assets/effects/<group>/.
- * No sheet is ever displayed whole.
+ * No sheet is ever displayed whole, and every sprite is trimmed to its
+ * visible pixels (transparent padding is not part of its bounds).
  */
+
+import { SPRITE_ASPECT } from "./fxSpriteMeta";
 
 const E = (group: string, name: string) => `/sisi-assets/effects/${group}/${name}.webp`;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
 export const FX = {
+  /** SisiGlint's five stages, one shared centred box */
+  glint: range(5).map((n) => E("glint", `frame-${n}`)),
   trail: {
     /** large → tiny: 4-point stars, then round motes */
     motes: range(6).map((n) => E("trail", `mote-${n}`)),
@@ -37,6 +42,22 @@ export const FX = {
     shootingStar: E("ambient", "shooting-star"),
     dust: range(3).map((n) => E("ambient", `dust-${n}`)),
   },
+} as const;
+
+/** visible width ÷ height of a sprite (1 when unknown) */
+export function aspect(src: string): number {
+  return SPRITE_ASPECT[src] ?? 1;
+}
+
+/**
+ * Trail-shaped sprites (trail-short, shooting-star): where the bright head
+ * sits in the image (fractions) and which way it points (degrees, screen
+ * space, 0 = right, 90 = down). Measured from the crops.
+ */
+export const HEADED = {
+  heading: 155,
+  trailShortHead: { fx: 0.13, fy: 0.68 },
+  shootingHead: { fx: 0.11, fy: 0.79 },
 } as const;
 
 /** Other art already in the app, used by World discovery objects. */

@@ -1,11 +1,12 @@
 "use client";
 
+import { fxAnchorRef } from "@/lib/fxAnchors";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { addSign, fulfillStar, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { addFulfilledFlower } from "@/lib/pathGifts";
-import { emitFx, softGlint, centerOf } from "@/lib/fx";
+import { emitFx, glintPoint, softGlint } from "@/lib/fx";
 import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
 import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
 import {
@@ -219,9 +220,10 @@ export function StarMemoryCard({
     setReflectBack(from);
     setMode("reflect");
   };
-  const save = async () => {
+  const save = async (e?: React.MouseEvent<HTMLElement>) => {
     const t = text.trim();
     if (!t || saving) return;
+    const glint = glintPoint(e?.currentTarget); // the Save button, read before the paper changes
     setSaving(true); // no duplicate submissions
     try {
       // the same Star-entry record as the check-in: shown on this Star AND in Moments
@@ -231,14 +233,15 @@ export function StarMemoryCard({
       setText("");
       setMode("saved");
       onEntrySaved?.(sign); // the Star brightens
-      softGlint(centerOf(".sms-star"));
+      softGlint(glint);
       // saved and connected to the Star → Starlight (once per saved Moment)
       awardStarlight({ source: kind === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: sign.id, starId: star.id });
     } finally {
       setSaving(false);
     }
   };
-  const saveEdit = async () => {
+  const saveEdit = async (e?: React.MouseEvent<HTMLElement>) => {
+    const glint = glintPoint(e?.currentTarget);
     const wish = draft.trim();
     if (!wish || wish === star.wish) {
       setEditing(false);
@@ -247,7 +250,7 @@ export function StarMemoryCard({
     await updateStar(star.id, { wish });
     onEdited({ ...star, wish });
     setEditing(false);
-    softGlint(centerOf(".sms-star"));
+    softGlint(glint);
   };
   const choosePractice = (id: (typeof PRACTICES)[number]["id"]) => {
     if (id === "picture") setMode("picture-intro");
@@ -272,8 +275,7 @@ export function StarMemoryCard({
     setShine("climb");
     await wait(900);
     setShine("bright");
-    const at = centerOf(".sms-star");
-    if (at) emitFx({ kind: "bloom", at }); // Fulfilled Bloom — the most important moment
+    emitFx({ kind: "bloom" }); // Fulfilled Bloom on the selected Star — the most important moment
     const fulfilledAt = new Date().toISOString();
     await fulfillStar(star.id); // persisted; the Star stays in the sky and in Moments
     addFulfilledFlower(star.id);
@@ -292,8 +294,8 @@ export function StarMemoryCard({
   const [picBright, setPicBright] = useState(false);
   const [picNote, setPicNote] = useState("");
   const [picSaving, setPicSaving] = useState(false);
-  const beginPicture = () => {
-    softGlint(document.querySelector(".smp-intro .sms-cta, .sms-cta"));
+  const beginPicture = (e?: React.MouseEvent<HTMLElement>) => {
+    softGlint(glintPoint(e?.currentTarget)); // "I'm ready"
     setPicStart(Date.now());
     setPicPrompt(0);
     setPicFinish(false);
@@ -311,8 +313,8 @@ export function StarMemoryCard({
     const res = await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id, silent: true });
     setPicLight(starlightMessage(res));
     // Starlight Trail, arriving on the Star itself (the screen shows its own words)
-    const at = centerOf(".sms-star");
-    if (res.awarded > 0 && at) setTimeout(() => emitFx({ kind: "trail", from: null, to: at, amount: res.awarded }), 350);
+    // Starlight Trail from the Star to Sísí (anchors are read once the screen settles)
+    if (res.awarded > 0) emitFx({ kind: "trail", amount: res.awarded });
   };
   useEffect(() => {
     if (mode !== "picture" || !picStart) return;
@@ -324,6 +326,74 @@ export function StarMemoryCard({
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, picStart]);
+  /**
+   * Picture it layout (viewport-relative, measured once when it begins and
+   * on resize / orientation change):
+   *   Star centred, ~21dvh down (CSS) · Sísí's centre 42–52dvh, her face at
+   *   least 72px below the Star's glow · the words between them when they
+   *   fit, otherwise below Sísí — never over the Star, her face or Finish.
+   */
+  const [picLayout, setPicLayout] = useState<{ blockH: number; textTop: number; below: boolean } | null>(null);
+  useLayoutEffect(() => {
+    if (mode !== "picture") {
+      setPicLayout(null);
+      return;
+    }
+    const measure = () => {
+      const scr = document.querySelector<HTMLElement>(".sms-screen.is-picturing");
+      const star = scr?.querySelector<HTMLElement>(".sms-star");
+      const glow = scr?.querySelector<HTMLElement>(".sms-star-inner");
+      const wrap = scr?.querySelector<HTMLElement>(".sms-paper-wrap");
+      const sisi = scr?.querySelector<HTMLElement>(".smc-sisi .scc-stage");
+      const words = scr?.querySelector<HTMLElement>(".smp-measure");
+      if (!star || !glow || !wrap || !sisi || !words) return;
+      const H = window.innerHeight;
+      const st = star.getBoundingClientRect();
+      const glowBottom = glow.getBoundingClientRect().bottom + 4; // + the breath
+      const sr = sisi.getBoundingClientRect();
+      const wr = wrap.getBoundingClientRect();
+      const above = wr.top - sr.top; // how far Sísí rises above the paper's edge
+      const faceDrop = sr.height * 0.12; // her face starts just under the top of her box
+      const promptTop = st.bottom + 20; // the path's gap
+      // Sísí's centre at 47dvh (42–52), her face ≥ 72px under the glow
+      let paperTop = Math.min(Math.max(0.47 * H + above / 2, 0.42 * H + above / 2), 0.52 * H + above / 2);
+      paperTop = Math.max(paperTop, glowBottom + 72 + above - faceDrop);
+      const faceTop = paperTop - above + faceDrop;
+      const zoneTop = glowBottom + 16;
+      const zoneBottom = faceTop - 16;
+      const textH = words.getBoundingClientRect().height;
+      const below = textH > zoneBottom - zoneTop;
+      const textTop = below ? 0 : Math.max(0, zoneTop - promptTop + (zoneBottom - zoneTop - textH) / 2);
+      setPicLayout({ blockH: Math.max(0, paperTop - promptTop), textTop, below });
+    };
+    measure();
+    let t: ReturnType<typeof setTimeout>;
+    const again = () => {
+      clearTimeout(t);
+      t = setTimeout(measure, 150);
+    };
+    window.addEventListener("resize", again);
+    window.addEventListener("orientationchange", again);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", again);
+      window.removeEventListener("orientationchange", again);
+    };
+  }, [mode]);
+  const pictureWords = (
+    <AnimatePresence mode="wait">
+      <motion.p
+        key={picPrompt}
+        className="smp-prompt-text"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: 1.6, ease: "easeInOut" } }}
+        exit={{ opacity: 0, transition: { duration: 1.2, ease: "easeInOut" } }}
+      >
+        {PICTURE_PROMPTS[picPrompt].text}
+      </motion.p>
+    </AnimatePresence>
+  );
+
   const savePictureNote = async () => {
     const t = picNote.trim();
     if (!t || picSaving) return;
@@ -479,7 +549,7 @@ export function StarMemoryCard({
               className="sms-scroll"
               ref={listRef}
               // without a header, the Star sits where it was in the sky
-              style={hasHeader || focus ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
+              style={hasHeader || focus || mode === "picture" ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
               onClick={(e) => {
                 // a tap on the open sky puts the paper away (not mid-visualization)
                 const t = e.target as HTMLElement;
@@ -488,7 +558,7 @@ export function StarMemoryCard({
             >
               <div className={`sms-path${shine ? ` is-${shine}` : ""}`}>
                 <span className={`sms-thread${mode === "picture" ? " is-flowing" : ""}`} aria-hidden />
-                <div className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? " is-breathing" : ""}`} aria-hidden>
+                <div ref={(el) => fxAnchorRef("selectedStar", el)} className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? " is-breathing" : ""}`} aria-hidden>
                   <span className="sms-star-inner">
                     <StarLayers staged revealed focused />
                   </span>
@@ -507,18 +577,17 @@ export function StarMemoryCard({
                       </div>
                     )}
                     {mode === "picture" && (
-                      <div className="smp-prompt" aria-live="polite">
-                        <AnimatePresence mode="wait">
-                          <motion.p
-                            key={picPrompt}
-                            className="smp-prompt-text"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1, transition: { duration: 1.6, ease: "easeInOut" } }}
-                            exit={{ opacity: 0, transition: { duration: 1.2, ease: "easeInOut" } }}
-                          >
-                            {PICTURE_PROMPTS[picPrompt].text}
-                          </motion.p>
-                        </AnimatePresence>
+                      // the space between the Star and Sísí; the words sit in it when they fit
+                      <div
+                        className="smp-prompt"
+                        aria-live={picLayout?.below ? undefined : "polite"}
+                        style={picLayout ? { height: picLayout.blockH, paddingTop: picLayout.textTop } : undefined}
+                      >
+                        {/* the longest line, invisible, to decide where the words fit */}
+                        <p className="smp-prompt-text smp-measure" aria-hidden>
+                          {PICTURE_PROMPTS[0].text}
+                        </p>
+                        {!picLayout?.below && pictureWords}
                       </div>
                     )}
                     <motion.div
@@ -697,6 +766,12 @@ export function StarMemoryCard({
                         </AnimatePresence>
                       </motion.div>
                     </motion.div>
+                    {/* not enough room between the Star and Sísí: the words sit below her */}
+                    {mode === "picture" && picLayout?.below && (
+                      <div className="smp-prompt smp-prompt--below" aria-live="polite">
+                        {pictureWords}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -815,8 +890,8 @@ export function StarMemoryCard({
               message="It will leave your Star path, but stay safely in your Moments."
               confirmLabel="Let it rest"
               cancelLabel="Keep walking"
-              onConfirm={() => {
-                softGlint(centerOf(".sms-star"));
+              onConfirm={(e) => {
+                softGlint(glintPoint(e?.currentTarget));
                 onRest(star);
               }}
               onCancel={() => setOverlay(null)}
@@ -1016,9 +1091,14 @@ export function StarMemoryCard({
         .smp-light { margin: 10px 0 0; color: var(--ink-80); }
         /* active: the paper becomes a slim ledge for Sísí; the Star and the words hold the screen */
         .sms-paper-wrap.is-slim .sms-paper { padding: 8px 16px calc(8px + var(--safe-bottom)); min-height: 64px; display: flex; align-items: center; justify-content: center; }
-        .sms-screen.is-picturing .sms-paper-wrap.is-slim { margin-top: auto; }
-        .sms-screen.is-picturing .sms-stage { flex: 1 1 auto; min-height: 58dvh; justify-content: flex-end; }
-        .smp-prompt { display: flex; align-items: center; justify-content: center; min-height: 120px; padding: 0 28px; margin-bottom: 112px; }
+        /* the Star, centred, ~21dvh down (never closer than 32px to the top safe area) */
+        .sms-screen.is-picturing .sms-scroll { padding-top: max(calc(var(--safe-top) + 32px), calc(21dvh - 44px)); }
+        .smp-prompt {
+          position: relative; display: flex; align-items: flex-start; justify-content: center;
+          min-height: 0; height: 36dvh; padding: 0 28px; margin: 0; box-sizing: border-box;
+        }
+        .smp-prompt--below { height: auto; padding: 20px 28px 0; }
+        .smp-prompt-text.smp-measure { position: absolute; left: 28px; right: 28px; top: 0; visibility: hidden; pointer-events: none; }
         .smp-prompt-text {
           position: relative; margin: 0; padding: 18px 26px; text-align: center; color: var(--paper-90);
           /* a soft pool of night behind the words, so the thread never runs through them */

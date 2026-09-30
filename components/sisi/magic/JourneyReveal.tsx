@@ -37,7 +37,7 @@ export function JourneyReveal({ reveal, leaving = false }: { reveal: Reveal; lea
     <>
       <motion.div
         ref={ref}
-        className={`jr-object jr-${reveal.kind}`}
+        className={`jr-object jr-${reveal.kind}${reveal.kind === "world" && reveal.world === "cloud-garden" && object === "fallback" ? " is-cloud" : ""}`}
         aria-hidden
         initial={{ opacity: 0, y: 10, scale: 0.94 }}
         animate={leaving ? { opacity: 0, y: 6, transition: { duration: 0.6 } } : { opacity: 1, y: 0, scale: 1, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } }}
@@ -54,18 +54,24 @@ export function JourneyReveal({ reveal, leaving = false }: { reveal: Reveal; lea
       </motion.div>
       {glintAt && <SisiGlint at={glintAt} size={60} onDone={() => setGlintAt(null)} />}
       <style jsx global>{`
+        /* ahead of Sísí (never on her), resting on the shared walking baseline:
+           x = min(62%, width − 120px), centred on that x */
         .jr-object {
           position: absolute; z-index: 5; pointer-events: none;
-          left: calc(var(--companion-x, 37%) + var(--cat-width) * 0.9);
-          bottom: calc(var(--walking-baseline) - 1%);
+          left: min(62%, calc(100% - 120px)); translate: -50% 0;
+          bottom: var(--walking-baseline);
         }
         .jr-object img { display: block; width: 100%; height: auto; }
         .jr-world { width: clamp(64px, 20vw, 92px); }
-        .jr-flower { width: clamp(40px, 12vw, 56px); bottom: calc(var(--walking-baseline) - 3%); }
-        .jr-obj-cloud { width: 150%; margin-left: -25%; transform: translateY(-120%); opacity: 0.95; }
+        /* a flower or path light: a little further along the path */
+        .jr-flower { width: clamp(40px, 12vw, 56px); left: min(68%, calc(100% - 120px)); }
+        /* a cloud belongs to the sky: 58–72% across, 16–28% down */
+        .jr-object.is-cloud { left: 65%; top: 20%; bottom: auto; width: clamp(96px, 28%, 140px); }
+        .jr-obj-cloud { width: 100%; opacity: 0.95; }
         .jr-obj-flower { width: 70%; margin: 0 auto; }
-        .jr-obj-firefly { width: 46%; margin: 0 auto; transform: translateY(-160%); animation: jr-bob 4.8s ease-in-out infinite; }
-        .jr-obj-snow { width: 34px; height: 34px; margin: 0 auto; transform: translateY(-260%); animation: jr-fall 5.5s ease-in-out infinite; }
+        /* a firefly and the first snowflake float a little above the grass */
+        .jr-obj-firefly { width: 46%; margin: 0 auto 36px; animation: jr-bob 4.8s ease-in-out infinite; }
+        .jr-obj-snow { margin: 0 auto 48px; animation: jr-fall 5.5s ease-in-out infinite; }
         @keyframes jr-bob { 0%, 100% { translate: 0 0; } 50% { translate: 4px -8px; } }
         @keyframes jr-fall { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: -5px 6px; rotate: 20deg; } }
         html.app-hidden .jr-object * { animation-play-state: paused !important; }

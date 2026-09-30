@@ -58,7 +58,8 @@ import { equipWorld } from "@/lib/worlds";
 import { JourneyReveal, type Reveal } from "@/components/sisi/magic/JourneyReveal";
 import { StarlightFeedback } from "@/components/sisi/magic/StarlightFeedback";
 import { AmbientMagic } from "@/components/sisi/effects/AmbientMagic";
-import { emitFx, softGlint, centerOf, prefersReducedMotion } from "@/lib/fx";
+import { emitFx, glintPoint, softGlint } from "@/lib/fx";
+import { anchorElement } from "@/lib/fxAnchors";
 import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
 import { envCoord } from "@/lib/journeyWorld";
@@ -404,11 +405,21 @@ export default function JourneyPage() {
     // the new Star sits where the seed was born (the top of the path):
     // first a quiet "Your Star is here." — the practice invitation waits for a later visit
     setStarMode(entryForVisit(s.id, "created"));
-    // a new Star: Star Birth where it was born (no Starlight for creating one),
-    // then its thread and paper appear
-    const r = stage?.getBoundingClientRect();
-    emitFx({ kind: "birth", at: { x: (r?.left ?? 0) + w * 0.5, y: (r?.top ?? 0) + h * 0.22 } });
-    setTimeout(() => setOpenStar({ star: s, at: { x: w * 0.5, y: h * 0.22 } }), prefersReducedMotion() ? 400 : 1900);
+    // a new Star: Star Birth exactly where the Star will remain (no Starlight
+    // for creating one); the real Star takes over in place, then its paper opens
+    // from that same point
+    emitFx({
+      kind: "birth",
+      anchor: `star:${s.id}`,
+      hideAnchor: true,
+      delay: 350, // the creation paper finishes leaving first
+      onDone: () => {
+        const a = anchorElement(`star:${s.id}`);
+        const sr = stage?.getBoundingClientRect();
+        const at = a && sr ? { x: a.rect.left + a.rect.width / 2 - sr.left, y: a.rect.top + a.rect.height / 2 - sr.top } : { x: w * 0.5, y: h * 0.22 };
+        setOpenStar({ star: s, at });
+      },
+    });
   };
   // A Star brightens once when something is added to it.
   const [starPulse, setStarPulse] = useState<{ id: string; n: number } | null>(null);
@@ -1186,12 +1197,13 @@ export default function JourneyPage() {
               ? {
                   key: `discover-${reveal.world}`,
                   text: "We found a new place.",
+                  placement: "sky",
                   actions: [
                     {
                       label: "Visit now",
-                      act: () => {
+                      act: (e) => {
+                        softGlint(glintPoint(e?.currentTarget)); // the "Visit now" control
                         equipWorld(reveal.world);
-                        softGlint(centerOf(".walking-cat"));
                         endReveal();
                       },
                     },

@@ -4,14 +4,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { onStarlight, starlightMessage, type AwardResult } from "@/lib/starlight";
-import { centerOf, emitFx } from "@/lib/fx";
+import { emitFx } from "@/lib/fx";
 
 /**
  * StarlightFeedback — what happens after a qualifying activity is saved:
  *   (the activity is saved and its paper Moment connected to the Star;
  *    the Star softly brightens — done by the caller)
- *   → Starlight Trail (lib/fx): the Star brightens, a light runs a little
- *     way down its thread, curves toward Sísí, a small ripple, +N, SisiGlint
+ *   → Starlight Trail (lib/fx): the selected Star brightens, a short trail
+ *     curves to Sísí's chest, a small ripple on arrival, +N, SisiGlint
  *   → "A little light for the path. +1" (or +2)
  *   → the balance updates (lib/starlight event) → the note leaves after ~2s
  * When today's light is already full: only the quiet line
@@ -31,20 +31,8 @@ export function StarlightFeedback() {
         const id = ++n.current;
         // let the saved paper settle and the Star brighten first
         setTimeout(() => {
-          if (r.awarded > 0) {
-            const star = centerOf(".sms-star, .sw-star.is-selected, .sky-star-btn");
-            // the light arrives just above Sísí's head, where it reads against the sky
-            const cat = document.querySelector<HTMLElement>(".smc-sisi .scc-stage, .walking-cat");
-            const cr = cat?.getBoundingClientRect();
-            const sisi = cr && cr.width > 0 && cr.bottom > 0 && cr.top < window.innerHeight ? { x: cr.left + cr.width * 0.55, y: cr.top + cr.height * 0.08 } : null;
-            // toward Sísí when she's here; otherwise the light blooms on the Star itself
-            const at = sisi ?? star ?? { x: window.innerWidth / 2, y: window.innerHeight * 0.4 };
-            // the thread under the open Star, when there is one
-            const th = document.querySelector<HTMLElement>(".sms-thread");
-            const tr = th?.getBoundingClientRect();
-            const thread = tr && tr.height > 0 ? { top: { x: tr.left + tr.width / 2, y: tr.top }, bottom: { x: tr.left + tr.width / 2, y: tr.bottom } } : null;
-            emitFx({ kind: "trail", from: sisi ? star : null, to: at, amount: r.awarded, thread });
-          }
+          // selected Star → Sísí (or the Starlight counter); skipped if either isn't on screen
+          if (r.awarded > 0) emitFx({ kind: "trail", amount: r.awarded });
           setMsg({ id, text });
         }, 450);
         setTimeout(() => setMsg((m) => (m && m.id === id ? null : m)), 450 + 2100);

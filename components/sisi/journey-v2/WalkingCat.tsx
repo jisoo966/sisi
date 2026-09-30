@@ -1,5 +1,6 @@
 "use client";
 
+import { fxAnchorRef } from "@/lib/fxAnchors";
 import { useEffect, useRef, useState } from "react";
 import { worldClock } from "@/lib/worldMotion";
 
@@ -148,6 +149,8 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
       onClick={onTap}
       aria-label="Sísí"
       className="walking-cat"
+      // the Starlight Trail arrives at her chest; ambient magic keeps clear of her face
+      ref={(el) => fxAnchorRef("sisi", el, { fx: facing === "left" ? 0.34 : 0.66, fy: 0.56 })}
       style={{ pointerEvents: onTap ? "auto" : "none" }}
     >
       <div ref={bobRef} className="bob-wrap">

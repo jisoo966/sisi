@@ -29,8 +29,10 @@ export type SpokenLine = {
   key: string;
   text: React.ReactNode;
   kicker?: string;
-  actions?: { label: string; act: () => void; quiet?: boolean }[];
+  actions?: { label: string; act: (e?: React.MouseEvent<HTMLElement>) => void; quiet?: boolean }[];
   onDismiss?: () => void;
+  /** "sky": centred in the upper-middle clear sky, clear of Sísí and any discovery object */
+  placement?: "sky";
 };
 
 const REVEAL_AFTER_MS = 300;
@@ -153,7 +155,7 @@ export function CompanionCues({
     <AnimatePresence>
       {visible && (talkHint || !!shown) && <SpeakLines key="lines" />}
     </AnimatePresence>
-    <div className="cc-root" aria-live="polite">
+    <div className={`cc-root${shown?.placement === "sky" ? " is-sky" : ""}`} aria-live="polite">
       <AnimatePresence>
         {visible && talkHint && !line && (
           <SisiSpeechBubble
@@ -195,8 +197,8 @@ export function CompanionCues({
         {shown && (
           <SisiSpeechBubble
             key={shown.key}
-            tailPosition="bottom-right"
-            align="left"
+            tailPosition={shown.placement === "sky" ? "no-tail" : "bottom-right"}
+            align={shown.placement === "sky" ? "center" : "left"}
             className="cc-thought"
             corner={
               shown.key.startsWith("thought-") || shown.onDismiss ? (
@@ -241,7 +243,7 @@ export function CompanionCues({
             ) : shown.actions?.length ? (
               <div className="cc-actions cc-actions--wrap">
                 {shown.actions.map((a) => (
-                  <button key={a.label} type="button" className={`ds-text-action cc-link${a.quiet ? " cc-link--quiet" : ""}`} onClick={a.act}>
+                  <button key={a.label} type="button" className={`ds-text-action cc-link${a.quiet ? " cc-link--quiet" : ""}`} onClick={(e) => a.act(e)}>
                     {a.label}
                   </button>
                 ))}
@@ -263,6 +265,11 @@ export function CompanionCues({
           display: flex; flex-direction: column; align-items: flex-end;
         }
         .cc-root > * { pointer-events: auto; }
+        /* a discovery: the words sit centred in the upper-middle sky */
+        .cc-root.is-sky {
+          left: 50%; right: auto; bottom: auto; top: max(calc(var(--safe-top) + 72px), 31%); /* below a Cloud Garden cloud (16–28%), above Sísí */
+          transform: translateX(-50%); width: min(84%, 320px); max-width: none; align-items: center;
+        }
         .cc-thought.sisi-speech { padding: 14px 40px 8px 18px; }
         .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); }
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }

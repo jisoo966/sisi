@@ -1,5 +1,6 @@
 "use client";
 
+import { fxAnchorRef } from "@/lib/fxAnchors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { StarLayers } from "./StarLayers";
@@ -331,6 +332,10 @@ export function StarWorld({
               type="button"
               className={`sw-star${p.star.fulfilledAt ? " is-fulfilled" : ""}${isSel ? " is-selected" : ""}${pressedId === p.star.id ? " is-pressed" : ""}${leavingId === p.star.id ? " is-leaving" : ""}`}
               style={{ left: p.x, top: p.y }}
+              ref={(el) => {
+                fxAnchorRef(`star:${p.star.id}`, el);
+                fxAnchorRef("selectedStar", el, undefined, isSel);
+              }}
               aria-label={p.star.wish ? `star: ${p.star.wish}` : "your star"}
               onPointerDown={() => {
                 if (!active || locked) return;

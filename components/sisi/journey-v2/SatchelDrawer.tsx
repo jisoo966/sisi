@@ -1,5 +1,6 @@
 "use client";
 
+import { fxAnchorRef } from "@/lib/fxAnchors";
 import { softGlint } from "@/lib/fx";
 import { useEffect, useState } from "react";
 import { onStarlight, starlightBalance } from "@/lib/starlight";
@@ -63,7 +64,7 @@ export function SatchelDrawer({
         </div>
       }
       headerExtra={
-        <span className="sd-balance" aria-label={`${balance ?? 0} Starlight`}>
+        <span className="sd-balance" ref={(el) => fxAnchorRef("starlightCounter", el)} aria-label={`${balance ?? 0} Starlight`}>
           <StarGlyph size={15} />
           <span className="sd-balance-n">{balance ?? "·"}</span>
           <span className="sd-balance-l">Starlight</span>

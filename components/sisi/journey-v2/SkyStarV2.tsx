@@ -1,5 +1,6 @@
 "use client";
 
+import { fxAnchorRef } from "@/lib/fxAnchors";
 import { useEffect, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { StarLayers } from "./StarLayers";
@@ -49,6 +50,7 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
     <button
       type="button"
       className={`sky-star-btn${pressed ? " is-pressed" : ""}`}
+      ref={(el) => fxAnchorRef("selectedStar", el)}
       aria-label="Look toward your star"
       aria-disabled={disabled}
       onPointerDown={() => {

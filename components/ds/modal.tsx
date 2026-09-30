@@ -227,7 +227,7 @@ export function ConfirmationDialog({
   cancelLabel?: string;
   destructive?: boolean;
   loading?: boolean;
-  onConfirm: () => void;
+  onConfirm: (e?: React.MouseEvent<HTMLButtonElement>) => void;
   onCancel: () => void;
 }) {
   const tid = useId();
