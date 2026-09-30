@@ -386,7 +386,8 @@ export async function addSign(
   text: string,
   /** Where it came from — "chat" is an insight kept from a talk with Sísí. */
   source: "manual" | "chat" | "postcard" = "manual",
-  kind?: EntryKind,
+  /** a journal kind, or "visualization" (what stayed after Picture it) */
+  kind?: EntryKind | "visualization",
 ): Promise<Sign> {
   const m = await createMoment({
     source: source === "chat" ? "sisi_conversation" : source === "postcard" ? "journey_capture" : "star_check_in",

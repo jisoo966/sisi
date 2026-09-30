@@ -295,6 +295,7 @@ export function EffectsHost() {
       <style jsx global>{`
         #sisi-effects-layer .fx-s {
           position: absolute; left: 0; top: 0; display: block; pointer-events: none; user-select: none;
+          max-width: none; /* sized explicitly; never capped by a zero-width mover */
           opacity: 0; will-change: transform, opacity; animation-fill-mode: both;
         }
         #sisi-effects-layer .fx-box { position: absolute; display: block; pointer-events: none; }

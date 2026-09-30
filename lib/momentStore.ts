@@ -4,6 +4,7 @@
  * Created only by:
  *   Journey Capture    source journey_capture   type general          star optional
  *   Star Check-in      source star_check_in     type something_good | small_step   star required
+ *   Picture it         source star_check_in     type visualization    star required
  *   Sísí conversation  source sisi_conversation (only on explicit save)          star optional
  *   A thought for your walk
  *                      source sisi_note         type companion_note   star optional
@@ -32,7 +33,7 @@ import { createClient } from "@/lib/supabase/client";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 
 export type MomentSource = "journey_capture" | "star_check_in" | "sisi_conversation" | "sisi_note";
-export type MomentType = "general" | "something_good" | "small_step" | "companion_note";
+export type MomentType = "general" | "something_good" | "small_step" | "companion_note" | "visualization";
 
 export type Moment = {
   id: string;
@@ -75,6 +76,7 @@ export function toMomentType(kind: unknown): MomentType {
   if (kind === "something_good" || kind === "good") return "something_good";
   if (kind === "small_step" || kind === "step_taken" || kind === "step") return "small_step";
   if (kind === "companion_note") return "companion_note";
+  if (kind === "visualization") return "visualization";
   return "general";
 }
 
@@ -340,4 +342,5 @@ export const TYPE_LABEL: Partial<Record<MomentType, string>> = {
   something_good: "Something good",
   small_step: "A step I took",
   companion_note: "A note from Sísí",
+  visualization: "Visualization",
 };

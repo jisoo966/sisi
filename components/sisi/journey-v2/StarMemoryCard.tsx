@@ -7,6 +7,7 @@ import type { Sign, Star } from "@/lib/myStars";
 import { addSign, fulfillStar, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { addFulfilledFlower } from "@/lib/pathGifts";
 import { emitFx, glintPoint, softGlint } from "@/lib/fx";
+import { canVibrate, loadRitualPrefs, primeSound, ritualCue, saveRitualPrefs, type RitualPrefs } from "@/lib/ritualCues";
 import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
 import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
 import {
@@ -36,9 +37,14 @@ import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
  *                  moment with it?" — Yes, stay with me · View its journey
  *   practice       Sísí: "How would you like to be with your Star today?"
  *                  Picture it · Walk with it · Reflect on today (choose one)
- *   picture-intro  Sísí closes her eyes: "Picture this wish as part of an
- *                  ordinary day…" — Begin
- *   picture        silence: no words, no timer; only "End quietly"
+ *   picture-intro  SETTLE — Sísí: "Let’s picture it together. Take one slow
+ *                  breath." — I’m ready (sound / vibration optional)
+ *   picture        the ritual (~40s, no countdown): BREATHE one cycle (in 4s,
+ *                  out 6s) → PICTURE four prompts, one at a time → the wish
+ *                  shimmer rises into the Star → "Open your eyes when you’re
+ *                  ready."
+ *   picture-anchor ANCHOR — "What stayed with you?" (optional; saved as a
+ *                  Visualization Moment on this Star)
  *   note-ask       "Would you like to leave a small note for this Star?"
  *   reflect        "What would you like your Star to remember about today?"
  *                  Something good · A small step, one short field, Save
@@ -84,7 +90,7 @@ type Props = {
 };
 
 export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
-type Mode = "invite" | "practice" | "picture-intro" | "picture" | "picture-done" | "picture-note" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate" | "ceremony" | "fulfilled";
+type Mode = "invite" | "practice" | "picture-intro" | "picture" | "picture-anchor" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate" | "ceremony" | "fulfilled";
 type Overlay = null | "confirm-rest" | "confirm-fulfil";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -105,8 +111,8 @@ const PRACTICES = [
 const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpression }>> = {
   invite: { text: <>Your Star is still here.<br />Shall we spend a quiet moment with it?</>, face: "listening" },
   practice: { text: "How would you like to be with your Star today?", face: "listening" },
-  "picture-done": { text: "Keep that feeling with you.", face: "comfort" },
-  "picture-note": { text: "What did you see?", face: "listening" },
+  "picture-intro": { text: <>Let’s picture it together.<br />Take one slow breath.</>, face: "comfort" },
+  "picture-anchor": { text: "What stayed with you?", face: "listening" },
   "note-ask": { text: "Would you like to leave a small note for this Star?", face: "listening" },
   reflect: { text: "What would you like your Star to remember about today?", face: "listening" },
   saved: { text: "I’ll keep this close to your Star.", face: "comfort" },
@@ -117,16 +123,42 @@ const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpressio
 const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort", "picture-intro": "comfort" };
 
 /**
- * Picture it — a 30–45 second guided visualization (no countdown).
- * Prompts crossfade (never stacked). Starlight only after MIN_MS.
+ * Picture it — a guided visualization ritual (~40s, no countdown shown).
+ * It helps a wish feel vivid and ordinary; it never promises an outcome.
+ * One breathing cycle, then one prompt at a time (slow crossfades).
  */
-const PICTURE_PROMPTS: { at: number; text: React.ReactNode }[] = [
-  { at: 0, text: "See an ordinary day where this is already part of your life." },
-  { at: 15000, text: <>Notice where you are.<br />Notice how you feel.</> },
-  { at: 30000, text: "Hold that feeling gently." },
+type Phase = "in" | "out" | "p0" | "p1" | "p2" | "p3" | "wish" | "return";
+const RITUAL: { phase: Phase; at: number }[] = [
+  { phase: "in", at: 0 }, // breathe in, 4s
+  { phase: "out", at: 4000 }, // breathe out, 6s
+  { phase: "p0", at: 10000 },
+  { phase: "p1", at: 16500 },
+  { phase: "p2", at: 23000 },
+  { phase: "p3", at: 29500 },
+  { phase: "wish", at: 36000 }, // the wish shimmer rises into the Star
+  { phase: "return", at: 39000 },
 ];
-const PICTURE_MIN_MS = 20000;
-const PICTURE_TOTAL_MS = 42000;
+const WISH_MS = 2800;
+const WISH_TOUCH_MS = 2150; // when the shimmer reaches the Star's centre
+const RITUAL_WORDS: Record<Phase, string> = {
+  in: "Breathe in",
+  out: "Breathe out",
+  p0: "If this wish were already part of your ordinary life…",
+  p1: "Where are you?",
+  p2: "What are you doing?",
+  p3: "How do you feel?",
+  wish: "",
+  return: "Open your eyes when you’re ready.",
+};
+const PIC = {
+  halo: "/sisi-assets/picture-it/breathing-star-halo.webp",
+  wish: "/sisi-assets/picture-it/wish-shimmer-trail.webp",
+  /** the trail's bright head star, as fractions of the (trimmed) image */
+  wishHead: { fx: 0.391, fy: 0.208 },
+  wishAspect: 0.3171,
+  mist: "/sisi-assets/picture-it/dream-mist-overlay.webp",
+  footprint: "/sisi-assets/picture-it/footprint.webp",
+};
 const FINISH_SHOWN_AFTER_MS = 8000;
 
 
@@ -288,44 +320,95 @@ export function StarMemoryCard({
 
   // ── Picture it ──
   const [picStart, setPicStart] = useState<number | null>(null);
-  const [picPrompt, setPicPrompt] = useState(0);
-  const [picFinish, setPicFinish] = useState(false);
+  const [phase, setPhase] = useState<Phase>("in");
+  const [eyesOpen, setEyesOpen] = useState(false);
+  const eyesOpenRef = useRef(false);
+  eyesOpenRef.current = eyesOpen;
+  const [prefs, setPrefs] = useState<RitualPrefs>({ sound: false, haptics: false });
+  useEffect(() => setPrefs(loadRitualPrefs()), []);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
+  const setPref = (k: keyof RitualPrefs) =>
+    setPrefs((p) => {
+      const next = { ...p, [k]: !p[k] };
+      saveRitualPrefs(next);
+      return next;
+    });
+  const [wishTouch, setWishTouch] = useState(false);
+  const [canContinue, setCanContinue] = useState(false);
   const [picLight, setPicLight] = useState<string | null>(null);
   const [picBright, setPicBright] = useState(false);
   const [picNote, setPicNote] = useState("");
   const [picSaving, setPicSaving] = useState(false);
+  const [newFootprint, setNewFootprint] = useState<string | null>(null);
   const beginPicture = (e?: React.MouseEvent<HTMLElement>) => {
     softGlint(glintPoint(e?.currentTarget)); // "I'm ready"
+    primeSound(); // (only plays if sound was turned on)
     setPicStart(Date.now());
-    setPicPrompt(0);
-    setPicFinish(false);
+    setPhase("in");
+    setEyesOpen(false);
+    setWishTouch(false);
+    setCanContinue(false);
     setPicLight(null);
+    setPicNote("");
     setMode("picture");
   };
-  const completePicture = async () => {
-    const elapsed = picStart ? Date.now() - picStart : 0;
-    setPicStart(null);
-    setMode("picture-done");
-    if (elapsed < PICTURE_MIN_MS || placeholder) return; // finished early: no Starlight
-    // the Star brightens once, the glint blooms, +1 (once per Star per day)
-    setPicBright(true);
-    setTimeout(() => setPicBright(false), 1600);
+  const leaveRitual = () => {
+    setPicStart(null); // nothing is saved, no Starlight
+    setMode("journey");
+  };
+  /** the whole ritual was lived through → Starlight (once per Star per day) */
+  const completeRitual = async () => {
+    if (placeholder) return;
     const res = await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id, silent: true });
     setPicLight(starlightMessage(res));
-    // Starlight Trail, arriving on the Star itself (the screen shows its own words)
-    // Starlight Trail from the Star to Sísí (anchors are read once the screen settles)
-    if (res.awarded > 0) emitFx({ kind: "trail", amount: res.awarded });
   };
   useEffect(() => {
     if (mode !== "picture" || !picStart) return;
-    const timers = [
-      ...PICTURE_PROMPTS.slice(1).map((p, i) => setTimeout(() => setPicPrompt(i + 1), p.at)),
-      setTimeout(() => setPicFinish(true), FINISH_SHOWN_AFTER_MS),
-      setTimeout(() => completePicture(), PICTURE_TOTAL_MS),
-    ];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    ritualCue("in", prefsRef.current);
+    for (const step of RITUAL.slice(1)) {
+      timers.push(
+        setTimeout(() => {
+          setPhase(step.phase);
+          if (step.phase === "out") ritualCue("out", prefsRef.current);
+          else if (step.phase.startsWith("p") && !eyesOpenRef.current) ritualCue("soft", prefsRef.current);
+          else if (step.phase === "return") {
+            ritualCue("soft", prefsRef.current);
+            void completeRitual();
+          }
+        }, step.at),
+      );
+    }
+    const wishAt = RITUAL.find((r) => r.phase === "wish")!.at;
+    timers.push(setTimeout(() => setWishTouch(true), wishAt + WISH_TOUCH_MS));
+    timers.push(setTimeout(() => setWishTouch(false), wishAt + WISH_TOUCH_MS + 900));
+    timers.push(setTimeout(() => setCanContinue(true), RITUAL.find((r) => r.phase === "return")!.at + 1600));
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, picStart]);
+  /** ANCHOR: keep what stayed, as a Visualization Moment on this Star */
+  const keepFeeling = async (e?: React.MouseEvent<HTMLElement>) => {
+    const t = picNote.trim();
+    if (!t || picSaving) return;
+    const glint = glintPoint(e?.currentTarget);
+    setPicSaving(true);
+    try {
+      const sign = await addSign(star.id, t, "manual", "visualization");
+      setSigns((list) => [sign, ...(list ?? [])]);
+      onEntrySaved?.(sign);
+      softGlint(glint);
+      setPicNote("");
+      setNewFootprint(sign.id); // one footprint on the Star's path
+      setMode("journey");
+      // the Star illuminates briefly
+      setPicBright(true);
+      setTimeout(() => setPicBright(false), 1600);
+    } finally {
+      setPicSaving(false);
+    }
+  };
+
   /**
    * Picture it layout (viewport-relative, measured once when it begins and
    * on resize / orientation change):
@@ -380,34 +463,22 @@ export function StarMemoryCard({
       window.removeEventListener("orientationchange", again);
     };
   }, [mode]);
+  const ritualWords = eyesOpen || phase !== "return" ? RITUAL_WORDS[phase] : RITUAL_WORDS.return;
   const pictureWords = (
     <AnimatePresence mode="wait">
-      <motion.p
-        key={picPrompt}
-        className="smp-prompt-text"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, transition: { duration: 1.6, ease: "easeInOut" } }}
-        exit={{ opacity: 0, transition: { duration: 1.2, ease: "easeInOut" } }}
-      >
-        {PICTURE_PROMPTS[picPrompt].text}
-      </motion.p>
+      {ritualWords && (
+        <motion.p
+          key={phase}
+          className={`smp-prompt-text${phase === "in" || phase === "out" ? " is-breath" : ""}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: phase === "out" ? 1.2 : 1.8, ease: "easeInOut" } }}
+          exit={{ opacity: 0, transition: { duration: 1.2, ease: "easeInOut" } }}
+        >
+          {ritualWords}
+        </motion.p>
+      )}
     </AnimatePresence>
   );
-
-  const savePictureNote = async () => {
-    const t = picNote.trim();
-    if (!t || picSaving) return;
-    setPicSaving(true);
-    try {
-      const sign = await addSign(star.id, t, "manual"); // a Moment on this Star
-      setSigns((list) => [sign, ...(list ?? [])]);
-      onEntrySaved?.(sign);
-      setPicNote("");
-      setMode("journey");
-    } finally {
-      setPicSaving(false);
-    }
-  };
 
   /** the chosen card settles (0.98), the others fade, then the practice begins */
   const [picked, setPicked] = useState<string | null>(null);
@@ -430,7 +501,8 @@ export function StarMemoryCard({
   // share the rest of the screen, and the global tabs step aside.
   const focus = mode === "practice";
   /** the global tabs step aside during the choice and the completion moments */
-  const picturing = mode === "picture" || mode === "picture-done" || mode === "picture-note";
+  /** the ritual (settle → breathe → picture → anchor): the tabs are disabled throughout */
+  const picturing = mode === "picture-intro" || mode === "picture" || mode === "picture-anchor";
   const hideNav = focus || completion || mode === "ceremony" || picturing;
   useEffect(() => {
     const el = document.documentElement;
@@ -448,8 +520,7 @@ export function StarMemoryCard({
     completion ||
     (mode === "invite" && !placeholder) ||
     mode === "picture-intro" ||
-    mode === "picture-done" ||
-    mode === "picture-note" ||
+    mode === "picture-anchor" ||
     mode === "reflect";
   // each step starts with its Star in view (not wherever the last one scrolled)
   useLayoutEffect(() => {
@@ -474,7 +545,7 @@ export function StarMemoryCard({
         type="button"
         aria-label="Back to My Stars"
         className="smc-backdrop"
-        onClick={() => mode !== "picture" && onClose()}
+        onClick={() => !picturing && onClose()}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -489,7 +560,7 @@ export function StarMemoryCard({
         {onScreen && (
           <motion.div
             key="sms"
-            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-done" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}`}
+            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-anchor" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}${picturing ? " is-ritual" : ""}`}
             style={{ ["--star-top" as string]: `${Math.max(8, anchor.y - 44)}px` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -545,24 +616,41 @@ export function StarMemoryCard({
             </header>
             )}
 
+            {/* 2 · dream mist: above the night sky, below the Star and every word */}
+            {mode === "picture" && (
+              <div className="smp-mist" aria-hidden>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={PIC.mist} alt="" draggable={false} />
+              </div>
+            )}
             <div
               className="sms-scroll"
               ref={listRef}
               // without a header, the Star sits where it was in the sky
-              style={hasHeader || focus || mode === "picture" ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
+              style={hasHeader || focus || picturing ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
               onClick={(e) => {
                 // a tap on the open sky puts the paper away (not mid-visualization)
                 const t = e.target as HTMLElement;
-                if (mode !== "picture" && (t === e.currentTarget || t.classList.contains("sms-path"))) onClose();
+                if (!picturing && (t === e.currentTarget || t.classList.contains("sms-path"))) onClose();
               }}
             >
               <div className={`sms-path${shine ? ` is-${shine}` : ""}`}>
                 <span className={`sms-thread${mode === "picture" ? " is-flowing" : ""}`} aria-hidden />
-                <div ref={(el) => fxAnchorRef("selectedStar", el)} className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? " is-breathing" : ""}`} aria-hidden>
+                <div ref={(el) => fxAnchorRef("selectedStar", el)} className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? " is-breathing" : ""}${wishTouch ? " is-wished" : ""}`} aria-hidden>
                   <span className="sms-star-inner">
                     <StarLayers staged revealed focused />
                   </span>
+                  {/* 4 · the breathing halo, centred exactly on this Star (above it) */}
+                  {mode === "picture" && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="smp-halo" src={PIC.halo} alt="" draggable={false} />
+                  )}
                 </div>
+                {/* 5 · the wish shimmer: rises from below into the Star's centre, then dissolves */}
+                {mode === "picture" && phase === "wish" && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="smp-wish" src={PIC.wish} alt="" draggable={false} />
+                )}
 
                 {!hasHeader && (
                   <div className="sms-stage">
@@ -585,7 +673,7 @@ export function StarMemoryCard({
                       >
                         {/* the longest line, invisible, to decide where the words fit */}
                         <p className="smp-prompt-text smp-measure" aria-hidden>
-                          {PICTURE_PROMPTS[0].text}
+                          {RITUAL_WORDS.p0}
                         </p>
                         {!picLayout?.below && pictureWords}
                       </div>
@@ -660,53 +748,56 @@ export function StarMemoryCard({
 
                 {mode === "picture-intro" && (
                   <motion.div key="picture-intro" className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode("practice")} onClose={onClose} />
                     <p className="t-meta smp-kicker">Picture it</p>
-                    <p className="t-dialogue smp-lead">Imagine this wish as part of an ordinary day.</p>
-                    <p className="t-affirmation smp-questions">
-                      Where are you?
-                      <br />
-                      What are you doing?
-                      <br />
-                      How do you feel?
-                    </p>
-                    <p className="t-meta smp-star-label">Your Star</p>
                     <h2 className="t-card-title smc-title">{star.wish}</h2>
+                    <div className="ds-chip-row smp-prefs" role="group" aria-label="Optional cues">
+                      <FilterChip selected={prefs.sound} onClick={() => setPref("sound")}>
+                        Gentle sound
+                      </FilterChip>
+                      {canVibrate() && (
+                        <FilterChip selected={prefs.haptics} onClick={() => setPref("haptics")}>
+                          Gentle vibration
+                        </FilterChip>
+                      )}
+                    </div>
                   </motion.div>
                 )}
 
                 {mode === "picture" && (
                   <motion.div key="picture" className="smc-content smc-center" {...fade}>
-                    {/* no countdown; a quiet way to finish appears after a while */}
-                    <motion.div initial={false} animate={{ opacity: picFinish ? 1 : 0 }} transition={{ duration: 1.2 }}>
-                      <TextAction className="smc-quiet-link" disabled={!picFinish} onClick={completePicture}>
-                        Finish
-                      </TextAction>
-                    </motion.div>
+                    <AnimatePresence mode="wait" initial={false}>
+                      {(phase === "in" || phase === "out") && !eyesOpen ? (
+                        <motion.div key="eyes" className="smp-eyes" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 1.2 } }} exit={{ opacity: 0, transition: { duration: 0.8 } }}>
+                          <p className="t-body smp-eyes-line">If it feels comfortable, close your eyes.</p>
+                          <TextAction className="smc-quiet-link" onClick={() => setEyesOpen(true)}>
+                            Keep my eyes open
+                          </TextAction>
+                        </motion.div>
+                      ) : phase === "return" && canContinue ? (
+                        <motion.div key="continue" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 1.4 } }}>
+                          <TextAction className="smc-quiet-link" onClick={() => setMode("picture-anchor")}>
+                            Continue
+                          </TextAction>
+                        </motion.div>
+                      ) : (
+                        <motion.span key="quiet" className="smp-quiet" aria-hidden />
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
 
-                {mode === "picture-done" && (
-                  <motion.div key="picture-done" className="smc-content" {...fade}>
-                    <p className="t-meta smc-when">Picture it</p>
-                    <h2 className="t-card-title smc-title">{star.wish}</h2>
-                    {picLight && <p className="t-body smp-light">{picLight}</p>}
-                  </motion.div>
-                )}
-
-                {mode === "picture-note" && (
-                  <motion.div key="picture-note" className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode("picture-done")} onClose={() => setMode("journey")} />
+                {mode === "picture-anchor" && (
+                  <motion.div key="picture-anchor" className="smc-content" {...fade}>
                     <textarea
                       className="ds-field smc-entry"
                       rows={3}
                       maxLength={240}
-                      autoFocus
                       value={picNote}
-                      placeholder="A window with morning light, and the kettle on."
-                      aria-label="What did you see?"
+                      placeholder="I saw myself…"
+                      aria-label="What stayed with you?"
                       onChange={(e) => setPicNote(e.target.value)}
                     />
+                    {picLight && <p className="t-meta smp-light">{picLight}</p>}
                   </motion.div>
                 )}
 
@@ -789,8 +880,13 @@ export function StarMemoryCard({
                         <div className="ds-memory-sheet ds-paper">
                           <p className="sms-date">
                             {dayLabel(s.createdAt)}
-                            {s.kind ? ` · ${KIND[s.kind].label}` : s.momentType === "companion_note" ? " · A note from Sísí" : ""}
+                            {s.kind ? ` · ${KIND[s.kind].label}` : s.momentType === "companion_note" ? " · A note from Sísí" : s.momentType === "visualization" ? " · Visualization" : ""}
                           </p>
+                          {s.momentType === "visualization" && (
+                            // one footprint on the Star's path, stamped on the paper
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img className={`sms-footprint${newFootprint === s.id ? " is-new" : ""}`} src={PIC.footprint} alt="" aria-hidden draggable={false} />
+                          )}
                           <p className="sms-text">{s.text}</p>
                           {s.image && (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -814,9 +910,9 @@ export function StarMemoryCard({
 
             </div>
 
-            {mode === "picture" && (
+            {picturing && (
               <div className="smp-close">
-                <IconButton surface="dark" label="Stop and return to my Star" onClick={() => { setPicStart(null); setMode("journey"); }}>
+                <IconButton surface="dark" label="Leave and return to my Star" onClick={leaveRitual}>
                   <IconClose />
                 </IconButton>
               </div>
@@ -850,24 +946,20 @@ export function StarMemoryCard({
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={beginPicture}>
                   I’m ready
                 </button>
-              ) : mode === "picture-done" ? (
+              ) : mode === "picture-anchor" ? (
                 <div className="sms-cta-pair">
-                  <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => setMode("journey")}>
-                    Return to my Star
+                  <button
+                    type="button"
+                    className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta"
+                    disabled={!picNote.trim() || picSaving}
+                    onClick={keepFeeling}
+                  >
+                    Keep this feeling
                   </button>
-                  <TextAction surface="dark" className="sms-cta-secondary" onClick={() => setMode("picture-note")}>
-                    Write what I saw
+                  <TextAction surface="dark" className="sms-cta-secondary" onClick={() => setMode("journey")}>
+                    Done without writing
                   </TextAction>
                 </div>
-              ) : mode === "picture-note" ? (
-                <button
-                  type="button"
-                  className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta"
-                  disabled={!picNote.trim() || picSaving}
-                  onClick={savePictureNote}
-                >
-                  Save to my Star
-                </button>
               ) : mode === "reflect" ? (
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" disabled={!text.trim() || saving} onClick={save}>
                   Save to my Star
@@ -1091,27 +1183,92 @@ export function StarMemoryCard({
         .smp-light { margin: 10px 0 0; color: var(--ink-80); }
         /* active: the paper becomes a slim ledge for Sísí; the Star and the words hold the screen */
         .sms-paper-wrap.is-slim .sms-paper { padding: 8px 16px calc(8px + var(--safe-bottom)); min-height: 64px; display: flex; align-items: center; justify-content: center; }
-        /* the Star, centred, ~21dvh down (never closer than 32px to the top safe area) */
-        .sms-screen.is-picturing .sms-scroll { padding-top: max(calc(var(--safe-top) + 32px), calc(21dvh - 44px)); }
+        /* the Star stays in one place for the whole ritual: centred, ~21dvh down
+           (never closer than 32px to the top safe area) */
+        .sms-screen.is-ritual .sms-scroll { padding-top: max(calc(var(--safe-top) + 32px), calc(21dvh - 44px)); }
+        .smp-prefs { margin: 6px 0 0; }
+        .smp-eyes { display: flex; flex-direction: column; align-items: center; }
+        .smp-eyes-line { margin: 0 0 2px; color: var(--ink-80); }
+        .smp-quiet { display: block; height: 1px; }
         .smp-prompt {
           position: relative; display: flex; align-items: flex-start; justify-content: center;
           min-height: 0; height: 36dvh; padding: 0 28px; margin: 0; box-sizing: border-box;
         }
         .smp-prompt--below { height: auto; padding: 20px 28px 0; }
         .smp-prompt-text.smp-measure { position: absolute; left: 28px; right: 28px; top: 0; visibility: hidden; pointer-events: none; }
+        /* 6 · the words: one at a time, over a soft pool of night */
         .smp-prompt-text {
           position: relative; margin: 0; padding: 18px 26px; text-align: center; color: var(--paper-90);
-          /* a soft pool of night behind the words, so the thread never runs through them */
           background: radial-gradient(closest-side, rgba(16, 45, 50, 0.92) 55%, rgba(16, 45, 50, 0));
           font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue);
         }
+        .smp-prompt-text.is-breath { font-style: italic; }
         .smp-close { position: absolute; z-index: 4; top: calc(var(--safe-top) + 8px); right: max(8px, var(--safe-right)); pointer-events: auto; }
-        /* the Star breathes; a small warm light travels slowly along the thread */
-        .sms-star.is-breathing .sms-star-inner { animation: smp-breathe 6.5s ease-in-out infinite; }
+
+        /* 3–4 · the Star breathes with the halo: in 4s (0 → 40%), out 6s (40% → 100%) */
+        .sms-star.is-breathing .sms-star-inner { animation: smp-breathe 10s infinite; }
         @keyframes smp-breathe {
-          0%, 100% { transform: scale(1.7); opacity: 0.9; }
-          50% { transform: scale(1.78); opacity: 1; }
+          0% { transform: scale(1.7); animation-timing-function: ease-in-out; }
+          40% { transform: scale(1.8); animation-timing-function: ease-in-out; }
+          100% { transform: scale(1.7); }
         }
+        .smp-halo {
+          position: absolute; z-index: 2; pointer-events: none;
+          width: 210px; height: 210px; max-width: none; left: calc(50% - 105px); top: calc(50% - 105px);
+          opacity: 0.35; transform: scale(0.82);
+          /* the first breath 0.82 → 1.08 → 0.90; then it keeps breathing 0.90 ↔ 1.08 */
+          animation: smp-halo-first 10s both, smp-halo-loop 10s 10s infinite;
+        }
+        @keyframes smp-halo-first {
+          0% { transform: scale(0.82); opacity: 0.35; animation-timing-function: ease-in-out; }
+          40% { transform: scale(1.08); opacity: 0.85; animation-timing-function: ease-in-out; }
+          100% { transform: scale(0.9); opacity: 0.4; }
+        }
+        @keyframes smp-halo-loop {
+          0% { transform: scale(0.9); opacity: 0.4; animation-timing-function: ease-in-out; }
+          40% { transform: scale(1.08); opacity: 0.85; animation-timing-function: ease-in-out; }
+          100% { transform: scale(0.9); opacity: 0.4; }
+        }
+        /* the wish reaches the Star: it grows to 1.12 for a moment, with a restrained warm glow */
+        .sms-screen.is-picturing .sms-star { transition: transform 900ms ease-in-out, filter 900ms ease-in-out; }
+        .sms-screen.is-picturing .sms-star.is-wished {
+          transform: scale(1.12); filter: drop-shadow(0 0 14px rgba(241, 196, 94, 0.5));
+          transition: transform 450ms ease-out, filter 450ms ease-out;
+        }
+        /* 5 · the wish shimmer: revealed bottom → top, its head arriving on the Star's centre */
+        .smp-wish {
+          position: absolute; z-index: 2; pointer-events: none;
+          width: 76px; height: ${(76 / 0.3171).toFixed(1)}px; max-width: none;
+          left: calc(50% - ${(76 * 0.391).toFixed(1)}px); top: ${(44 - (76 / 0.3171) * 0.208).toFixed(1)}px;
+          transform-origin: 39.1% 20.8%;
+          opacity: 0; animation: smp-wish ${WISH_MS}ms ease-in-out both;
+        }
+        @keyframes smp-wish {
+          0% { opacity: 0; transform: translateY(170px); clip-path: inset(100% 0 0 0); }
+          12% { opacity: 0.9; }
+          55% { transform: translateY(50px); clip-path: inset(0 0 0 0); }
+          77% { opacity: 0.95; transform: translateY(0) scale(1); clip-path: inset(0 0 0 0); }
+          100% { opacity: 0; transform: translateY(0) scale(0.35); clip-path: inset(0 0 0 0); }
+        }
+        /* 2 · dream mist: low in the sky, behind the Star, the words and Sísí */
+        .smp-mist {
+          position: absolute; z-index: 0; left: -10%; width: 120%; top: 54dvh; pointer-events: none;
+          animation: smp-mist-in 3s ease-in-out both;
+        }
+        .smp-mist img {
+          display: block; width: 100%; height: auto; opacity: 0.25;
+          animation: smp-mist-drift 12s ease-in-out infinite alternate, smp-mist-breathe 6s ease-in-out infinite alternate;
+        }
+        @keyframes smp-mist-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes smp-mist-drift { 0% { transform: translateX(0); opacity: 0.18; } 100% { transform: translateX(16px); opacity: 0.32; } }
+        @keyframes smp-mist-breathe { 0% { translate: 0 0; } 100% { translate: 0 -4px; } }
+        html.app-hidden .sms-screen.is-picturing * { animation-play-state: paused !important; }
+
+        /* one footprint on the Star's path, stamped on a Visualization note */
+        .sms-footprint { position: absolute; top: 12px; right: 12px; width: 16px; height: auto; opacity: 0.8; transform: rotate(-14deg); pointer-events: none; }
+        .sms-footprint.is-new { animation: smp-foot 1.4s ease-out 0.5s both; }
+        @keyframes smp-foot { from { opacity: 0; } to { opacity: 0.8; } }
+
         .sms-thread.is-flowing::before {
           content: ""; position: absolute; left: -2.4px; top: 0; width: 6px; height: 6px; border-radius: 50%;
           background: var(--sisi-gold); box-shadow: 0 0 6px 2px rgba(241, 196, 94, 0.4);
@@ -1119,9 +1276,15 @@ export function StarMemoryCard({
         }
         @keyframes smp-flow { 0% { top: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
         @media (prefers-reduced-motion: reduce) {
-          /* same timing and words: a soft opacity shift, a still glow */
-          .sms-star.is-breathing .sms-star-inner { animation: smp-breathe-soft 6.5s ease-in-out infinite; transform: scale(1.7); }
-          @keyframes smp-breathe-soft { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+          /* same timing and words; no scaling or movement — opacity only */
+          .sms-star.is-breathing .sms-star-inner { animation: smp-breathe-soft 10s ease-in-out infinite; transform: scale(1.7); }
+          @keyframes smp-breathe-soft { 0%, 100% { opacity: 0.85; } 40% { opacity: 1; } }
+          .smp-halo { transform: none; animation: smp-halo-soft 10s ease-in-out infinite; }
+          @keyframes smp-halo-soft { 0% { opacity: 0.35; } 40% { opacity: 0.85; } 100% { opacity: 0.4; } }
+          .sms-screen.is-picturing .sms-star.is-wished { transform: none; }
+          .smp-wish { animation: smp-wish-soft ${WISH_MS}ms ease-in-out both; }
+          @keyframes smp-wish-soft { 0% { opacity: 0; } 45% { opacity: 0.85; } 100% { opacity: 0; } }
+          .smp-mist img { animation: none; opacity: 0.25; }
           .sms-thread.is-flowing::before { animation: none; top: 40%; opacity: 0.8; }
         }
 
