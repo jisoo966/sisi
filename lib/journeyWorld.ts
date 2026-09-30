@@ -74,6 +74,17 @@ export function occludingSisi(sisiX: number, halfWidth: number): boolean {
   return !!s && s.right > sisiX - halfWidth && s.left < sisiX + halfWidth;
 }
 
+/**
+ * The environment's gentle modifiers (set by the Journey from the World
+ * and the weather): how many clouds, how briskly they drift.
+ */
+export const envCoord = {
+  /** × the usual number of clouds on screen (partly cloudy / cloudy / Cloud Garden) */
+  cloudDensity: 1,
+  /** × cloud drift speed (windy) — never shakes Sísí or the screen */
+  wind: 1,
+};
+
 /* ── continuity across page visits (memory only) ──────────────────── */
 
 const kept = new Map<string, unknown>();

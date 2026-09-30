@@ -17,7 +17,7 @@ import { SKY_SRC, type SkyPhase, type TimeOfDay } from "@/lib/timeOfDay";
  */
 
 /** A change of time during the walk: a slow 15s crossfade (never a swap). */
-const FADE_MS = 15000;
+const FADE_MS = 4000; // time-of-day changes blend over ~4s (never a hard swap)
 
 /** Each painting's horizon colour (its last rows), continued below the
  *  painting so the sky never ends in a hard edge — e.g. while the land

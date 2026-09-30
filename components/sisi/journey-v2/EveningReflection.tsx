@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { addSign } from "@/lib/myStars";
-import { earnLight } from "@/lib/littleLights";
+import { awardStarlight, starlightMessage } from "@/lib/starlight";
 import { FocusPaper, PrimaryButton, TextAction } from "@/components/ds";
 
 /**
@@ -51,7 +51,7 @@ export function EveningReflection({
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
-  const [done, setDone] = useState<null | boolean>(null);
+  const [done, setDone] = useState<null | string>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -67,14 +67,17 @@ export function EveningReflection({
     const note = text.trim();
     if (!note || saving) return;
     setSaving(true);
+    let msg: string | null = null;
     if (star) {
       try {
-        await addSign(star.id, note);
+        const sign = await addSign(star.id, note);
+        // "What felt good today?" is Something good, saved to the Star
+        msg = starlightMessage(await awardStarlight({ source: "something_good_saved", sourceId: sign.id, starId: star.id }));
       } catch {
         // ignore — keep the evening gentle
       }
     }
-    setDone(await earnLight("evening", star?.id));
+    setDone(msg ?? "");
     setTimeout(onClose, 2200);
   };
 
@@ -102,13 +105,8 @@ export function EveningReflection({
           </>
         ) : (
           <>
-            <p className="t-card-title ev-title">{done ? "A Little Light found you." : "Kept with your Star."}</p>
-            {done && (
-              <p className="ev-plus">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/sisi-star-mark-painted-512.png" alt="" /> +1
-              </p>
-            )}
+            <p className="t-card-title ev-title">Kept with your Star.</p>
+            {done && <p className="t-body" style={{ margin: 0, color: "var(--ink-80)" }}>{done}</p>}
           </>
         )}
       </div>

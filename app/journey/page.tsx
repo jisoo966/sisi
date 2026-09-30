@@ -49,8 +49,20 @@ import { SatchelDrawer } from "@/components/sisi/journey-v2/SatchelDrawer";
 import { MomentCapture } from "@/components/sisi/journey-v2/MomentCapture";
 import { CreateStarFlow } from "@/components/sisi/journey-v2/CreateStarFlow";
 import { EveningReflection, eveningDue } from "@/components/sisi/journey-v2/EveningReflection";
-import { earnLight } from "@/lib/littleLights";
+import { awardStarlight, localDate } from "@/lib/starlight";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
+import { useStarlightBalance } from "@/lib/useStarlight";
+import { markDiscoveryShown, pendingDiscovery } from "@/lib/starlight";
+import { markGiftShown, nextPathGift } from "@/lib/pathGifts";
+import { equipWorld } from "@/lib/worlds";
+import { JourneyReveal, type Reveal } from "@/components/sisi/magic/JourneyReveal";
+import { StarlightFeedback } from "@/components/sisi/magic/StarlightFeedback";
+import { SisiGlint } from "@/components/sisi/magic/SisiGlint";
+import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
+import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
+import { envCoord } from "@/lib/journeyWorld";
+import { WeatherLayer } from "@/components/sisi/weather/WeatherLayer";
+import type { TimeOfDay } from "@/lib/timeOfDay";
 import { entryForVisit } from "@/lib/starVisits";
 import { ascentOptions } from "@/lib/useStarAscent";
 import type { StarEntry } from "@/components/sisi/journey-v2/StarMemoryCard";
@@ -192,7 +204,7 @@ export default function JourneyPage() {
     useJourneyPhase();
   const router = useRouter();
   // Morning / afternoon / evening — sky, grass grade and greeting.
-  const tod = useTimeOfDay();
+  const todLive = useTimeOfDay();
 
   // ── Journey ⇄ Moments (one world across two pages) ──
   // Arriving from Moments: start on the exact meadow frame Moments left, with
@@ -288,13 +300,14 @@ export default function JourneyPage() {
       const now = new Date().toISOString();
       setAllStars((list) => list.map((s) => (s.id === star.id ? { ...s, restedAt: now } : s)));
       setLeavingId(null);
-      setToast("your star is resting in moments.");
+      setToast("Your Star is resting in Moments.");
     }, 480 + 1600);
     setTimeout(() => setToast(null), 480 + 1600 + 3200);
   };
   const starEdited = (star: Star) => {
-    setAllStars((list) => list.map((s) => (s.id === star.id ? { ...s, wish: star.wish } : s)));
-    setOpenStar((o) => (o && o.star.id === star.id ? { ...o, star: { ...o.star, wish: star.wish } } : o));
+    const patch = { wish: star.wish, fulfilledAt: star.fulfilledAt ?? null };
+    setAllStars((list) => list.map((s) => (s.id === star.id ? { ...s, ...patch } : s)));
+    setOpenStar((o) => (o && o.star.id === star.id ? { ...o, star: { ...o.star, ...patch } } : o));
   };
 
   // Journey → Stars camera move (see lib/useStarAscent.ts). `busy` locks
@@ -380,6 +393,7 @@ export default function JourneyPage() {
   useEffect(() => {
     if (!isStarView) setNewStarOpen(false);
   }, [isStarView]);
+  const [birthGlint, setBirthGlint] = useState<{ x: number; y: number } | null>(null);
   const starBorn = (s: Star) => {
     setAllStars((list) => [s, ...list.filter((x) => x.id !== s.id)]);
     setNewStarOpen(false);
@@ -390,6 +404,9 @@ export default function JourneyPage() {
     // the new Star sits where the seed was born (the top of the path):
     // first a quiet "Your Star is here." — the practice invitation waits for a later visit
     setStarMode(entryForVisit(s.id, "created"));
+    // a new Star: one glint where it was born
+    const r = stage?.getBoundingClientRect();
+    setBirthGlint({ x: (r?.left ?? 0) + w * 0.5, y: (r?.top ?? 0) + h * 0.22 });
     setTimeout(() => setOpenStar({ star: s, at: { x: w * 0.5, y: h * 0.22 } }), 250);
   };
   // A Star brightens once when something is added to it.
@@ -529,8 +546,92 @@ export default function JourneyPage() {
   const [speaking, setSpeaking] = useState(false);
   const [walkLine, setWalkLine] = useState<null | "intro" | "finish-ask" | "done">(null);
   const stillLine = walkLine === "done";
-  const worldPaused = !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine);
   const writing = chatOpen || momentOpen || eveningOpen;
+
+  // ── Starlight: the shared world grows with attention given to Stars ──
+  const starlight = useStarlightBalance();
+  // A newly found World (or a fulfilled Star's flower) is revealed only on
+  // the unobstructed Journey — never during writing, chat or a Star activity.
+  const [reveal, setReveal] = useState<Reveal | null>(null);
+  const [revealLeaving, setRevealLeaving] = useState(false);
+  const unobstructed =
+    isWalking && !busy && !panelOpen && !chatOpen && !openStar && !newStarOpen && !menuOpen && !walkLine && leavingTo === null && !quiet;
+  useEffect(() => {
+    if (!unobstructed || reveal) return;
+    const t = setTimeout(() => {
+      const w = pendingDiscovery();
+      if (w) return setReveal({ kind: "world", world: w });
+      const g = nextPathGift();
+      if (g) setReveal({ kind: "flower", id: g.id });
+    }, 2600);
+    return () => clearTimeout(t);
+  }, [unobstructed, reveal]);
+  const endReveal = () => {
+    if (!reveal) return;
+    if (reveal.kind === "world") markDiscoveryShown(reveal.world);
+    else markGiftShown(reveal.id);
+    setRevealLeaving(true);
+    setTimeout(() => {
+      setReveal(null);
+      setRevealLeaving(false);
+    }, 650);
+  };
+  // a fulfilled Star's flower simply appears and stays a moment
+  useEffect(() => {
+    if (reveal?.kind !== "flower") return;
+    const t = setTimeout(endReveal, 6500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reveal]);
+  const discovering = reveal?.kind === "world" && !revealLeaving;
+  // ── Environment: selected World + local time of day + (optional) weather ──
+  const world = useEquippedWorld();
+  const liveWeather = useWeather();
+  // The time and the weather change only on the unobstructed Journey —
+  // never while a sheet, a conversation, writing or a Star ceremony is open.
+  const calm = isWalking && !busy && !writing && !panelOpen && !menuOpen && !chatOpen && !openStar && leavingTo === null;
+  const [applied, setApplied] = useState<{ tod: TimeOfDay | null; wx: Weather | null }>({ tod: null, wx: null });
+  useEffect(() => {
+    if (!calm && applied.tod) return;
+    let t = todLive;
+    // after dark (per the weather service) the evening sky, whatever the clock says
+    if (t && liveWeather && !liveWeather.isDay && t.phase !== "evening") t = { ...t, phase: "evening" };
+    setApplied((a) => (a.tod === t && a.wx === liveWeather ? a : { tod: t, wx: liveWeather }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calm, todLive, liveWeather]);
+  const tod = applied.tod;
+  const wx = applied.wx?.state ?? null;
+  useEffect(() => {
+    const d = { clear: 1, partly: 1.5, cloudy: 2, fog: 1.2, drizzle: 1.5, rain: 1.8, snow: 1.6, windy: 1.3 }[wx ?? "clear"];
+    envCoord.cloudDensity = WORLD_LOOK[world].clouds * d;
+    envCoord.wind = wx === "windy" ? 1.7 : wx === "rain" ? 1.15 : 1;
+    document.documentElement.style.setProperty("--sway-deg", wx === "windy" ? "1.9deg" : wx === "rain" || wx === "drizzle" ? "1.2deg" : "0.9deg");
+  }, [wx, world]);
+  // now and then (never every time), Sísí mentions the weather
+  const prevWx = useRef<WeatherState | null>(null);
+  const [wxLine, setWxLine] = useState<string | null>(null);
+  useEffect(() => {
+    if (!wx || wx === prevWx.current) return;
+    const text = weatherLine(wx, prevWx.current);
+    prevWx.current = wx;
+    if (!text) return;
+    const t1 = setTimeout(() => setWxLine(text), 4000);
+    const t2 = setTimeout(() => setWxLine(null), 4000 + 6000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [wx]);
+  // pause continuous animation while the app is hidden
+  useEffect(() => {
+    const on = () => document.documentElement.classList.toggle("app-hidden", document.visibilityState === "hidden");
+    document.addEventListener("visibilitychange", on);
+    return () => document.removeEventListener("visibilitychange", on);
+  }, []);
+
+  // Sísí pauses and notices a newly found place
+  const worldPaused =
+    !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine) || discovering;
 
   // Offer the evening reflection once, a little after arriving at night.
   useEffect(() => {
@@ -712,7 +813,7 @@ export default function JourneyPage() {
 
   return (
     <JourneyStage
-      phaseClass={`${stageClass}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""}`}
+      phaseClass={`${stageClass}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""} world-${world}${wx ? ` wx-state-${wx}` : ""}`}
     >
       {/* ── WORLD LAYER — separate depth groups; each moves at its own
           parallax rate during the Journey → Stars camera move. ── */}
@@ -735,6 +836,7 @@ export default function JourneyPage() {
             }}
             leavingId={leavingId}
             recenter={recenter}
+            skyBalance={starlight}
           />
         </div>
 
@@ -784,6 +886,8 @@ export default function JourneyPage() {
             zIndex={1}
             className="passing-trees"
           />
+          {/* distant weather: between the far landscape and the mid landscape */}
+          {!isStarView && <WeatherLayer state={wx} depth="far" zIndex={1} />}
           <ParallaxLayer
             src={PARALLAX_LAYERS.midgroundVegetation}
             speed={LAYER_SPEED.midgroundVegetation}
@@ -795,6 +899,13 @@ export default function JourneyPage() {
             filter={`saturate(0.75) brightness(1.15) contrast(0.85) ${TOD_GRADE}`}
           />
         </div>
+
+        {/* middle weather: above the mid landscape, behind the ground and Sísí */}
+        {!isStarView && (
+          <div className="jw-wx jw-wx-mid">
+            <WeatherLayer state={wx} depth="mid" />
+          </div>
+        )}
 
         {/* 3. Meadow — ground + path (locked, 32px/s) + companion. 0.75×
             during the ascent: the fox stays in the meadow and leaves
@@ -833,6 +944,13 @@ export default function JourneyPage() {
             }}
           />
         </div>
+
+        {/* sparse foreground weather: in front of Sísí, behind the foreground plants */}
+        {!isStarView && (
+          <div className="jw-wx jw-wx-near">
+            <WeatherLayer state={wx} depth="near" />
+          </div>
+        )}
 
         {/* 4. Foreground — grass clumps (42–48px/s) + trees (50–58px/s).
             1.15× during the ascent. */}
@@ -1037,7 +1155,11 @@ export default function JourneyPage() {
               key="finish-walk"
               type="button"
               className="ds-btn ds-btn--secondary ds-on-dark walk-finish"
-              onClick={() => setWalkLine("finish-ask")}
+              onClick={() => {
+                setWalkLine("finish-ask");
+                // "Walk with it" completed: once per Star per day
+                if (carried) awardStarlight({ source: "walk_with_it_completed", sourceId: `${carried.id}:${localDate()}`, starId: carried.id });
+              }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 1.2, duration: 0.6 } }}
               exit={{ opacity: 0, transition: { duration: 0.25 } }}
@@ -1047,13 +1169,35 @@ export default function JourneyPage() {
           )}
         </AnimatePresence>
 
+        {/* a newly found World / a fulfilled Star's flower, just ahead of Sísí */}
+        {reveal && isWalking && <JourneyReveal key={reveal.kind === "world" ? reveal.world : reveal.id} reveal={reveal} leaving={revealLeaving} />}
+        <StarlightFeedback />
+        {birthGlint && <SisiGlint at={birthGlint} size={96} onDone={() => setBirthGlint(null)} />}
+
         {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
         <CompanionCues
           visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && env === "day" && !quiet}
           onTalk={(opening) => openChat(opening)}
           onSpeaking={setSpeaking}
           line={
-            !carried || !walkLine
+            discovering && reveal?.kind === "world"
+              ? {
+                  key: `discover-${reveal.world}`,
+                  text: "We found a new place.",
+                  actions: [
+                    {
+                      label: "Visit now",
+                      act: () => {
+                        equipWorld(reveal.world);
+                        endReveal();
+                      },
+                    },
+                    { label: "Keep walking", act: endReveal, quiet: true },
+                  ],
+                }
+              : wxLine && (!carried || !walkLine)
+                ? { key: `wx-${wxLine}`, text: wxLine }
+              : !carried || !walkLine
               ? null
               : walkLine === "intro"
                 ? {
@@ -1135,12 +1279,7 @@ export default function JourneyPage() {
         }}
         onClose={() => setChatOpen(false)}
         star={featuredStar}
-        onMeaningful={async () => {
-          if (await earnLight("talk", featuredStar?.id)) {
-            setMeadowToast("A Little Light found you. ✦ +1");
-            setTimeout(() => setMeadowToast(null), 3200);
-          }
-        }}
+        // ordinary conversation never earns Starlight
       />
 
       {/* Contextual overlays — sheets, cards */}

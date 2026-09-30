@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FocusPaper, IconChevronRight, IconMusic, SecondaryButton } from "@/components/ds";
+import { WeatherSettingRow } from "@/components/sisi/weather/WeatherSetting";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -100,6 +101,7 @@ export function MenuSheet({
           <span className="menu-row-label">Ambient music</span>
           <Toggle on={musicOn} />
         </button>
+        <WeatherSettingRow />
         <Link href="/privacy" onClick={onClose} className="menu-row">
           <span className="menu-row-label">Privacy policy</span>
           <IconChevronRight size={18} />

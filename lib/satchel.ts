@@ -3,7 +3,8 @@
  *
  * Exactly three categories — SiSi · Trail · World. SiSi's core identity never
  * changes (small accessories only; no swapping to another animal).
- * Each item is in exactly one state: Owned · Equipped · ✦ cost.
+ * Nothing is bought or spent (Starlight is never spent — lib/starlight).
+ * Worlds live in lib/worlds (opened by cumulative Starlight thresholds).
  *
  * The catalog starts with the defaults that exist today; new items are
  * added here as their artwork arrives (preview + `apply` hook in Journey).
@@ -14,7 +15,6 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { LOCAL_ONLY } from "@/lib/dataMode";
-import { spendLights } from "@/lib/littleLights";
 
 export type SatchelCategory = "sisi" | "trail" | "world";
 
@@ -30,7 +30,7 @@ export type SatchelItem = {
 
 export const SATCHEL_CATALOG: SatchelItem[] = [
   // SiSi — scarf · small charm · small travel accessory (art to come)
-  { id: "sisi-plain", category: "sisi", name: "Just SiSi", cost: 0, preview: "/V2/fox-walk/fox-walk-preview.png" },
+  { id: "sisi-plain", category: "sisi", name: "Just Sísí", cost: 0, preview: "/V2/fox-walk/fox-walk-preview.png" },
   // Trail — sparse flowers · path variation · walking-light (art to come)
   { id: "trail-plain", category: "trail", name: "Quiet path", cost: 0, preview: "/V2/parallax/journey-walking-path.png" },
   // World — Quiet Meadow · Blue Riverside · Whispering Forest … (art to come)
@@ -112,17 +112,13 @@ async function save(state: SatchelState, changed: SatchelItem[]) {
   writeLocal(state);
 }
 
-/** Equip an owned item, or acquire it with Lights and equip it. */
+/** Equip an owned item (nothing is ever bought). */
 export async function chooseItem(
   state: SatchelState,
   item: SatchelItem,
 ): Promise<{ state: SatchelState; ok: boolean }> {
   const owned = new Set(state.owned);
-  if (!owned.has(item.id)) {
-    const paid = await spendLights(item.cost, item.id);
-    if (!paid) return { state, ok: false };
-    owned.add(item.id);
-  }
+  if (!owned.has(item.id)) return { state, ok: false };
   const prevId = state.equipped[item.category];
   const next: SatchelState = { owned, equipped: { ...state.equipped, [item.category]: item.id } };
   const prev = SATCHEL_CATALOG.find((i) => i.id === prevId);

@@ -284,7 +284,7 @@ export function PassingSprites({
         .ps-item > div { position: absolute; inset: 0; transform-origin: 50% 100%; }
         .ps-item img { position: absolute; max-width: none; display: block; user-select: none; -webkit-user-drag: none; }
         .ps-sway { animation: ps-sway ease-in-out infinite alternate; }
-        @keyframes ps-sway { from { transform: rotate(-0.9deg); } to { transform: rotate(0.9deg); } }
+        @keyframes ps-sway { from { transform: rotate(calc(-1 * var(--sway-deg, 0.9deg))); } to { transform: rotate(var(--sway-deg, 0.9deg)); } }
         @media (prefers-reduced-motion: reduce) { .ps-sway { animation: none; } }
       `}</style>
     </div>

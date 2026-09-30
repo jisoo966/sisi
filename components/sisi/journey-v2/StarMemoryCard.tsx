@@ -3,7 +3,10 @@
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
-import { addSign, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
+import { addSign, fulfillStar, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
+import { addFulfilledFlower } from "@/lib/pathGifts";
+import { SisiGlint } from "@/components/sisi/magic/SisiGlint";
+import { awardStarlight, localDate } from "@/lib/starlight";
 import {
   ConfirmationDialog,
   FilterChip,
@@ -14,6 +17,7 @@ import {
   IconPencil,
   OverflowMenu,
   PrimaryButton,
+  StarGlyph,
   StatusChip,
   TextAction,
 } from "@/components/ds";
@@ -78,8 +82,8 @@ type Props = {
 };
 
 export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
-type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate";
-type Overlay = null | "confirm-rest";
+type Mode = "invite" | "practice" | "picture-intro" | "picture" | "note-ask" | "reflect" | "saved" | "done" | "journey" | "celebrate" | "ceremony" | "fulfilled";
+type Overlay = null | "confirm-rest" | "confirm-fulfil";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const SOFT = [0.45, 0, 0.25, 1] as const; // soft ease-in-out
@@ -108,6 +112,7 @@ const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpressio
   saved: { text: "I’ll keep this close to your Star.", face: "comfort" },
   done: { text: <>That was enough for today.<br />Your Star is still here.</>, face: "comfort" },
   celebrate: { text: "Your Star is here.", face: "comfort" },
+  fulfilled: { text: <>You carried this wish all the way here.<br />It will keep shining in your sky.</>, face: "comfort" },
 };
 const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort" };
 
@@ -213,7 +218,9 @@ export function StarMemoryCard({
       setSaved(sign);
       setText("");
       setMode("saved");
-      onEntrySaved?.(sign);
+      onEntrySaved?.(sign); // the Star brightens
+      // saved and connected to the Star → Starlight (once per saved Moment)
+      awardStarlight({ source: kind === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: sign.id, starId: star.id });
     } finally {
       setSaving(false);
     }
@@ -233,6 +240,37 @@ export function StarMemoryCard({
     else if (id === "reflect") openReflect("practice");
     else onWalkWith?.(star);
   };
+  /**
+   * "This came true" — not a status toggle, a small ceremony:
+   * papers fold down → warm light climbs the thread → the Star brightens
+   * (~1.5s) → SisiGlint → it turns coral-gold → saved as fulfilled (never
+   * removed) → "You carried this wish all the way here." A small flower
+   * waits on the Journey for the next return.
+   */
+  const [shine, setShine] = useState<null | "fold" | "climb" | "bright" | "warm">(null);
+  const [ceremonyGlint, setCeremonyGlint] = useState<{ x: number; y: number } | null>(null);
+  const letItShine = async () => {
+    setOverlay(null);
+    setMode("ceremony");
+    setShine("fold");
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    await wait(650);
+    setShine("climb");
+    await wait(900);
+    setShine("bright");
+    const el = document.querySelector<HTMLElement>(".sms-star");
+    const r = el?.getBoundingClientRect();
+    if (r) setCeremonyGlint({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    const fulfilledAt = new Date().toISOString();
+    await fulfillStar(star.id); // persisted; the Star stays in the sky and in Moments
+    addFulfilledFlower(star.id);
+    await wait(1500);
+    setShine("warm");
+    onEdited({ ...star, fulfilledAt });
+    await wait(700);
+    setMode("fulfilled");
+  };
+
   /** the chosen card settles (0.98), the others fade, then the practice begins */
   const [picked, setPicked] = useState<string | null>(null);
   const pick = (id: (typeof PRACTICES)[number]["id"]) => {
@@ -247,14 +285,14 @@ export function StarMemoryCard({
   // journey + completion use the three-zone screen (header · scroll · controls)
   // Every step of the Star detail uses the same three-zone screen.
   const onScreen = true;
-  const hasHeader = mode === "journey";
+  const hasHeader = mode === "journey" || mode === "ceremony";
   /** completion moments: one clear way on, then back to this Star */
-  const completion = mode === "saved" || mode === "done" || mode === "celebrate";
+  const completion = mode === "saved" || mode === "done" || mode === "celebrate" || mode === "fulfilled";
   // A focused choice: the paper is a bottom sheet, the Star and Sísí's words
   // share the rest of the screen, and the global tabs step aside.
   const focus = mode === "practice";
   /** the global tabs step aside during the choice and the completion moments */
-  const hideNav = focus || completion;
+  const hideNav = focus || completion || mode === "ceremony";
   useEffect(() => {
     const el = document.documentElement;
     if (hideNav) {
@@ -350,6 +388,9 @@ export function StarMemoryCard({
                   label="Manage this Star"
                   items={[
                     { label: "Edit Star", icon: <IconPencil size={18} />, destructive: false, onSelect: () => setEditing(true) },
+                    ...(star.fulfilledAt
+                      ? []
+                      : [{ label: "This came true", icon: <StarGlyph size={16} />, destructive: false, onSelect: () => setOverlay("confirm-fulfil") }]),
                     { label: "Let this Star rest", icon: <MoonIcon />, destructive: true, onSelect: () => setOverlay("confirm-rest") },
                   ]}
                 />
@@ -370,9 +411,9 @@ export function StarMemoryCard({
                 if (mode !== "picture" && (t === e.currentTarget || t.classList.contains("sms-path"))) onClose();
               }}
             >
-              <div className="sms-path">
+              <div className={`sms-path${shine ? ` is-${shine}` : ""}`}>
                 <span className="sms-thread" aria-hidden />
-                <div className="sms-star" aria-hidden>
+                <div className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" ? " is-shining" : ""}`} aria-hidden>
                   <span className="sms-star-inner">
                     <StarLayers staged revealed focused />
                   </span>
@@ -468,7 +509,14 @@ export function StarMemoryCard({
                 {mode === "picture" && (
                   <motion.div key="picture" className="smc-content smc-center" {...fade}>
                     {/* silence is intentional: no words, no timer */}
-                    <TextAction className="smc-quiet-link" onClick={() => setMode("note-ask")}>
+                    <TextAction
+                      className="smc-quiet-link"
+                      onClick={() => {
+                        setMode("note-ask");
+                        // "Picture it" completed: once per Star per day
+                        if (!placeholder) awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id });
+                      }}
+                    >
                       End quietly
                     </TextAction>
                   </motion.div>
@@ -496,11 +544,11 @@ export function StarMemoryCard({
                   </motion.div>
                 )}
 
-                {(mode === "done" || mode === "celebrate") && (
+                {(mode === "done" || mode === "celebrate" || mode === "fulfilled") && (
                   <motion.div key={mode} className="smc-content" {...fade}>
-                    <p className="t-meta smc-when">{mode === "celebrate" ? "Created today" : formatDate(star.createdAt)}</p>
+                    <p className="t-meta smc-when">{mode === "celebrate" ? "Created today" : mode === "fulfilled" ? "Came true today" : formatDate(star.createdAt)}</p>
                     <h2 className="t-card-title smc-title">{star.wish || "Your Star"}</h2>
-                    <StatusChip tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
+                    <StatusChip tone="star">{star.fulfilledAt || mode === "fulfilled" ? "Fulfilled" : "Still walking"}</StatusChip>
                   </motion.div>
                 )}
 
@@ -533,7 +581,7 @@ export function StarMemoryCard({
                   </div>
                 )}
 
-                {mode === "journey" && (
+                {(mode === "journey" || mode === "ceremony") && (
                   <>
                     {(signs ?? []).map((s, i) => (
                       <motion.article
@@ -608,6 +656,16 @@ export function StarMemoryCard({
               ) : null}
             </div>}
 
+            <ConfirmationDialog
+              open={overlay === "confirm-fulfil"}
+              title="Shall we let this Star shine in a new way?"
+              message="It will remain safely in your sky and Moments."
+              confirmLabel="Let it shine"
+              cancelLabel="Not yet"
+              onConfirm={letItShine}
+              onCancel={() => setOverlay(null)}
+            />
+            {ceremonyGlint && <SisiGlint at={ceremonyGlint} size={96} onDone={() => setCeremonyGlint(null)} />}
             <ConfirmationDialog
               open={overlay === "confirm-rest"}
               title="Let this Star rest?"
@@ -777,6 +835,31 @@ export function StarMemoryCard({
         }
         @media (prefers-reduced-motion: reduce) {
           .smc-choice.is-picked { transform: none; }
+        }
+
+        /* ── the fulfilled ceremony ── */
+        /* (the card itself carries framer's rotation, so the fold lives on its sheet) */
+        .sms-path .sms-card > .ds-memory-sheet { transition: transform 600ms var(--ease-sisi), opacity 500ms ease; transform-origin: 50% 0; }
+        .sms-path .sms-card { transition: opacity 500ms ease 100ms; }
+        .sms-path:is(.is-fold, .is-climb, .is-bright, .is-warm) .sms-card > .ds-memory-sheet { transform: translateY(18px) scaleY(0.4); opacity: 0; }
+        .sms-path:is(.is-fold, .is-climb, .is-bright, .is-warm) .sms-card { opacity: 0 !important; }
+        .sms-thread::after {
+          content: ""; position: absolute; left: -1px; right: -1px; bottom: 0; height: 0; opacity: 0;
+          background: linear-gradient(to top, rgba(241, 196, 94, 0), rgba(241, 196, 94, 0.9) 70%, rgba(245, 239, 221, 0.95));
+          border-radius: 2px;
+        }
+        .sms-path.is-climb .sms-thread::after { animation: sms-climb 900ms cubic-bezier(0.45, 0, 0.25, 1) both; }
+        @keyframes sms-climb { 0% { height: 0; opacity: 0; } 20% { opacity: 1; } 100% { height: 100%; opacity: 0.2; } }
+        .sms-star.is-shining .sms-star-inner { animation: sms-shine 1.5s ease-in-out both; }
+        @keyframes sms-shine {
+          0% { filter: brightness(1); }
+          45% { filter: brightness(1.55) drop-shadow(0 0 14px rgba(241, 196, 94, 0.65)); }
+          100% { filter: brightness(1.08); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sms-path .sms-card > .ds-memory-sheet { transition: opacity 300ms linear; transform: none !important; }
+          .sms-path.is-climb .sms-thread::after { animation: none; }
+          .sms-star.is-shining .sms-star-inner { animation: none; filter: brightness(1.2); }
         }
 
         /* tabs stepped aside: the controls sit on the safe area instead */

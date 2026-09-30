@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BASE_GROUND_SPEED, worldClock } from "@/lib/worldMotion";
-import { keepLayer, layerRng, lowPower, restoreLayer, type Rng } from "@/lib/journeyWorld";
+import { keepLayer, layerRng, lowPower, restoreLayer, type Rng, envCoord } from "@/lib/journeyWorld";
 
 /**
  * CloudField — the Journey's clouds, from the time-of-day cloud pool.
@@ -72,7 +72,7 @@ export function CloudField({ zIndex = 1 }: { zIndex?: number }) {
 
   useEffect(() => {
     const s = st.current;
-    const max = lowPower() ? 2 : 3;
+    const maxFor = () => Math.max(1, Math.round((lowPower() ? 2 : 3) * envCoord.cloudDensity));
     const spawn = (W: number, H: number, x?: number) => {
       // weighted kind, then an asset of that kind — never the same one twice
       const r = s.rng.next();
@@ -102,7 +102,7 @@ export function CloudField({ zIndex = 1 }: { zIndex?: number }) {
       s.lastArt = pick.i;
       s.lastTop = top;
       // uneven gaps (in px of the next cloud's travel), some quite long
-      s.gap = W * s.rng.range(0.35, 1.25);
+      s.gap = (W * s.rng.range(0.35, 1.25)) / Math.max(0.6, envCoord.cloudDensity);
     };
 
     return worldClock().subscribe((f) => {
@@ -119,7 +119,7 @@ export function CloudField({ zIndex = 1 }: { zIndex?: number }) {
         rerender();
       }
       // clouds drift even while Sísí rests (cloudFactor), slower with reduced motion
-      const drift = BASE_GROUND_SPEED * f.multiplier * f.cloudFactor * (f.reducedMotion ? 0.3 : 1) * f.dt;
+      const drift = BASE_GROUND_SPEED * f.multiplier * f.cloudFactor * (f.reducedMotion ? 0.3 : envCoord.wind) * f.dt;
       let changed = false;
       for (const c of s.live) {
         c.x -= drift * c.ratio; // a fraction of the ground speed
@@ -132,7 +132,7 @@ export function CloudField({ zIndex = 1 }: { zIndex?: number }) {
       // next cloud once the last one has moved far enough in
       const last = s.live[s.live.length - 1];
       const room = last ? W - (last.x + last.w) : Infinity;
-      if (s.live.length < max && room >= s.gap) {
+      if (s.live.length < maxFor() && room >= s.gap) {
         spawn(W, H);
         changed = true;
       }

@@ -4,7 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { addSign } from "@/lib/myStars";
-import { earnLight, recommendedPractice, type PracticeKind } from "@/lib/littleLights";
+import { recommendedPractice, type PracticeKind } from "@/lib/littleLights";
+import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
 import { createPortal } from "react-dom";
 import { FocusPaper } from "@/components/ds";
 
@@ -56,7 +57,7 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
   const [step, setStep] = useState<Step>("suggest");
   const [kind, setKind] = useState<Kind>(today);
   const [text, setText] = useState("");
-  const [granted, setGranted] = useState(false);
+  const [granted, setGranted] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Reset each time the panel opens.
@@ -65,7 +66,7 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
     setStep(placeholder || !star ? "no-star" : "suggest");
     setKind(today);
     setText("");
-    setGranted(false);
+    setGranted(null);
     setSaving(false);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -84,16 +85,25 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
     if (!star || saving) return;
     setSaving(true);
     const note = text.trim();
+    let signId: string | null = null;
     if (note) {
       try {
-        await addSign(star.id, note);
+        signId = (await addSign(star.id, note)).id;
       } catch {
-        // keep going — the Light is about the practice, not the save
+        // not saved: no Starlight for the writing (nothing to connect)
       }
     }
-    const ok = await earnLight(kind, star.id);
-    setGranted(ok);
-    if (ok) onLight?.(kind);
+    // Starlight only for completed, saved activities (lib/starlight)
+    const r =
+      kind === "see"
+        ? await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id })
+        : kind === "walk"
+          ? await awardStarlight({ source: "walk_with_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id })
+          : signId
+            ? await awardStarlight({ source: "something_good_saved", sourceId: signId, starId: star.id })
+            : null;
+    setGranted(r ? starlightMessage(r) : null);
+    if (r && r.awarded > 0) onLight?.(kind);
     setSaving(false);
     setStep("reward");
   };
@@ -177,21 +187,9 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
                 )}
 
                 {step === "reward" && (
-                  <Pane key="reward" delay={granted ? 1.15 : 0}>
-                    {granted ? (
-                      <>
-                        <p className="t-card-title dp-title">A Little Light found you.</p>
-                        <p className="dp-plus">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/assets/sisi-star-mark-painted-512.png" alt="" /> +1
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="t-card-title dp-title">Kept with your Star.</p>
-                        <p className="t-body dp-sub">You’ve already found today’s light for this.</p>
-                      </>
-                    )}
+                  <Pane key="reward" delay={0.2}>
+                    <p className="t-card-title dp-title">Kept with your Star.</p>
+                    {granted && <p className="t-body dp-sub">{granted}</p>}
                     <button type="button" className="ds-btn ds-btn--primary ds-btn--block" onClick={onClose}>
                       Continue
                     </button>
@@ -199,7 +197,6 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
                 )}
               </AnimatePresence>
       </div>
-      {step === "reward" && granted && <DescendingLight key="dp-light" />}
 
       <style jsx global>{`
         .dp-body { text-align: center; padding-bottom: 4px; }
@@ -301,39 +298,3 @@ function WalkWithIt({
   );
 }
 
-/**
- * A small irregular eight-point Light descending from the Current Star
- * (day-sky position) onto the paper.
- */
-function DescendingLight() {
-  const [path, setPath] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
-  useLayoutEffect(() => {
-    const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
-    const sheet = document.querySelector<HTMLElement>(".dp-focus");
-    if (!stage || !sheet) return;
-    const r = stage.getBoundingClientRect();
-    const sr = sheet.getBoundingClientRect();
-    setPath({ x0: r.left + r.width * 0.78, y0: r.top + r.height * 0.15, x1: sr.left + sr.width / 2, y1: sr.top + 34 });
-  }, []);
-  if (!path || typeof document === "undefined") return null;
-  const midX = (path.x0 + path.x1) / 2 + 30;
-  return createPortal(
-    // eslint-disable-next-line @next/next/no-img-element
-    <motion.img
-      src="/assets/sisi-star-mark-painted-512.png"
-      alt=""
-      aria-hidden
-      className="dp-falling-light"
-      initial={{ x: path.x0 - 13, y: path.y0 - 13, scale: 0.5, opacity: 0 }}
-      animate={{
-        x: [path.x0 - 13, midX - 13, path.x1 - 13],
-        y: [path.y0 - 13, (path.y0 + path.y1) / 2 - 13, path.y1 - 13],
-        scale: [0.5, 1, 0.8],
-        opacity: [0, 1, 0],
-      }}
-      transition={{ duration: 1.2, ease: [0.45, 0, 0.35, 1], times: [0, 0.55, 1] }}
-      style={{ position: "fixed", left: 0, top: 0, width: 26, height: 26, zIndex: "var(--z-toast)" as unknown as number, pointerEvents: "none" }}
-    />,
-    document.getElementById("sisi-overlay-root") ?? document.body,
-  );
-}

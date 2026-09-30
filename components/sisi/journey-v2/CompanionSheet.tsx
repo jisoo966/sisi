@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment, loadMoments, type MomentType } from "@/lib/momentStore";
+import { awardStarlight } from "@/lib/starlight";
 import { FilterChip, FocusPaper, IconButton, IconSend, OverflowMenu, PrimaryButton, ReplyChip, StarGlyph, TextAction } from "@/components/ds";
 import {
   actionAllowed,
@@ -262,12 +263,15 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     setKeepBusy(true);
     try {
       // only the chosen words — never the conversation
-      await createMoment({
+      const saved = await createMoment({
         source: "sisi_conversation",
         type: keep.mode === "star" ? keep.type : "general",
         text: keep.text,
         starId: keep.mode === "star" ? keep.starId : null,
       });
+      // a Something good / small step saved to a Star earns Starlight (the talk itself never does)
+      if (keep.mode === "star" && keep.starId)
+        awardStarlight({ source: keep.type === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: saved.id, starId: keep.starId });
       const wish = stars.find((s) => s.id === keep.starId)?.wish;
       const note = keep.mode === "star" ? `Added to “${wish ?? "your Star"}”. It’s in Moments too.` : "Kept safely in Moments.";
       const t = Date.now();

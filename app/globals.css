@@ -463,3 +463,31 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
     linear-gradient(to left, transparent 0%, #000 7%);
   mask-composite: intersect;
 }
+
+/* Fulfilled Stars: a warmer coral-gold, still the same Star */
+.sw-star.is-fulfilled .sisi-star, .sms-star.is-fulfilled .sisi-star {
+  filter: sepia(0.25) saturate(1.35) hue-rotate(-14deg) brightness(1.04);
+  transition: filter 1.4s ease;
+}
+
+/* ── Environment: World + time of day + weather ──────────────────────
+   Layer order: sky · far landscape · far weather · mid landscape ·
+   mid weather · ground + Sísí · near weather · foreground · UI */
+.jw-wx { position: absolute; inset: 0; pointer-events: none; }
+/* the sky softens with the weather (never grey); a World adds its gentle
+   grade (before its own art arrives) — neither ever touches Sísí */
+.journey-stage-v2 .tod-sky { filter: var(--wg, saturate(1)) var(--wxg, saturate(1)); transition: filter 4s ease; }
+.journey-stage-v2 .jw-hills { filter: var(--wgh, saturate(1)) var(--wxh, saturate(1)); }
+.wx-state-partly { --wxg: saturate(0.97) brightness(0.99); }
+.wx-state-cloudy { --wxg: saturate(0.9) brightness(0.98); }
+.wx-state-drizzle { --wxg: saturate(0.92) brightness(0.97); }
+.wx-state-rain { --wxg: saturate(0.88) brightness(0.95); }
+.wx-state-snow { --wxg: saturate(0.85) brightness(1.02); }
+.wx-state-fog { --wxg: saturate(0.86) brightness(1.03); --wxh: saturate(0.8) contrast(0.88); }
+.world-cloud-garden { --wg: saturate(0.96) brightness(1.03); }
+.world-golden-afternoon { --wg: sepia(0.12) saturate(1.05); --wgh: sepia(0.1) saturate(1.04); }
+.world-evening-field { --wg: saturate(0.95) brightness(0.96); }
+.world-quiet-winter { --wg: saturate(0.8) brightness(1.04); --wgh: saturate(0.82) brightness(1.03); }
+@media (prefers-reduced-motion: reduce) {
+  .journey-stage-v2 .tod-sky { transition: filter 1s linear; }
+}

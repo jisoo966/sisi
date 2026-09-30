@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { StarLayers } from "./StarLayers";
+import { SkyDecor } from "@/components/sisi/magic/SkyDecor";
 
 /**
  * StarWorld — the user's stars, above the clouds (inside .jw-night).
@@ -39,6 +40,8 @@ type Props = {
   reserveTop?: boolean;
   /** Brighten one star once, gently (e.g. an entry was just added). */
   pulse?: { id: string; n: number } | null;
+  /** cumulative Starlight: the background sky grows with it (SkyDecor) */
+  skyBalance?: number;
 };
 
 /** Where the Current Star (top of the path) sits in the Star World. */
@@ -74,6 +77,7 @@ export function StarWorld({
   recenter = 0,
   reserveTop = false,
   pulse = null,
+  skyBalance = 0,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -92,7 +96,12 @@ export function StarWorld({
   }, []);
 
   const placed: Placed[] = useMemo(() => {
-    const list = stars.slice(0, MAX_STARS);
+    // Stars still walking first; fulfilled Stars rest together further
+    // along the path (their own warm, quiet stretch of sky)
+    const walking = stars.filter((s) => !s.fulfilledAt);
+    const arrived = stars.filter((s) => s.fulfilledAt);
+    const list = [...walking, ...arrived].slice(0, MAX_STARS);
+    const firstArrived = walking.length;
     const { w, h } = size;
     const k = reserveTop ? 1 : 0;
     return list.map((star, i0) => {
@@ -105,7 +114,8 @@ export function StarWorld({
       return {
         star,
         x: xf * w,
-        y: (FOCUS_Y + i * GAP + yj) * h,
+        // a little breathing room before the fulfilled stretch begins
+        y: (FOCUS_Y + i * GAP + yj + (i0 >= firstArrived && firstArrived > 0 ? GAP * 0.35 : 0)) * h,
         scale: i === 0 ? 1.7 : 0.95 + hash01(star.id, 3) * 0.35,
       };
     });
@@ -290,6 +300,7 @@ export function StarWorld({
       <div ref={skyRef} className="sw-sky">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={nightSkySrc} alt="" draggable={false} className="sw-sky-img" />
+        <SkyDecor balance={skyBalance} active={revealed} />
       </div>
 
       <div ref={fieldRef} className="sw-field">
@@ -313,7 +324,7 @@ export function StarWorld({
             <button
               key={p.star.id}
               type="button"
-              className={`sw-star${isSel ? " is-selected" : ""}${pressedId === p.star.id ? " is-pressed" : ""}${leavingId === p.star.id ? " is-leaving" : ""}`}
+              className={`sw-star${p.star.fulfilledAt ? " is-fulfilled" : ""}${isSel ? " is-selected" : ""}${pressedId === p.star.id ? " is-pressed" : ""}${leavingId === p.star.id ? " is-leaving" : ""}`}
               style={{ left: p.x, top: p.y }}
               aria-label={p.star.wish ? `star: ${p.star.wish}` : "your star"}
               onPointerDown={() => {
