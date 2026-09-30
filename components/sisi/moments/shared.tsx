@@ -18,6 +18,7 @@ import {
 } from "@/components/ds";
 import type { Sign, Star } from "@/lib/myStars";
 import { unrestStar } from "@/lib/myStars";
+import { softGlint } from "@/lib/fx";
 import { isRealPhoto, whenLabel, type MomentItem, type RestItem } from "@/lib/moments";
 import { deleteMoment, TYPE_LABEL, updateMoment } from "@/lib/momentStore";
 
@@ -153,7 +154,9 @@ export function MomentDetail({
     const t = draft.trim();
     if ((!t && !item.image) || busy) return;
     setBusy(true);
+    const btn = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
     await updateMoment(id, { text: t || null }); // the same record, everywhere
+    softGlint(btn);
     setText(t);
     setBusy(false);
     setMode("view");
@@ -311,8 +314,9 @@ export function RestDetail({
           <PrimaryButton
             block
             loading={busy}
-            onClick={async () => {
+            onClick={async (e) => {
               setBusy(true);
+              softGlint(e.currentTarget);
               await unrestStar(item.star.id);
               onReturned();
             }}

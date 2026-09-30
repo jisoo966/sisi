@@ -5,7 +5,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { addSign, fulfillStar, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { addFulfilledFlower } from "@/lib/pathGifts";
-import { SisiGlint } from "@/components/sisi/magic/SisiGlint";
+import { emitFx, softGlint, centerOf } from "@/lib/fx";
+import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
 import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
 import {
   ConfirmationDialog,
@@ -230,6 +231,7 @@ export function StarMemoryCard({
       setText("");
       setMode("saved");
       onEntrySaved?.(sign); // the Star brightens
+      softGlint(centerOf(".sms-star"));
       // saved and connected to the Star → Starlight (once per saved Moment)
       awardStarlight({ source: kind === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: sign.id, starId: star.id });
     } finally {
@@ -245,6 +247,7 @@ export function StarMemoryCard({
     await updateStar(star.id, { wish });
     onEdited({ ...star, wish });
     setEditing(false);
+    softGlint(centerOf(".sms-star"));
   };
   const choosePractice = (id: (typeof PRACTICES)[number]["id"]) => {
     if (id === "picture") setMode("picture-intro");
@@ -254,13 +257,13 @@ export function StarMemoryCard({
   /**
    * "This came true" — not a status toggle, a small ceremony:
    * papers fold down → warm light climbs the thread → the Star brightens
-   * (~1.5s) → SisiGlint → it turns coral-gold → saved as fulfilled (never
+   * (~1.5s) → Fulfilled Bloom → it turns coral-gold → saved as fulfilled (never
    * removed) → "You carried this wish all the way here." A small flower
    * waits on the Journey for the next return.
    */
   const [shine, setShine] = useState<null | "fold" | "climb" | "bright" | "warm">(null);
-  const [ceremonyGlint, setCeremonyGlint] = useState<{ x: number; y: number } | null>(null);
   const letItShine = async () => {
+    void preload(FX_BLOOM_ALL); // decoded while the papers fold
     setOverlay(null);
     setMode("ceremony");
     setShine("fold");
@@ -269,9 +272,8 @@ export function StarMemoryCard({
     setShine("climb");
     await wait(900);
     setShine("bright");
-    const el = document.querySelector<HTMLElement>(".sms-star");
-    const r = el?.getBoundingClientRect();
-    if (r) setCeremonyGlint({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    const at = centerOf(".sms-star");
+    if (at) emitFx({ kind: "bloom", at }); // Fulfilled Bloom — the most important moment
     const fulfilledAt = new Date().toISOString();
     await fulfillStar(star.id); // persisted; the Star stays in the sky and in Moments
     addFulfilledFlower(star.id);
@@ -287,11 +289,11 @@ export function StarMemoryCard({
   const [picPrompt, setPicPrompt] = useState(0);
   const [picFinish, setPicFinish] = useState(false);
   const [picLight, setPicLight] = useState<string | null>(null);
-  const [picGlint, setPicGlint] = useState<{ x: number; y: number } | null>(null);
   const [picBright, setPicBright] = useState(false);
   const [picNote, setPicNote] = useState("");
   const [picSaving, setPicSaving] = useState(false);
   const beginPicture = () => {
+    softGlint(document.querySelector(".smp-intro .sms-cta, .sms-cta"));
     setPicStart(Date.now());
     setPicPrompt(0);
     setPicFinish(false);
@@ -306,13 +308,11 @@ export function StarMemoryCard({
     // the Star brightens once, the glint blooms, +1 (once per Star per day)
     setPicBright(true);
     setTimeout(() => setPicBright(false), 1600);
-    setTimeout(() => {
-      const el = document.querySelector<HTMLElement>(".sms-star");
-      const r = el?.getBoundingClientRect();
-      if (r) setPicGlint({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-    }, 350);
     const res = await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id, silent: true });
     setPicLight(starlightMessage(res));
+    // Starlight Trail, arriving on the Star itself (the screen shows its own words)
+    const at = centerOf(".sms-star");
+    if (res.awarded > 0 && at) setTimeout(() => emitFx({ kind: "trail", from: null, to: at, amount: res.awarded }), 350);
   };
   useEffect(() => {
     if (mode !== "picture" || !picStart) return;
@@ -746,7 +746,6 @@ export function StarMemoryCard({
                 </IconButton>
               </div>
             )}
-            {picGlint && <SisiGlint at={picGlint} size={96} onDone={() => setPicGlint(null)} />}
             {hasControls && <div className="sms-controls">
               {mode === "journey" ? (
                 <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => startPractice("journey")}>
@@ -810,14 +809,16 @@ export function StarMemoryCard({
               onConfirm={letItShine}
               onCancel={() => setOverlay(null)}
             />
-            {ceremonyGlint && <SisiGlint at={ceremonyGlint} size={96} onDone={() => setCeremonyGlint(null)} />}
             <ConfirmationDialog
               open={overlay === "confirm-rest"}
               title="Let this Star rest?"
               message="It will leave your Star path, but stay safely in your Moments."
               confirmLabel="Let it rest"
               cancelLabel="Keep walking"
-              onConfirm={() => onRest(star)}
+              onConfirm={() => {
+                softGlint(centerOf(".sms-star"));
+                onRest(star);
+              }}
               onCancel={() => setOverlay(null)}
             />
           </motion.div>

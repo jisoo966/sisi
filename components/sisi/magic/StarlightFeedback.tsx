@@ -4,36 +4,23 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { onStarlight, starlightMessage, type AwardResult } from "@/lib/starlight";
-import { SisiGlint } from "./SisiGlint";
+import { centerOf, emitFx } from "@/lib/fx";
 
 /**
  * StarlightFeedback — what happens after a qualifying activity is saved:
  *   (the activity is saved and its paper Moment connected to the Star;
  *    the Star softly brightens — done by the caller)
- *   → one small golden light travels from the Star toward Sísí (SisiGlint)
+ *   → Starlight Trail (lib/fx): the Star brightens, a light runs a little
+ *     way down its thread, curves toward Sísí, a small ripple, +N, SisiGlint
  *   → "A little light for the path. +1" (or +2)
  *   → the balance updates (lib/starlight event) → the note leaves after ~2s
  * When today's light is already full: only the quiet line
  * "Your Star is carrying today’s light with you." — never an error.
  */
 
-type Pt = { x: number; y: number };
-
-function centerOf(sel: string): Pt | null {
-  for (const s of sel.split(",")) {
-    const el = document.querySelector<HTMLElement>(s.trim());
-    if (!el) continue;
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) continue;
-    if (r.bottom < 0 || r.top > window.innerHeight) continue;
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  }
-  return null;
-}
 
 export function StarlightFeedback() {
   const [msg, setMsg] = useState<{ id: number; text: string } | null>(null);
-  const [glint, setGlint] = useState<{ id: number; from: Pt | null; at: Pt } | null>(null);
   const n = useRef(0);
 
   useEffect(
@@ -52,7 +39,11 @@ export function StarlightFeedback() {
             const sisi = cr && cr.width > 0 && cr.bottom > 0 && cr.top < window.innerHeight ? { x: cr.left + cr.width * 0.55, y: cr.top + cr.height * 0.08 } : null;
             // toward Sísí when she's here; otherwise the light blooms on the Star itself
             const at = sisi ?? star ?? { x: window.innerWidth / 2, y: window.innerHeight * 0.4 };
-            setGlint({ id, from: sisi ? star : null, at });
+            // the thread under the open Star, when there is one
+            const th = document.querySelector<HTMLElement>(".sms-thread");
+            const tr = th?.getBoundingClientRect();
+            const thread = tr && tr.height > 0 ? { top: { x: tr.left + tr.width / 2, y: tr.top }, bottom: { x: tr.left + tr.width / 2, y: tr.bottom } } : null;
+            emitFx({ kind: "trail", from: sisi ? star : null, to: at, amount: r.awarded, thread });
           }
           setMsg({ id, text });
         }, 450);
@@ -65,7 +56,6 @@ export function StarlightFeedback() {
   const root = document.getElementById("sisi-overlay-root") ?? document.body;
   return (
     <>
-      {glint && <SisiGlint key={glint.id} at={glint.at} from={glint.from} size={76} onDone={() => setGlint(null)} />}
       {createPortal(
         <AnimatePresence>
           {msg && (

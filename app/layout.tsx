@@ -7,6 +7,7 @@ import "./globals.css";
 import "@/components/ds/ds.css";
 import ServiceWorkerRegister from "@/components/sisi/ServiceWorkerRegister";
 import { BackgroundMusic } from "@/components/sisi/BackgroundMusic";
+import { EffectsHost } from "@/components/sisi/effects/EffectsHost";
 
 // Inter — functional metadata only (dates, statuses, helpers, chips).
 const inter = Inter({
@@ -102,6 +103,7 @@ export default function RootLayout({
           {/* Overlays (modals, paper sheets, toasts) render here: outside every
               transformed world container, inside the phone frame on desktop. */}
           <div id="sisi-overlay-root" />
+          <EffectsHost />
         </div>
         <style>{`
           @media (min-width: 500px) {

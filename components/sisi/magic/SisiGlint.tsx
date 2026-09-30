@@ -1,5 +1,6 @@
 "use client";
 
+import { overlayOrigin } from "@/lib/fx";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PACK } from "@/lib/envAssets";
@@ -61,6 +62,10 @@ export function SisiGlint({
   }, []);
 
   if (typeof document === "undefined") return null;
+  const originShift = () => {
+    const o = overlayOrigin();
+    return o.x || o.y ? { transform: `translate(${-o.x}px, ${-o.y}px)` } : undefined;
+  };
   const root = document.getElementById("sisi-overlay-root") ?? document.body;
   const start = from && !reduced ? from : at;
   const g = PACK.glint;
@@ -73,7 +78,7 @@ export function SisiGlint({
   const frames = reduced ? [2] : [0, 1, 2, 3, 4];
 
   return createPortal(
-    <div className={`glint${reduced ? " is-reduced" : ""}`} aria-hidden>
+    <div className={`glint${reduced ? " is-reduced" : ""}`} aria-hidden style={originShift()}>
       {phase === "travel" && (
         <span
           className="glint-mote"

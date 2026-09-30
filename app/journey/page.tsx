@@ -57,7 +57,8 @@ import { markGiftShown, nextPathGift } from "@/lib/pathGifts";
 import { equipWorld } from "@/lib/worlds";
 import { JourneyReveal, type Reveal } from "@/components/sisi/magic/JourneyReveal";
 import { StarlightFeedback } from "@/components/sisi/magic/StarlightFeedback";
-import { SisiGlint } from "@/components/sisi/magic/SisiGlint";
+import { AmbientMagic } from "@/components/sisi/effects/AmbientMagic";
+import { emitFx, softGlint, centerOf, prefersReducedMotion } from "@/lib/fx";
 import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
 import { envCoord } from "@/lib/journeyWorld";
@@ -393,7 +394,6 @@ export default function JourneyPage() {
   useEffect(() => {
     if (!isStarView) setNewStarOpen(false);
   }, [isStarView]);
-  const [birthGlint, setBirthGlint] = useState<{ x: number; y: number } | null>(null);
   const starBorn = (s: Star) => {
     setAllStars((list) => [s, ...list.filter((x) => x.id !== s.id)]);
     setNewStarOpen(false);
@@ -404,10 +404,11 @@ export default function JourneyPage() {
     // the new Star sits where the seed was born (the top of the path):
     // first a quiet "Your Star is here." — the practice invitation waits for a later visit
     setStarMode(entryForVisit(s.id, "created"));
-    // a new Star: one glint where it was born
+    // a new Star: Star Birth where it was born (no Starlight for creating one),
+    // then its thread and paper appear
     const r = stage?.getBoundingClientRect();
-    setBirthGlint({ x: (r?.left ?? 0) + w * 0.5, y: (r?.top ?? 0) + h * 0.22 });
-    setTimeout(() => setOpenStar({ star: s, at: { x: w * 0.5, y: h * 0.22 } }), 250);
+    emitFx({ kind: "birth", at: { x: (r?.left ?? 0) + w * 0.5, y: (r?.top ?? 0) + h * 0.22 } });
+    setTimeout(() => setOpenStar({ star: s, at: { x: w * 0.5, y: h * 0.22 } }), prefersReducedMotion() ? 400 : 1900);
   };
   // A Star brightens once when something is added to it.
   const [starPulse, setStarPulse] = useState<{ id: string; n: number } | null>(null);
@@ -904,6 +905,8 @@ export default function JourneyPage() {
         {!isStarView && (
           <div className="jw-wx jw-wx-mid">
             <WeatherLayer state={wx} depth="mid" />
+            {/* rare, unannounced small magic — behind Sísí, only on the open Journey */}
+            <AmbientMagic enabled={calm && !reveal && !toast} evening={tod?.phase === "evening" || world === "evening-field"} />
           </div>
         )}
 
@@ -1172,7 +1175,6 @@ export default function JourneyPage() {
         {/* a newly found World / a fulfilled Star's flower, just ahead of Sísí */}
         {reveal && isWalking && <JourneyReveal key={reveal.kind === "world" ? reveal.world : reveal.id} reveal={reveal} leaving={revealLeaving} />}
         <StarlightFeedback />
-        {birthGlint && <SisiGlint at={birthGlint} size={96} onDone={() => setBirthGlint(null)} />}
 
         {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
         <CompanionCues
@@ -1189,6 +1191,7 @@ export default function JourneyPage() {
                       label: "Visit now",
                       act: () => {
                         equipWorld(reveal.world);
+                        softGlint(centerOf(".walking-cat"));
                         endReveal();
                       },
                     },

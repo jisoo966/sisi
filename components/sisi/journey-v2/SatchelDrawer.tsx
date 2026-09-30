@@ -1,5 +1,6 @@
 "use client";
 
+import { softGlint } from "@/lib/fx";
 import { useEffect, useState } from "react";
 import { onStarlight, starlightBalance } from "@/lib/starlight";
 import { SATCHEL_CATALOG, loadSatchel, type SatchelCategory, type SatchelState } from "@/lib/satchel";
@@ -85,7 +86,11 @@ export function SatchelDrawer({
                   disabled={state === "locked"}
                   aria-pressed={equipped}
                   aria-label={`${w.name}: ${state === "equipped" ? "Walking here" : state === "owned" ? "Use this World" : `${need} more Starlight to discover`}`}
-                  onClick={() => state === "owned" && equipWorld(w.id)}
+                  onClick={(e) => {
+                    if (state !== "owned") return;
+                    equipWorld(w.id);
+                    softGlint(e.currentTarget);
+                  }}
                 >
                   <WorldPreview id={w.id} />
                   <span className="sd-world-text">
