@@ -137,19 +137,25 @@ const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort", "p
  */
 type RitualMode = "sound" | "silent";
 type Phase = "open" | "in" | "out" | "p0" | "p1" | "p2" | "p3" | "rest" | "wish" | "return";
-const SOUND_STEPS: { phase: Phase; at: number; voice?: VoiceId }[] = [
-  { phase: "open", at: 0, voice: "close-eyes" },
-  { phase: "in", at: 3000, voice: "breathe-in" }, // halo 0.86 → 1.06
-  { phase: "out", at: 7000, voice: "breathe-out" }, // halo 1.06 → 0.90 · music begins
-  { phase: "p0", at: 13000, voice: "picture" },
-  { phase: "p1", at: 18000, voice: "where" },
-  { phase: "p2", at: 24000, voice: "doing" },
-  { phase: "p3", at: 30000, voice: "feel" },
-  { phase: "rest", at: 36000 }, // no voice: music and the Star
-  { phase: "wish", at: 44000 }, // the shimmer travels into the Star
-  { phase: "return", at: 46300, voice: "open-eyes" },
+/**
+ * sound: Sísí's recorded lines lead; each step lasts as long as her words
+ * (plus a quiet tail), except the breath, which is held at exactly 4s / 6s.
+ * About a minute in all.
+ */
+type SoundStep = { phase: Phase; clips: VoiceId[]; hold: number; tail: number };
+const SOUND_SEQUENCE: SoundStep[] = [
+  { phase: "open", clips: ["together", "close-eyes"], hold: 3000, tail: 900 },
+  { phase: "in", clips: ["breathe-in"], hold: 4000, tail: 0 }, // halo 0.86 → 1.06
+  { phase: "out", clips: ["breathe-out"], hold: 6000, tail: 0 }, // → 0.90 · music begins
+  { phase: "p0", clips: ["picture", "ordinary"], hold: 5000, tail: 2500 },
+  { phase: "p1", clips: ["where", "see"], hold: 5000, tail: 3000 },
+  { phase: "p2", clips: ["doing", "notice"], hold: 5000, tail: 3000 },
+  { phase: "p3", clips: ["feel"], hold: 5000, tail: 3500 },
+  { phase: "rest", clips: ["stay", "no-need"], hold: 8000, tail: 5000 }, // then only music and the Star
 ];
-const SOUND_CONTINUE_AT = 49000;
+/** after the wish shimmer reaches the Star */
+const SOUND_RETURN: VoiceId[] = ["open-eyes", "keep-feeling"];
+const BETWEEN_LINES_MS = 600;
 /** silent: the breath is timed; the prompts wait for a tap */
 const SILENT_STEPS: { phase: Phase; at: number }[] = [
   { phase: "open", at: 0 },
@@ -397,11 +403,13 @@ export function StarMemoryCard({
     setPhase("open");
     setWishTouch(false);
     setCanContinue(false);
+    setCaption("");
     setPicLight(null);
     setPicNote("");
     setMode("picture");
   };
   const leaveRitual = () => {
+    soundRun.current++;
     clearTimers();
     stopAudio();
     setPicStart(null); // nothing is saved, no Starlight
@@ -434,21 +442,57 @@ export function StarMemoryCard({
     if (mode !== "picture" || !picStart) return;
     clearTimers();
     if (ritual === "sound") {
-      for (const step of SOUND_STEPS) {
-        later(step.at, () => {
-          if (step.phase === "wish") playWish(() => undefined);
-          else enter(step.phase);
-          if (step.voice) void audio.current?.say(step.voice);
-          if (step.phase === "return") void completeRitual();
-        });
-      }
-      later(SOUND_CONTINUE_AT, () => setCanContinue(true));
+      const id = ++soundRun.current;
+      void runSound(id);
+      return () => {
+        soundRun.current++; // cancel
+        clearTimers();
+      };
     } else {
       for (const step of SILENT_STEPS) later(step.at, () => enter(step.phase));
     }
     return clearTimers;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, picStart, ritual]);
+  /** sound mode: Sísí's lines in order; cancelled by leaving (soundRun changes) */
+  const soundRun = useRef(0);
+  const [caption, setCaption] = useState("");
+  const runSound = async (id: number) => {
+    const alive = () => soundRun.current === id;
+    const wait = (ms: number) => new Promise<void>((r) => later(Math.max(0, ms), r));
+    const speak = async (clips: VoiceId[]) => {
+      for (let k = 0; k < clips.length; k++) {
+        if (!alive()) return;
+        setCaption(VOICE_LINES[clips[k]]);
+        await audio.current?.say(clips[k]);
+        if (k < clips.length - 1) await wait(BETWEEN_LINES_MS);
+      }
+    };
+    for (const step of SOUND_SEQUENCE) {
+      if (!alive()) return;
+      enter(step.phase);
+      const t0 = performance.now();
+      if (step.phase === "in" || step.phase === "out") {
+        // the breath keeps its exact length; the words ride on top of it
+        void speak(step.clips);
+        await wait(step.hold);
+        continue;
+      }
+      await speak(step.clips);
+      if (step.phase === "rest") setCaption(""); // only the music and the Star
+      await wait(Math.max(step.hold - (performance.now() - t0), step.tail));
+    }
+    if (!alive()) return;
+    setCaption("");
+    await new Promise<void>((r) => playWish(r));
+    if (!alive()) return;
+    enter("return");
+    void completeRitual();
+    await speak(SOUND_RETURN);
+    if (!alive()) return;
+    await wait(1000);
+    if (alive()) setCanContinue(true); // never advances by itself
+  };
   /** silent mode: the person moves on when they're ready */
   const nextPrompt = () => {
     const i = PROMPT_ORDER.indexOf(phase);
@@ -461,6 +505,7 @@ export function StarMemoryCard({
     });
   };
   const toAnchor = () => {
+    soundRun.current++;
     clearTimers();
     stopAudio();
     setMode("picture-anchor");
@@ -490,7 +535,7 @@ export function StarMemoryCard({
       setPicSaving(false);
     }
   };
-  const words = ritualWords(phase, ritual);
+  const words = ritual === "sound" ? caption : ritualWords(phase, ritual);
   const pictureWords = (
     <AnimatePresence mode="wait">
       {words && (
