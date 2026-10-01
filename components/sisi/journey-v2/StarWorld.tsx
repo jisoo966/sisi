@@ -1,5 +1,6 @@
 "use client";
 
+import { haptic } from "@/lib/haptics";
 import { fxAnchorRef } from "@/lib/fxAnchors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
@@ -342,8 +343,9 @@ export function StarWorld({
                 setPressedId(p.star.id);
                 setTimeout(() => setPressedId((v) => (v === p.star.id ? null : v)), 90);
               }}
-              onClick={() => {
+              onClick={(e) => {
                 if (!active || locked || moved.current) return;
+                haptic("select", e.currentTarget); // selecting a Star: light
                 onSelect(p.star, { x: p.x, y: p.y - scroll.current });
               }}
             >

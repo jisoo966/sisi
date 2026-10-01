@@ -1,5 +1,6 @@
 "use client";
 
+import { haptic, hapticsEnabled, hapticsSupported, setHapticsEnabled } from "@/lib/haptics";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,13 @@ export function MenuSheet({
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [musicOn, setMusicOn] = useState(true);
+  // gentle vibration for a few meaningful moments (lib/haptics)
+  const [vibOn, setVibOn] = useState(true);
+  const [vibSupported, setVibSupported] = useState(true);
+  useEffect(() => {
+    setVibOn(hapticsEnabled());
+    setVibSupported(hapticsSupported());
+  }, []);
 
   // Profile load
   useEffect(() => {
@@ -101,6 +109,25 @@ export function MenuSheet({
           <span className="menu-row-label">Ambient music</span>
           <Toggle on={musicOn} />
         </button>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={vibOn && vibSupported}
+          disabled={!vibSupported}
+          className="menu-row"
+          onClick={() => {
+            const next = !vibOn;
+            setHapticsEnabled(next);
+            setVibOn(next);
+            if (next) haptic("select");
+          }}
+        >
+          <span className="menu-row-label">
+            Vibration
+            {!vibSupported && <span className="menu-row-sub">Not available on this device</span>}
+          </span>
+          <Toggle on={vibOn && vibSupported} />
+        </button>
         <WeatherSettingRow />
         <Link href="/privacy" onClick={onClose} className="menu-row">
           <span className="menu-row-label">Privacy policy</span>
@@ -125,6 +152,8 @@ export function MenuSheet({
         }
         .menu-row-icon { display: inline-flex; color: var(--ink-80); }
         .menu-row-label { flex: 1; }
+        .menu-row-sub { display: block; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); }
+        .menu-row:disabled { cursor: default; opacity: 0.7; }
         .menu-version { margin: 16px 0 0; text-align: center; color: var(--ink-60); }
         .menu-toggle { position: relative; flex: none; width: 44px; height: 26px; border-radius: 999px; background: var(--ink-14); transition: background var(--motion-instant) ease; }
         .menu-toggle.is-on { background: var(--sisi-blue); }

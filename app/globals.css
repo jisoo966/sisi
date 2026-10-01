@@ -505,3 +505,7 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 @media (prefers-reduced-motion: reduce) {
   .journey-stage-v2 .tod-sky { transition: filter 1s linear; }
 }
+
+/* lib/haptics — the visual stand-in where vibration isn't available */
+.hx-press { animation: hx-press 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes hx-press { 0% { transform: scale(0.97); } 100% { transform: scale(1); } }

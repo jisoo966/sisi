@@ -84,6 +84,32 @@ export function BackgroundMusic({
     return () => window.removeEventListener("sisi:music-toggle", handler);
   }, [volume]);
 
+  // A ritual (Picture it) plays its own ambient bed: step aside for it and
+  // come back afterwards — without touching the person's music setting.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let wasPlaying = false;
+    const suspend = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      wasPlaying = !audio.paused;
+      if (wasPlaying) fadeOut(audio, () => audio.pause());
+    };
+    const resume = () => {
+      const audio = audioRef.current;
+      if (!audio || !wasPlaying) return;
+      wasPlaying = false;
+      audio.volume = 0;
+      audio.play().then(() => fadeIn(audio, volume)).catch(() => announce(false));
+    };
+    window.addEventListener("sisi:music-suspend", suspend);
+    window.addEventListener("sisi:music-resume", resume);
+    return () => {
+      window.removeEventListener("sisi:music-suspend", suspend);
+      window.removeEventListener("sisi:music-resume", resume);
+    };
+  }, [volume]);
+
   return (
     <audio ref={audioRef} src={src} loop preload="none" style={{ display: "none" }} />
   );
