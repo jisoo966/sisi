@@ -101,16 +101,18 @@ type IconBtnProps = {
   label: string;
   surface?: Surface;
   filled?: boolean;
+  /** quiet: no visible circle at rest; a faint warm-ivory wash on press */
+  quiet?: boolean;
   href?: string;
   className?: string;
   children: React.ReactNode;
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children" | "aria-label">;
 
 export const IconButton = forwardRef<HTMLButtonElement, IconBtnProps>(function IconButton(
-  { label, surface = "paper", filled, href, className, children, type = "button", ...rest },
+  { label, surface = "paper", filled, quiet, href, className, children, type = "button", ...rest },
   ref,
 ) {
-  const c = cls("ds-icon-btn", surface === "dark" && "ds-on-dark", filled && "ds-icon-btn--filled", className);
+  const c = cls("ds-icon-btn", surface === "dark" && "ds-on-dark", filled && "ds-icon-btn--filled", quiet && "ds-icon-btn--quiet", className);
   if (href) return <Link href={href} className={c} aria-label={label}>{children}</Link>;
   return (
     <button ref={ref} type={type} className={c} aria-label={label} title={label} {...rest}>

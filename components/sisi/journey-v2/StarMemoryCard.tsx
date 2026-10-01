@@ -18,6 +18,10 @@ import {
   IconButton,
   IconChevronRight,
   IconClose,
+  IconEye,
+  IconLeaf,
+  IconMoon,
+  IconPath,
   IconSound,
   IconSoundOff,
   IconPencil,
@@ -768,7 +772,7 @@ export function StarMemoryCard({
                           <SisiChatCharacter expression={face} />
                         </div>
                       )}
-                      <motion.div layout className="sms-paper ds-paper">
+                      <motion.div layout className="sms-paper ds-paper ds-deckle">
                         <AnimatePresence mode="wait" initial={false}>
                 {mode === "invite" && (
                   <motion.div key="invite" className="smc-content" {...fade}>
@@ -1118,7 +1122,9 @@ export function StarMemoryCard({
         .sms-paper-wrap.is-quiet .smc-sisi { right: 50%; transform: scale(0.74) translateX(50%); }
         .sms-paper {
           position: relative; z-index: 1; padding: var(--space-5) var(--space-5) var(--space-5);
-          border-radius: var(--paper-radius); box-shadow: 0 8px 22px rgba(16, 45, 50, 0.4);
+          /* deckled Focus paper (.ds-deckle): soft torn edges, lift follows the edge */
+          --paper-grain-layer: var(--grain-focus);
+          filter: drop-shadow(0 8px 16px rgba(16, 45, 50, 0.32));
         }
         .sms-screen .smc-sisi { z-index: 2; } /* paws over the paper edge */
         /* the world's copy of the open Star steps aside (the screen draws it) */
@@ -1173,9 +1179,11 @@ export function StarMemoryCard({
           display: flex; flex-direction: column;
           max-height: calc(100dvh - var(--safe-top) - 170px);
           padding: 0 14px calc(16px + var(--safe-bottom));
-          border-radius: 20px 18px 0 0;
-          box-shadow: 0 -6px 26px rgba(16, 45, 50, 0.3);
+          /* a bottom sheet: only the top edge is torn */
+          --paper-mask: var(--deckle-mask-top);
+          filter: drop-shadow(0 -6px 18px rgba(16, 45, 50, 0.26));
         }
+        .sms-screen.is-focus .sms-paper::before { border-radius: 20px 18px 0 0; }
         .sms-screen.is-focus .sms-paper > * { min-height: 0; display: flex; flex-direction: column; }
         .sms-screen.is-focus .smc-content { min-height: 0; flex: 1 1 auto; }
         .sms-screen.is-focus .smc-navrow { flex: none; height: 44px; margin: 0 -8px; align-items: center; }
@@ -1408,44 +1416,11 @@ function NavRow({ onBack, onClose }: { onBack: () => void; onClose: () => void }
   );
 }
 
-/** Picture it — an eye, gently open */
-function EyeIcon() {
-  return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 16c3.2-5 7.3-7.5 12-7.5S24.8 11 28 16c-3.2 5-7.3 7.5-12 7.5S7.2 21 4 16z" />
-      <circle cx="16" cy="16" r="3.6" />
-    </svg>
-  );
-}
-/** Walk with it — a winding path */
-function PathIcon() {
-  return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 27c0-4 6-4 7-8s-6-4-5-8 5-3.5 7-6" />
-      <path d="M19 27c0-3 5-3.5 5.5-7" opacity=".55" />
-      <circle cx="23" cy="5" r="1.4" />
-    </svg>
-  );
-}
-/** Reflect on today — a small leaf, like a note */
-function LeafIcon() {
-  return (
-    <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 25C7 14 13 7 26 6c0 12-7 19-19 19z" />
-      <path d="M7 25 18 14" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
-    </svg>
-  );
-}
-
-
+/** Picture it · Walk with it · Reflect on today · Let it rest — the shared crayon marks */
+const EyeIcon = () => <IconEye />;
+const PathIcon = () => <IconPath />;
+const LeafIcon = () => <IconLeaf />;
+const MoonIcon = () => <IconMoon size={18} />;
 
 function formatDate(iso: string): string {
   try {

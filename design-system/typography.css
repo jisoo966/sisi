@@ -40,6 +40,7 @@
   --text-screen-title: clamp(24px, 6.4vw, 30px);
   --text-card-title: clamp(18px, 4.8vw, 21px);
   --text-dialogue: clamp(15px, 4vw, 17px);
+  --text-speech: clamp(13.5px, 3.6vw, 15px); /* Sísí's speech bubbles */
   --text-body: clamp(14px, 3.7vw, 16px);
   --text-button: 15px;
   --text-meta: 12px;

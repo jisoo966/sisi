@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { IconBag, IconButton, IconCamera, IconMenu } from "@/components/ds";
+import { IconButton, IconCamera, IconCustomize, IconMenu } from "@/components/ds";
 
 /**
  * JourneyHeader — minimal, quiet header per mockup "Quiet main journey".
@@ -73,17 +73,17 @@ export function JourneyHeader({
           satchel = optional customization drawer. */}
       <div className="right-col">
         {onCameraClick && (
-          <IconButton filled label="Capture a moment" onClick={onCameraClick}>
+          <IconButton quiet surface="dark" label="Capture a moment" onClick={onCameraClick}>
             <IconCamera />
           </IconButton>
         )}
         {onSatchelClick && (
-          <IconButton filled label="Open your satchel" onClick={onSatchelClick}>
-            <IconBag />
+          <IconButton quiet surface="dark" label="Open your satchel" onClick={onSatchelClick}>
+            <IconCustomize />
           </IconButton>
         )}
         <span className="menu-wrap">
-          <IconButton label="Menu" surface={isDark ? "dark" : "paper"} className="menu-btn" onClick={onMenuClick}>
+          <IconButton quiet surface="dark" label="Menu" className="menu-btn" onClick={onMenuClick}>
             <IconMenu />
           </IconButton>
           {hasNudge && <span className="nudge-dot" aria-hidden />}
@@ -120,15 +120,17 @@ export function JourneyHeader({
         .greeting-line {
           font-family: var(--font-editorial);
           font-weight: 400;
-          font-size: var(--text-display);
-          line-height: var(--leading-display);
+          /* quieter than the display size: 26–30px (≈27px on a 390px phone) */
+          font-size: clamp(26px, 6.9vw, 30px);
+          line-height: 1.08;
           margin: 0;
-          letter-spacing: var(--tracking-editorial);
+          letter-spacing: -0.03em; /* -3% */
         }
         .name-italic { font-style: italic; }
         /* the trailing period stays upright — an italic period visually drifts */
         .soft-dot { font-style: normal; }
-        .right-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+        /* quiet tools: 44px targets, ~45px between centres */
+        .right-col { display: flex; flex-direction: column; align-items: center; gap: 1px; flex-shrink: 0; }
         .menu-wrap { position: relative; display: inline-flex; }
         .nudge-dot {
           position: absolute; top: 10px; right: 10px; width: 6px; height: 6px; border-radius: 9999px;

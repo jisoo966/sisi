@@ -1145,7 +1145,7 @@ export default function JourneyPage() {
         >
           <h2 className="stars-top-title">My Stars</h2>
           <SecondaryButton surface="dark" className="stars-new" onClick={startNewStar}>
-            <IconPlus size={18} /> New Star
+            <IconPlus size={22} /> New Star
           </SecondaryButton>
         </div>
 

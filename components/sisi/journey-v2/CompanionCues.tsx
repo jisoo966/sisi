@@ -1,11 +1,12 @@
 "use client";
 
 import { IconButton, IconClose } from "@/components/ds";
+import { SpeakLines as SharedSpeakLines } from "@/components/sisi/SpeakLines";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createMoment } from "@/lib/momentStore";
 import { hintDone, markHint } from "@/lib/hints";
-import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
+import { SisiSpeechBubble, aimTail } from "@/components/sisi/SisiSpeechBubble";
 import { finishTodaysThought, isKept, markKept, thoughtForToday, type Thought } from "@/lib/sisiThoughts";
 
 /**
@@ -46,26 +47,18 @@ export async function keepThought(t: Thought): Promise<void> {
   await createMoment({ source: "sisi_note", type: "companion_note", text: t.text });
 }
 
-/** three short strokes beside Sísí's face — she is saying this */
-function SpeakLines() {
+/** three short strokes beside Sísí's face — she is saying this (shared) */
+function SpeakLines({ delay }: { delay: number }) {
   return (
-    <motion.span
-      className="cc-lines"
-      aria-hidden
+    <SharedSpeakLines
+      delay={delay}
       // just in front of her face (she faces right), on the sky
       style={{
         left: "calc(var(--companion-x, 37%) + var(--cat-width) * 0.45)",
         bottom: "calc(var(--walking-baseline) + var(--cat-width) * 0.6)",
         zIndex: 6,
       }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { delay: 1.6, duration: 0.4 } }}
-      exit={{ opacity: 0 }}
-    >
-      <span style={{ transform: "translate(0, -9px) rotate(-28deg)" }} />
-      <span style={{ transform: "translate(2px, 0) rotate(0deg)" }} />
-      <span style={{ transform: "translate(0, 9px) rotate(28deg)" }} />
-    </motion.span>
+    />
   );
 }
 
@@ -101,6 +94,19 @@ export function CompanionCues({
   useEffect(() => {
     if (visible && talkHint && hintDone("talk")) setTalkHint(false);
   }, [visible, talkHint]);
+
+  // the talk hint is a passing note: one tap anywhere puts it away (a tap on
+  // the hint itself still starts the talk)
+  useEffect(() => {
+    if (!visible || !talkHint || line) return;
+    const away = (e: PointerEvent) => {
+      if ((e.target as Element | null)?.closest?.(".sisi-speech")) return;
+      markHint("talk");
+      setTalkHint(false);
+    };
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
+  }, [visible, talkHint, line]);
 
   // ── the Slow Walk rhythm ──
   const wanted: SpokenLine | null =
@@ -144,6 +150,22 @@ export function CompanionCues({
     if (speakingRef.current) onSpeakingRef.current?.(false);
   }, []);
 
+  // a speech bubble sits centred on the screen; its tail slides to her head
+  const speaking = visible && ((talkHint && !line) || !!shown) && shown?.placement !== "sky";
+  const rootRef = useRef<HTMLDivElement>(null);
+  const headRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!speaking) return;
+    let raf = 0;
+    const aim = () => {
+      raf = requestAnimationFrame(aim);
+      const head = headRef.current?.getBoundingClientRect();
+      rootRef.current?.querySelectorAll<HTMLElement>(".sisi-speech").forEach((b) => head && aimTail(b, head.left));
+    };
+    raf = requestAnimationFrame(aim);
+    return () => cancelAnimationFrame(raf);
+  }, [speaking]);
+
   const dismissThought = () => {
     finishTodaysThought();
     setOpenThought(false);
@@ -153,9 +175,16 @@ export function CompanionCues({
   return (
     <>
     <AnimatePresence>
-      {visible && (talkHint || !!shown) && <SpeakLines key="lines" />}
+      {/* the strokes arrive with the bubble (the talk hint waits 1.4s) */}
+      {visible && (talkHint || !!shown) && <SpeakLines key="lines" delay={!shown && talkHint ? 1.4 : 0} />}
     </AnimatePresence>
-    <div className={`cc-root${shown?.placement === "sky" ? " is-sky" : ""}`} aria-live="polite">
+    {/* where her head is (the tail aims here) */}
+    <span ref={headRef} className="cc-head" aria-hidden />
+    <div
+      ref={rootRef}
+      className={`cc-root${shown?.placement === "sky" ? " is-sky" : speaking ? " is-centred" : ""}`}
+      aria-live="polite"
+    >
       <AnimatePresence>
         {visible && talkHint && !line && (
           <SisiSpeechBubble
@@ -265,6 +294,16 @@ export function CompanionCues({
           display: flex; flex-direction: column; align-items: flex-end;
         }
         .cc-root > * { pointer-events: auto; }
+        /* Sísí speaking: the bubble is centred on the screen (tail aimed at her head) */
+        .cc-root.is-centred {
+          left: 50%; right: auto; transform: translateX(-50%);
+          width: max-content; max-width: min(84%, 300px); align-items: center;
+        }
+        .cc-head {
+          position: absolute; width: 0; height: 0; pointer-events: none;
+          left: calc(var(--companion-x, 37%) + var(--cat-width) * 0.3);
+          bottom: calc(var(--walking-baseline) + var(--cat-width) * 0.9);
+        }
         /* a discovery: the words sit centred in the upper-middle sky */
         .cc-root.is-sky {
           left: 50%; right: auto; bottom: auto; top: max(calc(var(--safe-top) + 72px), 31%); /* below a Cloud Garden cloud (16–28%), above Sísí */
@@ -279,8 +318,6 @@ export function CompanionCues({
         .cc-link--quiet { color: var(--ink-60) !important; font-weight: 400; }
         .cc-link:disabled { color: var(--ink-60); opacity: 1; }
         .cc-x { position: absolute !important; right: 0; top: 0; color: var(--ink-60); }
-        .cc-lines { position: absolute; pointer-events: none; }
-        .cc-lines span { position: absolute; left: 0; top: 0; width: 11px; height: 2px; border-radius: 2px; background: var(--paper-90); transform-origin: 0 50%; }
         .cc-spark {
           position: relative; left: calc(var(--cat-width) * 0.42); width: 44px; height: 44px; padding: 10px;
           border: 0; background: transparent; cursor: pointer; animation: cc-breathe 3s ease-in-out infinite;

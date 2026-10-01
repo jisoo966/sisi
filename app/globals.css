@@ -422,7 +422,21 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
   margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title);
   line-height: var(--leading-title); color: var(--paper-90);
 }
-.stars-new { min-height: 44px; padding: 0 var(--space-4); }
+/* "+ New Star": the quiet tool language (as the top-right icons) — no
+   outline or fill at rest, crayon plus + label in ivory; a press shows a
+   faint warm-ivory wash (14%) that fades out. */
+.stars-new.ds-btn {
+  position: relative; min-height: 44px; padding: 0 var(--space-3);
+  gap: 6px; border: 0; background: transparent; box-shadow: none;
+  color: var(--sisi-paper); opacity: 0.92;
+}
+.stars-new.ds-btn:hover:not(:disabled) { background: transparent; opacity: 1; }
+.stars-new.ds-btn svg { width: 22px; height: 22px; }
+.stars-new.ds-btn::before {
+  content: ""; position: absolute; inset: 0; border-radius: 999px;
+  background: var(--sisi-paper); opacity: 0; pointer-events: none; transition: opacity 320ms ease;
+}
+.stars-new.ds-btn:active::before { opacity: 0.14; transition-duration: 60ms; }
 
 /* Star World stars: no square focus box on tap; a soft round ring only for
    keyboard focus. The painted aura is softened into a round glow (render-time

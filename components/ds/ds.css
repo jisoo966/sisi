@@ -93,6 +93,19 @@
 .ds-icon-btn--filled.ds-on-dark { background: var(--paper-14); color: var(--sisi-paper); box-shadow: inset 0 0 0 1px var(--paper-35); }
 .ds-icon-btn--filled.ds-on-dark:hover { background: rgba(245, 239, 221, 0.22); }
 .ds-icon-btn:disabled { opacity: 0.45; cursor: default; }
+/* Quiet icon button — top-right tools over the world. No circle or outline
+   at rest (a 24px mark in an invisible 44×44 target); a press shows a faint
+   warm-ivory wash (14%) that fades out; open/pressed: full and 1.06×. */
+.ds-icon-btn--quiet svg { width: 24px; height: 24px; }
+.ds-icon-btn--quiet { position: relative; background: transparent; opacity: 0.92; transition: opacity var(--motion-instant) ease, transform var(--motion-instant) ease; }
+.ds-icon-btn--quiet:hover, .ds-icon-btn--quiet.ds-on-dark:hover { background: transparent; opacity: 1; }
+.ds-icon-btn--quiet::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: var(--sisi-paper); opacity: 0; pointer-events: none;
+  transition: opacity 320ms ease;
+}
+.ds-icon-btn--quiet:active::before { opacity: 0.14; transition-duration: 60ms; }
+.ds-icon-btn--quiet[aria-expanded="true"], .ds-icon-btn--quiet[aria-pressed="true"] { opacity: 1; transform: scale(1.06); }
 
 .ds-spinner {
   position: absolute;
@@ -123,10 +136,7 @@
   min-width: 190px;
   padding: var(--space-1);
   margin: 0;
-  list-style: none;
-  background: var(--sisi-paper);
-  border-radius: 12px;
-  box-shadow: var(--paper-shadow);
+  list-style: none; /* deckled note paper (see .ds-deckle) */
   animation: ds-bubble-in var(--motion-bubble) var(--ease-sisi) both;
 }
 .ds-menu-item {
@@ -221,6 +231,64 @@
 }
 .ds-paper--memory, .ds-memory-sheet.ds-paper { background-image: var(--grain-memory); }
 .ds-paper--speech { background-image: var(--grain-speech); }
+/* Deckled paper — soft, slightly uneven paper edges instead of a clean
+   rounded rectangle. The paper is drawn on ::before: four repeating edge
+   strips (/assets/ui/paper-edge-*.svg, 64px period) overlap a solid middle,
+   and the rounded corners come from border-radius — so the edge never
+   stretches and there are no seams at any size. The element itself carries
+   the lift (drop-shadow follows the torn edge) and must be positioned.
+     --paper-grain-layer   which grain (default: Speech)
+     --paper-mask          which edges:
+                             --deckle-mask        all four (default)
+                             --deckle-mask-tb     top + bottom (memory cards)
+                             --deckle-mask-top    only the top (sheets)
+                             --deckle-mask-sheet  only the top, riding ~1px
+                                                  from the edge so rounded
+                                                  top corners flow into it */
+:root {
+  --deckle-mask:
+    linear-gradient(#000 0 0) 50% 50% / calc(100% - 8px) calc(100% - 8px) no-repeat,
+    url("/assets/ui/paper-edge-top.svg?v=3") 0 0 / 64px 8px repeat-x,
+    url("/assets/ui/paper-edge-bottom.svg?v=3") 0 100% / 64px 8px repeat-x,
+    url("/assets/ui/paper-edge-left.svg?v=3") 0 0 / 8px 64px repeat-y,
+    url("/assets/ui/paper-edge-right.svg?v=3") 100% 0 / 8px 64px repeat-y;
+  --deckle-mask-tb:
+    linear-gradient(#000 0 0) 0 50% / 100% calc(100% - 8px) no-repeat,
+    url("/assets/ui/paper-edge-top.svg?v=3") 0 0 / 64px 8px repeat-x,
+    url("/assets/ui/paper-edge-bottom.svg?v=3") 0 100% / 64px 8px repeat-x;
+  --deckle-mask-top:
+    linear-gradient(#000 0 0) 0 100% / 100% calc(100% - 4px) no-repeat,
+    url("/assets/ui/paper-edge-top.svg?v=3") 0 0 / 64px 8px repeat-x;
+  --deckle-mask-sheet:
+    linear-gradient(#000 0 0) 0 100% / 100% calc(100% - 3px) no-repeat,
+    url("/assets/ui/paper-edge-top.svg?v=3") 0 -2px / 64px 8px repeat-x;
+}
+.ds-deckle, .ds-note, .ds-menu-list {
+  isolation: isolate;
+  color: var(--sisi-ink);
+  background: none;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 3px rgba(16, 45, 50, 0.1)) drop-shadow(0 6px 12px rgba(16, 45, 50, 0.07));
+  overflow-wrap: break-word;
+}
+.ds-deckle::before, .ds-note::before, .ds-menu-list::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--sisi-paper);
+  background-image: var(--paper-grain-layer, var(--grain-speech));
+  background-repeat: repeat;
+  background-size: var(--grain-size);
+  background-blend-mode: multiply;
+  box-shadow: inset 0 0 14px rgba(16, 45, 50, 0.05);
+  border-radius: 20px 18px 22px 17px; /* the paper edge sits ~3px in, so this reads as ~15px */
+  -webkit-mask: var(--paper-mask, var(--deckle-mask));
+  mask: var(--paper-mask, var(--deckle-mask));
+}
+/* Note paper — every small floating message (bubbles, hints, empty
+   states, toasts, menus) is a deckled sheet of Speech paper. */
 
 /* MemoryPaper — torn horizontal edges, content-driven height.
    Outer element carries the shadow; the inner sheet is masked (a mask would
@@ -234,11 +302,8 @@
   padding: var(--space-5);
   -webkit-mask: var(--ds-torn-mask);
   mask: var(--ds-torn-mask);
-  /* torn top + bottom (a 6px band of soft teeth), straight sides */
-  --ds-torn-mask:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6' viewBox='0 0 120 6'%3E%3Cpath d='M0 6V2.4L6 1.2 12 3 19 .9 25 2.6 33 1 40 2.8 47 .6 54 2.2 61 1.1 68 3.1 75 1.4 82 2.5 89 .7 96 2.7 103 1.2 110 2.9 116 1.3 120 2.2V6z'/%3E%3C/svg%3E") top left / 120px 6px repeat-x,
-    linear-gradient(#000, #000) 0 5.5px / 100% calc(100% - 11px) no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='6' viewBox='0 0 120 6'%3E%3Cpath d='M0 0V3.6L7 4.8 13 3.1 20 5.2 27 3.4 34 5 41 3.2 48 5.3 55 3.9 62 5 69 2.9 76 4.7 83 3.4 90 5.2 97 3.3 104 4.9 111 3.1 120 4.1V0z'/%3E%3C/svg%3E") bottom left / 120px 6px repeat-x;
+  /* softly torn top + bottom (the shared paper edge), straight sides */
+  --ds-torn-mask: var(--deckle-mask-tb);
 }
 .ds-memory--compact .ds-memory-sheet { padding: var(--space-4); }
 .ds-memory-image {
@@ -340,7 +405,7 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
 }
 
 /* navigation and world beneath an open overlay: dim, inert */
-html.ds-overlay-open .ds-nav { opacity: 0.35 !important; pointer-events: none !important; }
+html.ds-overlay-open .ds-nav { opacity: 0.25 !important; pointer-events: none !important; }
 html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
 
 /* ── StickerNavigation — Moments / Journey / Stars ──────────────────── */
@@ -360,45 +425,64 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   animation: ds-fade-in var(--motion-navigation) var(--ease-sisi) both;
 }
 .ds-nav.is-still { animation: none; }
+/* a hand-drawn mark + live label; no backing, container or shadow */
 .ds-nav-tab {
   pointer-events: auto;
   position: relative;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 60px;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 40% / 50%;
-  background-color: var(--sisi-paper);
-  background-image: var(--grain-focus);
-  background-size: var(--grain-size);
-  background-blend-mode: multiply;
-  color: var(--ink-80);
+  gap: 3px;
+  min-width: 64px;
+  min-height: 48px; /* ≥ 44×44 tap target */
+  padding: 4px 10px 6px;
+  color: var(--sisi-paper); /* warm ivory on every surface */
   font-family: var(--font-editorial);
   font-weight: 500;
-  font-size: var(--text-button);
+  font-size: 13px;
   line-height: 1;
   text-decoration: none;
-  opacity: 0.74;
-  box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12);
-  transform: translateY(var(--lift, 0px));
-  transition: opacity var(--motion-instant) ease, transform var(--motion-instant) ease, color var(--motion-instant) ease;
+  opacity: 0.58;
+  transform: translateY(0) scale(1);
+  transition: opacity var(--motion-instant) ease, transform var(--motion-instant) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.ds-nav-tab--journey { --lift: -4px; }
-.ds-nav-tab.is-pressed { transform: translateY(var(--lift, 0px)) scale(0.96); }
-.ds-nav-tab.is-active { opacity: 1; color: var(--sisi-ink); box-shadow: 0 3px 8px rgba(16, 45, 50, 0.18); }
-.ds-nav-tab:focus-visible { outline: 2px solid var(--paper-90); outline-offset: 3px; }
-/* Sky Dock: the same tabs over the Star World, quieter (opacity + scale only) */
+.ds-nav.is-ink .ds-nav-tab { color: var(--sisi-ink); } /* Stars: over the cloud bank */
+.ds-nav-icon { display: block; width: 26px; height: 26px; flex: none; }
+.ds-nav-label { display: block; white-space: nowrap; }
+/* the selected mark: a short, imperfect crayon line under the label */
+.ds-nav-underline {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 26px;
+  height: 5px;
+  margin-left: -13px;
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 260ms var(--ease-sisi), opacity 120ms ease;
+}
+.ds-nav-tab.is-active { opacity: 1; transform: translateY(-2px); }
+.ds-nav-tab.is-active .ds-nav-underline { opacity: 1; clip-path: inset(0 0 0 0); }
+.ds-nav-tab.is-pressed { transform: scale(0.92); transition-duration: 90ms; }
+.ds-nav-tab.is-active.is-pressed { transform: translateY(-2px) scale(0.92); }
+.ds-nav-tab[aria-disabled="true"], .ds-nav.is-disabled .ds-nav-tab { opacity: 0.25; pointer-events: none; }
+.ds-nav-tab:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 10px; }
+/* Sky Dock: the same marks over the Star World, quieter (opacity + scale only) */
 .ds-nav.is-sky { scale: 0.94; }
-.ds-nav.is-sky .ds-nav-tab:not(.is-active) { opacity: 0.56; }
 .ds-nav.is-sky.is-dim .ds-nav-tab:not(.is-active) { opacity: 0.4; }
 .ds-nav.is-sky.is-dim .ds-nav-tab.is-active { opacity: 0.88; }
 .ds-nav.is-sky.is-detail .ds-nav-tab:not(.is-active) { opacity: 0.4; }
 .ds-nav.is-sky.is-detail .ds-nav-tab.is-active { opacity: 0.6; }
 .ds-nav.is-sky:focus-within .ds-nav-tab:not(.is-active) { opacity: 0.66; }
 .ds-nav.is-sky:focus-within .ds-nav-tab.is-active { opacity: 1; }
+/* Stars: ink marks on the bright cloud bank need more presence */
+/* (also when the dock rests dimmed after a while) */
+.ds-nav.is-ink.is-sky .ds-nav-tab:not(.is-active) { opacity: 0.88; }
+.ds-nav.is-ink.is-sky.is-dim .ds-nav-tab:not(.is-active) { opacity: 0.8; }
+.ds-nav.is-ink.is-sky.is-dim .ds-nav-tab.is-active { opacity: 1; }
+.ds-nav.is-ink.is-sky.is-detail .ds-nav-tab:not(.is-active) { opacity: 0.62; }
 /* fixed host for pages outside the Journey stage */
 .ds-nav-host {
   position: fixed;
@@ -480,6 +564,6 @@ button.ds-star-row:hover { border-color: var(--ink-35); }
 .ds-kicker { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); letter-spacing: 0.02em; color: var(--ink-60); margin: 0 0 var(--space-2); }
 
 @media (prefers-reduced-motion: reduce) {
-  .ds-btn, .ds-nav-tab { transition: none; }
+  .ds-btn, .ds-nav-tab, .ds-nav-underline, .ds-icon-btn--quiet, .ds-icon-btn--quiet::before { transition: none; }
   .ds-focus, .ds-dialog, .ds-dialog--from, .ds-menu-list, .ds-nav, .ds-backdrop { animation: ds-fade-in 160ms linear both; }
 }

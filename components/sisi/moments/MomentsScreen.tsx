@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { isRealPhoto, loadTrail, type MomentItem, type RestItem } from "@/lib/moments";
 import { layoutTimeline, TimelineMotion, type TrailEntry } from "@/lib/momentsTimeline";
-import { FilterChip, IconButton, IconClose, IconList, IconSearch, MemoryPaper, StickerNavigation, TextAction } from "@/components/ds";
+import { FilterChip, IconButton, IconClose, IconLandscape, IconList, IconSearch, MemoryPaper, StickerNavigation, TextAction } from "@/components/ds";
 import { MomentDetail, MomentsSharedStyles, originOf, RestDetail, type Origin } from "./shared";
 import { MomentsWorld, type MomentsWorldHandle } from "./MomentsWorld";
 import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
@@ -172,7 +172,8 @@ export function MomentsScreen() {
       <header className={`mm-header${headerIn && !turned ? "" : " is-out"}`}>
         <h1 className="ds-screen-title mm-title">Moments</h1>
         <IconButton
-          filled
+          quiet
+          surface="dark"
           className="mm-toggle"
           label="Search your Moments"
           aria-expanded={searchOpen}
@@ -181,7 +182,8 @@ export function MomentsScreen() {
           <IconSearch />
         </IconButton>
         <IconButton
-          filled
+          quiet
+          surface="dark"
           className="mm-toggle"
           label={view === "trail" ? "Show as a list" : "Show the Memory Trail"}
           onClick={() => {
@@ -193,9 +195,7 @@ export function MomentsScreen() {
           {view === "trail" ? (
             <IconList />
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
-              <path d="M3 16c3 0 3.5-5 7-5s3.5 4 6.5 4S20 9 21 8" />
-            </svg>
+            <IconLandscape />
           )}
         </IconButton>
       </header>
@@ -338,6 +338,7 @@ export function MomentsScreen() {
           activeTab={turned ? "journey" : "moments"}
           still={!!arrival}
           dock={navIn ? "ground" : "sky"}
+          onPaper={view === "list"}
           onJourneySelect={() => leaveTo("/journey")}
           onStarsSelect={() => leaveTo("/journey?to=stars")}
           onMomentsSelect={() => {
@@ -377,7 +378,7 @@ export function MomentsScreen() {
         .mm-header.is-out * { pointer-events: none !important; }
         .mm-title { margin: 0; color: var(--sisi-ink); }
         .mm-header .mm-toggle { pointer-events: auto; }
-        .mm-header { gap: 8px; }
+        .mm-header { gap: 1px; }
         .mm-header .mm-title { flex: 1; min-width: 0; }
         .mm-search {
           position: absolute; z-index: 21; left: var(--stage-padding); right: calc(var(--stage-padding) - 8px);

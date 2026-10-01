@@ -15,17 +15,6 @@ import type { Placed } from "@/lib/momentsTimeline";
  * Picking a row returns to the Memory Trail and walks to that Moment.
  */
 
-/** Torn along the top only; sides and bottom stay clean. */
-const EDGE = (() => {
-  const pts: string[] = [];
-  const n = 36;
-  for (let i = 0; i <= n; i++) {
-    const j = Math.abs((Math.sin(i * 12.9898 + 88 * 7.13) * 43758.5453) % 1);
-    pts.push(`${((i / n) * 100).toFixed(2)}% ${(j * 9).toFixed(1)}px`);
-  }
-  return `polygon(${pts.join(", ")}, 100% 100%, 0% 100%)`;
-})();
-
 /** Everything a person might type to find a Moment. */
 function haystack(p: Placed): string {
   const it = p.item;
@@ -68,7 +57,7 @@ export function MomentsList({
   }, [placed, q]);
 
   return (
-    <section className="ml-sheet ds-paper ds-paper--memory" style={{ clipPath: EDGE }} aria-label="Moments list">
+    <section className="ml-sheet ds-paper ds-paper--memory" aria-label="Moments list">
       <div className="ml-scroll ds-scroll">
         {groups.length === 0 && <p className="ml-empty">{q.trim() ? "Nothing here with those words yet." : "Your Moments will gather here as you walk."}</p>}
 
@@ -119,6 +108,10 @@ export function MomentsList({
           top: var(--ml-top, calc(var(--header-top) + 100px)); /* below the filters (and search, when open) */
           transition: top var(--motion-paper) var(--ease-sisi);
           color: var(--sisi-ink);
+          /* the shared soft paper edge along the top, with rounded top corners */
+          -webkit-mask: var(--deckle-mask-sheet);
+          mask: var(--deckle-mask-sheet);
+          border-radius: 18px 18px 0 0;
         }
         .ml-scroll {
           position: absolute; inset: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch;

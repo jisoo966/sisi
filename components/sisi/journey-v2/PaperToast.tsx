@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 
 /**
- * PaperToast — a small torn-paper note that rises above the tab bar,
+ * PaperToast — a small paper note (.ds-note) that rises above the tab bar,
  * lingers, and sinks away (e.g. "your star is resting in moments.").
  */
 export function PaperToast({ message }: { message: string | null }) {
@@ -12,7 +12,7 @@ export function PaperToast({ message }: { message: string | null }) {
       {message && (
         <motion.div
           key={message}
-          className="paper-toast ds-paper ds-paper--memory"
+          className="paper-toast ds-note"
           role="status"
           initial={{ opacity: 0, y: 24, rotate: -1.2 }}
           animate={{ opacity: 1, y: 0, rotate: -0.8 }}
@@ -34,8 +34,6 @@ export function PaperToast({ message }: { message: string | null }) {
               line-height: var(--leading-body);
               z-index: 23;
               pointer-events: none;
-              border-radius: 3px;
-              box-shadow: var(--paper-shadow);
             }
           `}</style>
         </motion.div>

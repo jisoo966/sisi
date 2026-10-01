@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TrailEntry, TimelineMotion, Placed } from "@/lib/momentsTimeline";
-import { buildTrail, layoutTimeline, TRAIL_ART, trailYAt } from "@/lib/momentsTimeline";
+import { layoutTimeline } from "@/lib/momentsTimeline";
 import { isRealPhoto, whenLabel } from "@/lib/moments";
 import { TYPE_LABEL } from "@/lib/momentStore";
 import { ArtFill, ART, Postcard } from "./shared";
@@ -19,6 +19,7 @@ import {
 import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
 import { useTimeOfDay } from "@/lib/timeOfDay";
 import { TOD_GRADE } from "@/lib/worldArt";
+import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 
 /**
  * MomentsWorld — the horizontal Memory Trail.
@@ -103,12 +104,22 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
     filter: TOD_GRADE,
     seam: 2,
   },
+  {
+    // the same walking path as the Journey (journey-walking-path.png), with
+    // the Journey's exact height and baseline so the two worlds match
+    kind: "band",
+    key: "path",
+    src: "/V2/parallax/journey-walking-path.png",
+    ratio: 1,
+    heightPct: 0.4,
+    bottom: "calc(var(--walking-baseline) - 18.67%)",
+    filter: TOD_GRADE,
+    seam: 2,
+  },
 ];
 
-/** The trail overlay: faint, behind Sísí and the cards, no glow or outline. */
-const TRAIL_OPACITY = 0.55;
-/** Trail band centre sits this many px below the paw line. */
-const TRAIL_DROP = 2;
+/** Memory lights rest on the path's centre line, which sits on the paw line. */
+const TRAIL_DROP = 0;
 
 /** Memory lights: rendered size of the painted core, and its anchor (image px). */
 const LIGHTS = {
@@ -161,6 +172,14 @@ export const MomentsWorld = forwardRef<
   const worldRef = useRef<HTMLDivElement>(null);
   const tod = useTimeOfDay();
   const foxRef = useRef<TrailFoxHandle>(null);
+  // Sísí's empty-trail note is a passing note: one tap anywhere puts it away
+  const [emptyNoteAway, setEmptyNoteAway] = useState(false);
+  useEffect(() => {
+    if (emptyNoteAway) return;
+    const away = () => setEmptyNoteAway(true);
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
+  }, [emptyNoteAway]);
   const foxRootRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
   const appliers = useRef(new Set<Apply>());
@@ -274,13 +293,8 @@ export const MomentsWorld = forwardRef<
   const baselineY = H * (1 - baseFrac);
   const layout = useMemo(() => (W ? layoutTimeline(entries, W) : null), [entries, W]);
   const delta = layout ? layout.foxX - W * JOURNEY_FOX_X : 0;
-  const trail = useMemo(() => {
-    if (!layout) return [];
-    const oldest = layout.placed.length ? layout.placed[layout.placed.length - 1].x : 0;
-    return buildTrail(W, baselineY + TRAIL_DROP, W * 1.9, Math.min(-W, oldest - W * 1.6));
-  }, [layout, W, baselineY]);
-
-  const ty = useCallback((x: number) => trailYAt(trail, x, baselineY + TRAIL_DROP), [trail, baselineY]);
+  // the path is level: every memory light rests on its centre line
+  const ty = useCallback((_x: number) => baselineY + TRAIL_DROP, [baselineY]);
 
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -636,18 +650,6 @@ export const MomentsWorld = forwardRef<
       {/* the world that moves with the timeline */}
       {layout && (
         <div ref={worldRef} className="mw-world">
-          <div className="mw-trail" aria-hidden>
-            {trail.map((s, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={TRAIL_ART[s.kind].src}
-                alt=""
-                draggable={false}
-                style={{ left: s.left, top: s.top, width: s.w, height: s.h }}
-              />
-            ))}
-          </div>
 
           {layout.placed.map((p) => {
             const y = ty(p.x);
@@ -752,12 +754,18 @@ export const MomentsWorld = forwardRef<
         </div>
       )}
 
-      {layout && loaded && entries.length === 0 && phase !== "arriving" && (
-        <div className="mw-empty">Your moments will gather here as you walk.</div>
-      )}
-
       {layout && (
-        <TrailFox ref={foxRef} rootRef={foxRootRef} initialOffset={(pan.current ?? delta) - delta} />
+        <TrailFox
+          ref={foxRef}
+          rootRef={foxRootRef}
+          initialOffset={(pan.current ?? delta) - delta}
+          // Sísí says it herself: a speech bubble above her head (follows her)
+          say={
+            loaded && entries.length === 0 && phase !== "arriving" && !emptyNoteAway ? (
+              <SisiSpeechBubble message="Your moments will gather here as you walk." tailPosition="bottom-right" align="center" />
+            ) : null
+          }
+        />
       )}
       </div>
 
@@ -812,8 +820,6 @@ export const MomentsWorld = forwardRef<
         .mw-lane img { height: 100%; width: auto; max-width: none; flex: 0 0 auto; display: block; }
         .mw-scatter img { position: absolute; max-width: none; height: auto; }
         .mw-world { position: absolute; left: 0; top: 0; width: 0; height: 100%; z-index: 3; will-change: transform; }
-        .mw-trail { position: absolute; left: 0; top: 0; pointer-events: none; opacity: ${TRAIL_OPACITY}; }
-        .mw-trail img { position: absolute; max-width: none; display: block; }
         .mw-item { position: absolute; top: 0; width: 0; height: 100%; }
         .mw-stem { position: absolute; width: 1px; background: rgba(245, 239, 221, 0.38); pointer-events: none; }
         .mw-light { position: absolute; max-width: none; pointer-events: none; }
@@ -852,26 +858,18 @@ export const MomentsWorld = forwardRef<
         }
 
         /* ── arrival / departure ─────────────────────────────────── */
-        .mw-veiled .mw-trail, .mw-veiled .mw-scatter, .mw-veiled .mw-light, .mw-veiled .mw-stem { opacity: 0; }
+        .mw-veiled .mw-scatter, .mw-veiled .mw-light, .mw-veiled .mw-stem { opacity: 0; }
         .mw-veiled .mw-card { opacity: 0; translate: 0 12px; }
-        .mw-revealing .mw-trail { transition: opacity 520ms ease; }
         .mw-revealing .mw-scatter { transition: opacity 700ms ease; }
         .mw-revealing .mw-card { transition: opacity 460ms ease var(--rd), translate 560ms cubic-bezier(0.22, 1, 0.36, 1) var(--rd); }
         .mw-revealing .mw-light, .mw-revealing .mw-stem { transition: opacity 420ms ease calc(var(--rd) + 120ms); }
         /* memories settle away: cards lower and fade, then lights + threads,
-           then the trail — the sky, meadow and Sísí stay */
+           — the sky, meadow, path and Sísí stay */
         .mw-leaving .mw-card { opacity: 0; translate: 0 16px; transition: opacity 300ms ease, translate 360ms ease-in; }
         .mw-leaving .mw-label { opacity: 0; transition: opacity 200ms ease; }
         .mw-leaving .mw-light, .mw-leaving .mw-stem { opacity: 0 !important; transition: opacity 280ms ease 80ms; }
-        .mw-leaving .mw-trail { opacity: 0; transition: opacity 320ms ease 160ms; }
         .mw-leaving .mw-scatter { opacity: 0; transition: opacity 420ms ease 120ms; }
 
-        .mw-empty {
-          position: absolute; left: 12%; width: 46%; bottom: calc(var(--walking-baseline) + 48px); z-index: 4;
-          padding: 12px 14px; background: var(--sisi-paper) var(--grain-memory) 0 0 / var(--grain-size) repeat; background-blend-mode: multiply; color: var(--sisi-ink); border-radius: 3px;
-          box-shadow: var(--paper-shadow-soft);
-          font-family: var(--font-editorial); font-style: italic; font-size: var(--text-dialogue); line-height: var(--leading-dialogue);
-        }
         .mw-hint {
           position: absolute; left: 0; right: 0; bottom: calc(var(--nav-total) + 22px); z-index: 7;
           display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
@@ -896,7 +894,8 @@ export const MomentsWorld = forwardRef<
         .mw-today {
           position: absolute; z-index: 8; right: var(--stage-padding); top: calc(var(--header-top) + 58px);
           min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
-          background: var(--sisi-paper); color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12);
+          background: var(--sisi-paper) var(--grain-speech) 0 0 / var(--grain-size) repeat; background-blend-mode: multiply;
+          color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12), inset 0 0 10px rgba(16, 45, 50, 0.05);
           font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-button);
           animation: mw-hint-in var(--motion-bubble) var(--ease-sisi) both;
         }

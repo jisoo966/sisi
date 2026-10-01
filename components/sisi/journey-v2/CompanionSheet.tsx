@@ -5,7 +5,7 @@ import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment, loadMoments, type MomentType } from "@/lib/momentStore";
 import { awardStarlight } from "@/lib/starlight";
-import { FilterChip, FocusPaper, IconButton, IconSend, OverflowMenu, PrimaryButton, ReplyChip, StarGlyph, TextAction } from "@/components/ds";
+import { FilterChip, FocusPaper, IconBubble, IconButton, IconCheck, IconLock, IconSend, OverflowMenu, PrimaryButton, ReplyChip, StarGlyph, TextAction } from "@/components/ds";
 import {
   actionAllowed,
   activeConversation,
@@ -559,26 +559,6 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8 12 3 3 5-6" />
-    </svg>
-  );
-}
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-function BubbleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.2A7.5 7.5 0 1 1 20 12z" />
-    </svg>
-  );
-}
+const CheckIcon = () => <IconCheck />;
+const LockIcon = () => <IconLock />;
+const BubbleIcon = () => <IconBubble />;
