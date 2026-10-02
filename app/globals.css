@@ -353,13 +353,16 @@ body {
 :focus-visible.on-dark { outline-color: var(--paper-80); }
 
 /* ── Journey ⇄ Moments: one world across two pages ─────────────────────
-   Layers that exist only in the Journey (walking path, foreground, passing
-   trees, sky star + drifting clouds, header) quiet down while Sísí turns
-   toward Moments, and fade back in when she returns. Sky, meadow and Sísí
-   stay exactly where they are (lib/worldHandoff.ts). */
+   Layers that exist only in the Journey (foreground, passing trees, sky
+   star + drifting clouds, header) quiet down while Sísí turns toward
+   Moments, and fade back in when she returns. Sky, meadow, the grass line,
+   the walking path (Moments draws the same ones) and Sísí stay exactly
+   where they are
+   (lib/worldHandoff.ts). */
 .journey-stage-v2.jl-handoff { animation: none; }
-.journey-stage-v2.jl-quiet .jw-path,
-.journey-stage-v2.jl-quiet .jw-strip,
+/* arrived from Moments: the world is already on screen — never replay the
+   soft arrival (it would dip to 35% once the handoff class comes off) */
+.journey-stage-v2.jl-arrived { animation: none; }
 .journey-stage-v2.jl-quiet .jw-fore,
 .journey-stage-v2.jl-quiet .passing-trees,
 .journey-stage-v2.jl-quiet .jl-fade,
@@ -369,8 +372,6 @@ body {
 }
 .journey-stage-v2.jl-quiet .jl-fade,
 .journey-stage-v2.jl-quiet .jl-fade * { pointer-events: none !important; }
-.journey-stage-v2.jl-handoff .jw-path,
-.journey-stage-v2.jl-handoff .jw-strip,
 .journey-stage-v2.jl-handoff .jw-fore,
 .journey-stage-v2.jl-handoff .passing-trees,
 .journey-stage-v2.jl-handoff .jl-fade,
@@ -431,7 +432,6 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
   color: var(--sisi-paper); opacity: 0.92;
 }
 .stars-new.ds-btn:hover:not(:disabled) { background: transparent; opacity: 1; }
-.stars-new.ds-btn svg { width: 22px; height: 22px; }
 .stars-new.ds-btn::before {
   content: ""; position: absolute; inset: 0; border-radius: 999px;
   background: var(--sisi-paper); opacity: 0; pointer-events: none; transition: opacity 320ms ease;
@@ -461,21 +461,23 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 }
 
 /* Foreground trees: the supplied tree-front PNGs end flat at the top of
-   their canvas (the canopy is clipped in the source files). Feather the
-   top of the frame so the canopy dissolves into the sky instead of showing
-   a hard horizontal cut. The PNGs themselves are untouched. */
+   their canvas (the canopy is clipped in the source files). Instead of a
+   fade (which read as a blur), the top is cut along a row of leaf clumps
+   (/assets/ui/canopy-top.svg) so the canopy ends like real foliage. The
+   PNGs themselves are untouched. */
 .jw-fore .passing-trees .ps-item img {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%);
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%);
+  -webkit-mask: url("/assets/ui/canopy-top.svg") 0 0 / 100% 16% no-repeat, linear-gradient(#000 0 0) 0 100% / 100% 85% no-repeat;
+  mask: url("/assets/ui/canopy-top.svg") 0 0 / 100% 16% no-repeat, linear-gradient(#000 0 0) 0 100% / 100% 85% no-repeat;
 }
-/* tree-front-01 is also clipped on its right edge */
+/* tree-front-01 is also clipped on its right edge: a short soft edge there */
 .jw-fore .passing-trees .ps-item img[src*="tree-front-01"] {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%),
-    linear-gradient(to left, transparent 0%, #000 7%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 6%, #000 15%),
-    linear-gradient(to left, transparent 0%, #000 7%);
-  mask-composite: intersect;
+  /* (leaf-clump top ∪ body) ∩ right-edge fade */
+  -webkit-mask: linear-gradient(to left, transparent 0%, #000 7%),
+    url("/assets/ui/canopy-top.svg") 0 0 / 100% 16% no-repeat, linear-gradient(#000 0 0) 0 100% / 100% 85% no-repeat;
+  -webkit-mask-composite: source-in, source-over;
+  mask: linear-gradient(to left, transparent 0%, #000 7%),
+    url("/assets/ui/canopy-top.svg") 0 0 / 100% 16% no-repeat, linear-gradient(#000 0 0) 0 100% / 100% 85% no-repeat;
+  mask-composite: intersect, add;
 }
 
 /* Fulfilled Stars: a warmer coral-gold, still the same Star */

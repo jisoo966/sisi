@@ -378,7 +378,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
               autoComplete="off"
             />
             <IconButton type="submit" label="Send" className="cs-send" disabled={!draft.trim() || sending}>
-              <IconSend size={18} />
+              <IconSend size={20} />
             </IconButton>
           </form>
         )

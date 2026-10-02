@@ -221,7 +221,7 @@ export function MomentsScreen() {
             exit={{ opacity: 0, y: -6, transition: { duration: 0.2 } }}
           >
             <label className="mm-search-field">
-              <IconSearch size={18} />
+              <IconSearch size={20} />
               <input
                 ref={searchRef}
                 type="search"
@@ -235,7 +235,7 @@ export function MomentsScreen() {
               />
               {query && (
                 <button type="button" className="mm-search-clear" aria-label="Clear search" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>
-                  <IconClose size={16} />
+                  <IconClose size={20} />
                 </button>
               )}
             </label>
@@ -266,7 +266,7 @@ export function MomentsScreen() {
                   setExplain(false);
                 }}
               >
-                <IconClose size={18} />
+                <IconClose size={20} />
               </IconButton>
             </MemoryPaper>
           </fm.div>

@@ -73,11 +73,16 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
  * filled in before the first paint on the client, then refreshed each
  * minute so a long walk crosses into the evening on its own.
  */
+/** The last time of day this tab computed — so a page change (Journey ↔
+ *  Moments) starts its very first frame with the right sky, not an empty one. */
+let lastTod: TimeOfDay | null = null;
+
 export function useTimeOfDay(): TimeOfDay | null {
-  const [tod, setTod] = useState<TimeOfDay | null>(null);
+  const [tod, setTod] = useState<TimeOfDay | null>(() => lastTod);
   useIsoLayoutEffect(() => {
     const update = () => {
       const t = timeOfDayAt(localHour());
+      lastTod = t;
       setTod((prev) =>
         prev && prev.phase === t.phase && prev.ink === t.ink && prev.greeting === t.greeting ? prev : t,
       );

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 import { SKY_SRC, type SkyPhase, type TimeOfDay } from "@/lib/timeOfDay";
 
 /**
@@ -36,7 +38,8 @@ export function TimeOfDaySky({ tod }: { tod: TimeOfDay | null }) {
   const nextId = useRef(1);
   const first = useRef(true);
 
-  useEffect(() => {
+  // before the first paint, so a freshly mounted page never shows an empty frame
+  useIsoLayoutEffect(() => {
     if (!tod) return;
     setLayers((ls) => {
       const top = ls[ls.length - 1];

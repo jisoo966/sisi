@@ -59,6 +59,11 @@
   --paper-radius: 15px 13px 17px 12px;
 
   /* spacing — 4px system */
+  /* Icon sizes — two only (the tab marks are their own, 26px with labels):
+       tool    an icon that stands alone as a button (✕, camera, search…)
+       inline  an icon beside words (menu rows, buttons, links, chips) */
+  --icon-tool: 24px;
+  --icon-inline: 20px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

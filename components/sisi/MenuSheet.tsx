@@ -4,7 +4,7 @@ import { haptic, hapticsEnabled, hapticsSupported, setHapticsEnabled } from "@/l
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FocusPaper, IconChevronRight, IconMusic, SecondaryButton } from "@/components/ds";
+import { FocusPaper, IconChevronRight, SecondaryButton } from "@/components/ds";
 import { WeatherSettingRow } from "@/components/sisi/weather/WeatherSetting";
 import { createClient } from "@/lib/supabase/client";
 
@@ -105,7 +105,6 @@ export function MenuSheet({
       )}
       <nav className="menu-list" aria-label="Menu">
         <button type="button" role="switch" aria-checked={musicOn} className="menu-row" onClick={toggleMusic}>
-          <span className="menu-row-icon"><IconMusic size={20} /></span>
           <span className="menu-row-label">Ambient music</span>
           <Toggle on={musicOn} />
         </button>
@@ -131,22 +130,21 @@ export function MenuSheet({
         <WeatherSettingRow />
         <Link href="/privacy" onClick={onClose} className="menu-row">
           <span className="menu-row-label">Privacy policy</span>
-          <IconChevronRight size={18} />
+          <IconChevronRight size={20} />
         </Link>
         <Link href="/terms" onClick={onClose} className="menu-row">
           <span className="menu-row-label">Terms of service</span>
-          <IconChevronRight size={18} />
+          <IconChevronRight size={20} />
         </Link>
       </nav>
       <div className="ds-actions">
         <SecondaryButton block onClick={signOut}>Sign out</SecondaryButton>
       </div>
-      <p className="t-helper menu-version">Sísí v1.0</p>
       <style jsx global>{`
         .menu-profile { padding: 4px 0 16px; border-bottom: 1px solid var(--ink-08); margin-bottom: 4px; }
         .menu-list { display: flex; flex-direction: column; }
         .menu-row {
-          display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 2px;
+          display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 6px 0;
           border: 0; border-bottom: 1px solid var(--ink-08); background: none; color: var(--sisi-ink);
           font-family: var(--font-editorial); font-size: var(--text-dialogue); text-align: left; text-decoration: none; cursor: pointer;
         }
@@ -154,7 +152,7 @@ export function MenuSheet({
         .menu-row-label { flex: 1; }
         .menu-row-sub { display: block; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); }
         .menu-row:disabled { cursor: default; opacity: 0.7; }
-        .menu-version { margin: 16px 0 0; text-align: center; color: var(--ink-60); }
+        .menu-list + .ds-actions { margin-top: var(--space-6); }
         .menu-toggle { position: relative; flex: none; width: 44px; height: 26px; border-radius: 999px; background: var(--ink-14); transition: background var(--motion-instant) ease; }
         .menu-toggle.is-on { background: var(--sisi-blue); }
         .menu-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--sisi-paper); box-shadow: 0 1px 2px rgba(16, 45, 50, 0.2); transition: transform var(--motion-bubble) var(--ease-sisi); }

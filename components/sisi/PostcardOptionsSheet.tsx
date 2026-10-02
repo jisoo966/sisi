@@ -178,7 +178,7 @@ function OptionCard({
         <span className="ds-star-row-title">{title}</span>
         <span className="t-meta" style={{ color: "var(--ink-60)" }}>{subtitle}</span>
       </span>
-      <IconChevronRight size={18} />
+      <IconChevronRight size={20} />
     </button>
   );
 }

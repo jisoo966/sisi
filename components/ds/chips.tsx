@@ -83,7 +83,7 @@ export function StarConnectionRow({
         <span className="ds-star-row-title">{title}</span>
         {status && <span className="t-meta" style={{ color: "var(--ink-60)" }}>{status}</span>}
       </span>
-      {onClick && <IconChevronRight size={18} />}
+      {onClick && <IconChevronRight size={20} />}
     </>
   );
   return (

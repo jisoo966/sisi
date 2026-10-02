@@ -131,14 +131,14 @@ export default function DesignSystemSheet() {
           menu={
             <OverflowMenu
               items={[
-                { label: "Disconnect from Star", icon: <IconUnlink size={18} />, onSelect: () => {}, destructive: false },
-                { label: "Delete moment", icon: <IconTrash size={18} />, onSelect: () => setConfirm(true), destructive: true },
+                { label: "Disconnect from Star", icon: <IconUnlink size={20} />, onSelect: () => {}, destructive: false },
+                { label: "Delete moment", icon: <IconTrash size={20} />, onSelect: () => setConfirm(true), destructive: true },
               ]}
             />
           }
           actions={
             <div className="ds-actions ds-actions--row">
-              <SecondaryButton><IconPencil size={18} /> Edit moment</SecondaryButton>
+              <SecondaryButton><IconPencil size={20} /> Edit moment</SecondaryButton>
               <PrimaryButton>Visit Star</PrimaryButton>
             </div>
           }

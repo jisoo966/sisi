@@ -50,10 +50,13 @@ export function ModalPortal({
   dismissible = true,
   labelledBy,
   className = "",
+  backdrop = "dim",
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** dim: the world steps back · clear: nothing dims or blurs (live previews) */
+  backdrop?: "dim" | "clear";
   /** center: dialog in the middle · sheet: paper rising from the bottom */
   variant?: "center" | "sheet";
   /** false for destructive confirmations: Escape and backdrop don't close */
@@ -145,7 +148,7 @@ export function ModalPortal({
   return createPortal(
     <div
       ref={box}
-      className={`ds-modal ${variant === "sheet" ? "ds-modal--sheet" : ""} ${closing ? "is-closing" : ""} ${className}`}
+      className={`ds-modal ${variant === "sheet" ? "ds-modal--sheet" : ""} ${backdrop === "clear" ? "ds-modal--clear" : ""} ${closing ? "is-closing" : ""} ${className}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby={labelledBy}

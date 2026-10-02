@@ -179,8 +179,8 @@ export function MomentDetail({
 
   const typeLabel = TYPE_LABEL[item.mtype];
   const menuItems: MenuItem[] = [
-    ...(canDisconnect ? [{ label: "Disconnect from Star", icon: <IconUnlink size={18} />, destructive: false, onSelect: () => connect(null) }] : []),
-    { label: "Delete moment", icon: <IconTrash size={18} />, destructive: true, onSelect: () => setConfirmDelete(true) },
+    ...(canDisconnect ? [{ label: "Disconnect from Star", icon: <IconUnlink size={20} />, destructive: false, onSelect: () => connect(null) }] : []),
+    { label: "Delete moment", icon: <IconTrash size={20} />, destructive: true, onSelect: () => setConfirmDelete(true) },
   ];
 
   return (
@@ -207,7 +207,7 @@ export function MomentDetail({
             ) : mode === "view" ? (
               <div className="ds-actions ds-actions--row">
                 <SecondaryButton onClick={() => setMode("edit")}>
-                  <IconPencil size={18} /> Edit moment
+                  <IconPencil size={20} /> Edit moment
                 </SecondaryButton>
                 {starNow && <PrimaryButton onClick={() => onViewStar(starNow.id)}>Visit Star</PrimaryButton>}
               </div>

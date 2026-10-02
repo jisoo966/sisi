@@ -42,7 +42,7 @@ import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 // StarView (auto-opening postcard) superseded by StarMemoryCard; kept on disk.
 import { StarTrail } from "@/components/sisi/journey-v2/StarTrail";
 import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
-// CaptureFAB superseded by the quiet camera disc in JourneyHeader; kept on disk.
+import { CaptureFAB } from "@/components/sisi/journey-v2/CaptureFAB";
 import { DailyPractice } from "@/components/sisi/journey-v2/DailyPractice";
 // SpendTimeCTA (the old home button) stays on disk, unused.
 import { SatchelDrawer } from "@/components/sisi/journey-v2/SatchelDrawer";
@@ -274,8 +274,11 @@ export default function JourneyPage() {
   const [createOpen, setCreateOpen] = useState(false);
   // Evening: SiSi pauses beneath the Star once, gently.
   const [eveningOpen, setEveningOpen] = useState(false);
-  /** Any focused panel over the meadow (hides tools + tabs, pauses SiSi). */
-  const panelOpen = practiceOpen || satchelOpen || momentOpen || eveningOpen || createOpen;
+  /** Any focused panel over the meadow (hides tools + tabs, pauses SiSi).
+   *  The satchel and the evening reflection are only ever shown in the
+   *  meadow — when one is merely "pending" (e.g. the evening offer arrives
+   *  while you're among the Stars) it must not hide the tabs. */
+  const panelOpen = practiceOpen || momentOpen || createOpen || ((satchelOpen || eveningOpen) && isWalking);
   // Meadow star tapped → view the Current Star once we arrive above.
   const [viewCurrentOnArrival, setViewCurrentOnArrival] = useState(false);
   // Little Light note shown in the meadow (e.g. after a meaningful talk).
@@ -558,7 +561,7 @@ export default function JourneyPage() {
   const [speaking, setSpeaking] = useState(false);
   const [walkLine, setWalkLine] = useState<null | "intro" | "finish-ask" | "done">(null);
   const stillLine = walkLine === "done";
-  const writing = chatOpen || momentOpen || eveningOpen;
+  const writing = chatOpen || momentOpen || (eveningOpen && isWalking);
 
   // ── Starlight: the shared world grows with attention given to Stars ──
   const starlight = useStarlightBalance();
@@ -825,7 +828,7 @@ export default function JourneyPage() {
 
   return (
     <JourneyStage
-      phaseClass={`${stageClass}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""} world-${world}${wx ? ` wx-state-${wx}` : ""}`}
+      phaseClass={`${stageClass}${arrival ? " jl-arrived" : ""}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""} world-${world}${wx ? ` wx-state-${wx}` : ""}`}
     >
       {/* ── WORLD LAYER — separate depth groups; each moves at its own
           parallax rate during the Journey → Stars camera move. ── */}
@@ -997,7 +1000,8 @@ export default function JourneyPage() {
             every={[5, 8]}
             first={[2.5, 4]}
             height={[0.48, 0.55]}
-            base={[-5, -3]}
+            // rooted in the grass in front of the path, not standing on it
+            base={[-10, -8]}
             max={1}
             filter={TOD_GRADE}
             zIndex={2}
@@ -1029,9 +1033,10 @@ export default function JourneyPage() {
             isDark={false}
             hasNudge={hasNudge}
             onMenuClick={() => setMenuOpen(true)}
-            onCameraClick={() => setMomentOpen(true)}
             onSatchelClick={() => !busy && setSatchelOpen(true)}
           />
+          {/* capturing — the main action — within the thumb's reach */}
+          <CaptureFAB onClick={() => setMomentOpen(true)} />
           {/* The one primary action on the home screen. */}
           {/* "Spend time with your Star" removed from the Journey: guidance
               now comes from Sísí as speech bubbles (CompanionCues). */}
@@ -1145,7 +1150,7 @@ export default function JourneyPage() {
         >
           <h2 className="stars-top-title">My Stars</h2>
           <SecondaryButton surface="dark" className="stars-new" onClick={startNewStar}>
-            <IconPlus size={22} /> New Star
+            <IconPlus size={20} /> New Star
           </SecondaryButton>
         </div>
 

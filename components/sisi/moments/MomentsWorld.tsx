@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { TrailEntry, TimelineMotion, Placed } from "@/lib/momentsTimeline";
 import { layoutTimeline } from "@/lib/momentsTimeline";
 import { isRealPhoto, whenLabel } from "@/lib/moments";
@@ -20,6 +20,8 @@ import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
 import { useTimeOfDay } from "@/lib/timeOfDay";
 import { TOD_GRADE } from "@/lib/worldArt";
 import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
+import { BASE_H, STRIP } from "@/components/sisi/journey-v2/MeadowStrip";
+import type { SkyPhase } from "@/lib/timeOfDay";
 
 /**
  * MomentsWorld — the horizontal Memory Trail.
@@ -117,6 +119,22 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
     seam: 2,
   },
 ];
+
+/** The Journey's grass line (MeadowStrip) as a band: same height and baseline. */
+function stripBand(phase: SkyPhase): Band {
+  const S = STRIP[phase];
+  const h = BASE_H * (S.ih / 242);
+  const below = ((S.ih - S.bottom) / S.ih) * h; // transparent rows under the grass
+  return {
+    kind: "band",
+    key: `strip-${phase}`,
+    src: S.src,
+    ratio: 1,
+    heightPct: h,
+    bottom: `calc(var(--walking-baseline) - ${(below * 100).toFixed(3)}%)`,
+    seam: 2,
+  };
+}
 
 /** Memory lights rest on the path's centre line, which sits on the paw line. */
 const TRAIL_DROP = 0;
@@ -644,7 +662,17 @@ export const MomentsWorld = forwardRef<
       <div ref={landGroupRef} className="mw-group mw-group--land">
       {W > 0 &&
         MOMENTS_SCENE.map((L) =>
-          L.kind === "band" ? <BandLayer key={L.key} spec={L} H={H} W={W} register={register} /> : null,
+          L.kind !== "band" ? null : L.key === "path" ? (
+            <Fragment key={L.key}>
+              {/* the Journey's time-of-day grass line, just behind the path,
+                  so the meadow is the same on both pages (nothing appears or
+                  disappears when they hand over) */}
+              {tod && <BandLayer key={`strip-${tod.phase}`} spec={stripBand(tod.phase)} H={H} W={W} register={register} />}
+              <BandLayer spec={L} H={H} W={W} register={register} />
+            </Fragment>
+          ) : (
+            <BandLayer key={L.key} spec={L} H={H} W={W} register={register} />
+          ),
         )}
 
       {/* the world that moves with the timeline */}

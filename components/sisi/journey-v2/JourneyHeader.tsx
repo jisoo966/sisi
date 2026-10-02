@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { IconButton, IconCamera, IconCustomize, IconMenu } from "@/components/ds";
+import { IconButton, IconCustomize, IconMenu } from "@/components/ds";
 
 /**
  * JourneyHeader — minimal, quiet header per mockup "Quiet main journey".
@@ -68,15 +68,10 @@ export function JourneyHeader({
         </h1>
       </div>
 
-      {/* Quiet secondary tools, stacked top-right (master reference):
-          camera = capture a Moment or Sign · menu = account & settings.
-          satchel = optional customization drawer. */}
+      {/* Quiet secondary tools, one row top-right: customize · menu (the
+          rarest — in the corner). Capturing, the main action, lives at the
+          bottom within the thumb's reach (CaptureFAB). */}
       <div className="right-col">
-        {onCameraClick && (
-          <IconButton quiet surface="dark" label="Capture a moment" onClick={onCameraClick}>
-            <IconCamera />
-          </IconButton>
-        )}
         {onSatchelClick && (
           <IconButton quiet surface="dark" label="Open your satchel" onClick={onSatchelClick}>
             <IconCustomize />
@@ -129,8 +124,8 @@ export function JourneyHeader({
         .name-italic { font-style: italic; }
         /* the trailing period stays upright — an italic period visually drifts */
         .soft-dot { font-style: normal; }
-        /* quiet tools: 44px targets, ~45px between centres */
-        .right-col { display: flex; flex-direction: column; align-items: center; gap: 1px; flex-shrink: 0; }
+        /* quiet tools: one row, 44px targets, ~45px between centres */
+        .right-col { display: flex; flex-direction: row; align-items: center; gap: 1px; flex-shrink: 0; margin-right: -10px; }
         .menu-wrap { position: relative; display: inline-flex; }
         .nudge-dot {
           position: absolute; top: 10px; right: 10px; width: 6px; height: 6px; border-radius: 9999px;

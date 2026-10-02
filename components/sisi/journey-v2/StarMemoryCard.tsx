@@ -680,7 +680,7 @@ export function StarMemoryCard({
                   surface="dark"
                   label="Manage this Star"
                   items={[
-                    { label: "Edit Star", icon: <IconPencil size={18} />, destructive: false, onSelect: () => setEditing(true) },
+                    { label: "Edit Star", icon: <IconPencil size={20} />, destructive: false, onSelect: () => setEditing(true) },
                     ...(star.fulfilledAt
                       ? []
                       : [{ label: "This came true", icon: <StarGlyph size={16} />, destructive: false, onSelect: () => setOverlay("confirm-fulfil") }]),
@@ -795,7 +795,7 @@ export function StarMemoryCard({
                       <>
                         <StatusChip tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
                         <TextAction className="smc-journey-link" onClick={() => setMode("journey")}>
-                          View journey <IconChevronRight size={16} />
+                          View journey <IconChevronRight size={20} />
                         </TextAction>
                       </>
                     )}
@@ -1420,7 +1420,7 @@ function NavRow({ onBack, onClose }: { onBack: () => void; onClose: () => void }
 const EyeIcon = () => <IconEye />;
 const PathIcon = () => <IconPath />;
 const LeafIcon = () => <IconLeaf />;
-const MoonIcon = () => <IconMoon size={18} />;
+const MoonIcon = () => <IconMoon size={20} />;
 
 function formatDate(iso: string): string {
   try {

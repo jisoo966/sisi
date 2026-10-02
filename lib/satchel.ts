@@ -30,7 +30,7 @@ export type SatchelItem = {
 
 export const SATCHEL_CATALOG: SatchelItem[] = [
   // SiSi — scarf · small charm · small travel accessory (art to come)
-  { id: "sisi-plain", category: "sisi", name: "Just Sísí", cost: 0, preview: "/V2/fox-walk/fox-walk-preview.png" },
+  { id: "sisi-plain", category: "sisi", name: "Just Sísí", cost: 0, preview: "/V2/sisi/sisi-sitting.webp?v=2" },
   // Trail — sparse flowers · path variation · walking-light (art to come)
   { id: "trail-plain", category: "trail", name: "Quiet path", cost: 0, preview: "/V2/parallax/journey-walking-path.png" },
   // World — Quiet Meadow · Blue Riverside · Whispering Forest … (art to come)

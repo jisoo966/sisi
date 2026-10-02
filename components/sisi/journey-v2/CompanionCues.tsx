@@ -236,7 +236,7 @@ export function CompanionCues({
                   label="Dismiss"
                   onClick={shown.key.startsWith("thought-") ? dismissThought : shown.onDismiss}
                 >
-                  <IconClose size={18} />
+                  <IconClose size={20} />
                 </IconButton>
               ) : undefined
             }

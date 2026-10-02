@@ -118,8 +118,8 @@ export default function StarDetailPage({ params }: { params: { id: string } }) {
             surface="dark"
             label="Star options"
             items={[
-              { label: "Edit wish", icon: <IconPencil size={18} />, destructive: false, onSelect: () => setShowEdit(true) },
-              { label: "Release Star", icon: <IconTrash size={18} />, destructive: true, onSelect: () => setShowConfirmDelete(true) },
+              { label: "Edit wish", icon: <IconPencil size={20} />, destructive: false, onSelect: () => setShowEdit(true) },
+              { label: "Release Star", icon: <IconTrash size={20} />, destructive: true, onSelect: () => setShowConfirmDelete(true) },
             ]}
           />
         </header>

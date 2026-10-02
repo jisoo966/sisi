@@ -105,7 +105,10 @@ export function FocusPaper({
   bodyRef,
   decoration,
   onBodyScroll,
+  live = false,
 }: {
+  /** the world behind stays fully visible (no dim or blur) — for live previews */
+  live?: boolean;
   /** drawn on the paper's top edge (e.g. Sísí resting on it) */
   decoration?: React.ReactNode;
   onBodyScroll?: () => void;
@@ -127,7 +130,7 @@ export function FocusPaper({
 }) {
   useKeyboardInset(open);
   return (
-    <ModalPortal open={open} onClose={onClose} variant="sheet" dismissible={dismissible} labelledBy={titleId}>
+    <ModalPortal open={open} onClose={onClose} variant="sheet" dismissible={dismissible} labelledBy={titleId} backdrop={live ? "clear" : "dim"}>
       <section
         className={`ds-focus ds-paper ${tall ? "ds-focus--tall" : ""} ${className}`}
         style={{ bottom: "var(--ds-kb, 0px)", maxHeight: "min(78dvh, calc(100dvh - var(--safe-top) - 24px - var(--ds-kb, 0px)))" }}

@@ -12,8 +12,8 @@ import { FocusPaper, StarGlyph } from "@/components/ds";
  * MomentCapture — Journey Capture: keep something from the life you are
  * walking through (a photo, a few words, or both).
  *
- *   options   Capture a moment — Take a photo (or choose from library) ·
- *             Write a note. The first time, one line explains what it's for.
+ *   options   Capture a moment — Add a photo (the phone offers camera,
+ *             library or file) · Write a note. The first time, one line explains what it's for.
  *   capture   the photo + optional words, or a short note → Save moment
  *   saved     "Kept." — it is in Moments now. Optionally, and only if the
  *             user wants: Connect to a Star (the SAME record gets a star_id;
@@ -42,8 +42,7 @@ export function MomentCapture({
   const [stars, setStars] = useState<Star[]>([]);
   const [connectedTo, setConnectedTo] = useState<Star | null>(null);
   const [firstTime, setFirstTime] = useState(false);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const libraryRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -113,27 +112,41 @@ export function MomentCapture({
 
   return (
     <>
-      <FocusPaper open={open} onClose={close} title="Capture a moment" titleId="mc-title-h" className="mc-focus">
+      <FocusPaper
+        open={open}
+        onClose={close}
+        // one title per step, beside the ✕ (no kicker above a second title)
+        title={
+          step === "options"
+            ? "Capture a moment"
+            : step === "capture"
+              ? photo
+                ? "A few words, if you like"
+                : "Write a note"
+              : step === "saved"
+                ? "Kept."
+                : "Connect to a Star"
+        }
+        titleId="mc-title-h"
+        className="mc-focus"
+      >
               <AnimatePresence mode="wait" initial={false}>
                 {step === "options" && (
                   <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <p className="t-card-title mc-title">Capture a moment</p>
                     {firstTime && <p className="t-body mc-sub">Save something from the life you’re walking through.</p>}
-                    <button type="button" className="ds-btn ds-btn--secondary ds-btn--block mc-option" onClick={() => cameraRef.current?.click()}>
-                      Take a photo
+                    {/* one photo button: phones offer their own choice — take a
+                        photo, the photo library, or a file */}
+                    <button type="button" className="ds-btn ds-btn--secondary ds-btn--block mc-option" onClick={() => photoRef.current?.click()}>
+                      Add a photo
                     </button>
                     <button type="button" className="ds-btn ds-btn--secondary ds-btn--block mc-option" onClick={() => setStep("capture")}>
                       Write a note
-                    </button>
-                    <button type="button" className="ds-text-action mc-quiet" onClick={() => libraryRef.current?.click()}>
-                      or choose a photo from your library
                     </button>
                     {error && <p className="ds-error mc-error" role="alert">{error}</p>}
                   </motion.div>
                 )}
                 {step === "capture" && (
                   <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <p className="t-card-title mc-title">{photo ? "A few words, if you like" : "Write a note"}</p>
                     {photo && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img className="mc-photo" src={photo.dataURL} alt="Your moment" />
@@ -155,7 +168,6 @@ export function MomentCapture({
                 )}
                 {step === "saved" && (
                   <motion.div key="s" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <p className="t-card-title mc-title">Kept.</p>
                     <p className="t-body mc-sub">
                       {connectedTo ? `It’s part of “${connectedTo.wish}” now, and in your Moments.` : "It’s in your Moments."}
                     </p>
@@ -171,7 +183,6 @@ export function MomentCapture({
                 )}
                 {step === "connect" && (
                   <motion.div key="k" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <p className="t-card-title mc-title">Connect to a Star</p>
                     <p className="t-body mc-sub">Only if it feels part of that wish.</p>
                     <div className="mc-stars">
                       {stars.map((s) => (
@@ -188,11 +199,8 @@ export function MomentCapture({
                 )}
               </AnimatePresence>
       </FocusPaper>
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFile} />
-      <input ref={libraryRef} type="file" accept="image/*" hidden onChange={onFile} />
+      <input ref={photoRef} type="file" accept="image/*" hidden onChange={onFile} />
       <style jsx global>{`
-        .mc-focus .ds-focus-title { font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
-        .mc-title { margin: 0 0 12px; }
         .mc-sub { margin: 0 0 16px; color: var(--ink-80); }
         .mc-option { margin-bottom: 10px; }
         .mc-quiet { display: flex; margin: 4px auto 0; }

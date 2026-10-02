@@ -31,17 +31,31 @@
 .ds-btn:disabled, .ds-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
 .ds-btn--block { width: 100%; }
 
-/* primary — ink on paper; inverted on dark/blue surfaces */
+/* Buttons
+     primary    one solid fill — the clear next step (ink on paper; paper on
+                dark / blue surfaces)
+     secondary  a hand-drawn crayon outline, like the icons (no fill); the
+                outline is a 9-slice image (sketch-pill-*.svg: 24px rounded
+                ends, the straight middle stretches) so it fits any width
+     disabled   the same button, quietly faded */
 .ds-btn--primary { background: var(--sisi-ink); color: var(--sisi-paper); }
 .ds-btn--primary:hover:not(:disabled) { background: rgba(16, 45, 50, 0.9); }
 .ds-btn--primary.ds-on-dark { background: var(--sisi-paper); color: var(--sisi-ink); }
 .ds-btn--primary.ds-on-dark:hover:not(:disabled) { background: var(--paper-90); }
 
-/* secondary — paper, ink text, a subtle ink edge */
-.ds-btn--secondary { background: var(--sisi-paper); color: var(--sisi-ink); border-color: var(--ink-14); }
-.ds-btn--secondary:hover:not(:disabled) { border-color: var(--ink-35); }
-.ds-btn--secondary.ds-on-dark { background: transparent; color: var(--sisi-paper); border-color: var(--paper-35); }
-.ds-btn--secondary.ds-on-dark:hover:not(:disabled) { border-color: var(--paper-60); }
+.ds-btn--secondary {
+  background: none;
+  color: var(--sisi-ink);
+  border-color: transparent;
+  border-image: url("/assets/ui/sketch-pill-thin-ink.svg") 24 / 24px / 0 stretch;
+}
+.ds-btn--secondary:hover:not(:disabled) { background: var(--ink-08); }
+.ds-btn--secondary.ds-on-dark { color: var(--sisi-paper); border-image-source: url("/assets/ui/sketch-pill-thin-paper.svg"); }
+.ds-btn--secondary.ds-on-dark:hover:not(:disabled) { background: var(--paper-14); }
+
+/* disabled: quietly faded, the shape stays the same */
+.ds-btn--primary:disabled, .ds-btn--primary[aria-disabled="true"],
+.ds-btn--secondary:disabled, .ds-btn--secondary[aria-disabled="true"] { opacity: 0.38; }
 
 /* text action — no fill, full touch target */
 .ds-text-action {
@@ -93,10 +107,15 @@
 .ds-icon-btn--filled.ds-on-dark { background: var(--paper-14); color: var(--sisi-paper); box-shadow: inset 0 0 0 1px var(--paper-35); }
 .ds-icon-btn--filled.ds-on-dark:hover { background: rgba(245, 239, 221, 0.22); }
 .ds-icon-btn:disabled { opacity: 0.45; cursor: default; }
+/* Icon sizes: a standalone icon button draws its mark at --icon-tool; a
+   small dismiss tucked inside a card or bubble, and every icon that sits
+   beside words, at --icon-inline. */
+.ds-icon-btn > svg { width: var(--icon-tool); height: var(--icon-tool); }
+.ds-memory .ds-icon-btn > svg, .sisi-speech .ds-icon-btn > svg { width: var(--icon-inline); height: var(--icon-inline); }
+.ds-btn > svg, .ds-text-action > svg, .ds-menu-item svg, .ds-chip > svg { flex: none; width: var(--icon-inline); height: var(--icon-inline); }
 /* Quiet icon button — top-right tools over the world. No circle or outline
    at rest (a 24px mark in an invisible 44×44 target); a press shows a faint
    warm-ivory wash (14%) that fades out; open/pressed: full and 1.06×. */
-.ds-icon-btn--quiet svg { width: 24px; height: 24px; }
 .ds-icon-btn--quiet { position: relative; background: transparent; opacity: 0.92; transition: opacity var(--motion-instant) ease, transform var(--motion-instant) ease; }
 .ds-icon-btn--quiet:hover, .ds-icon-btn--quiet.ds-on-dark:hover { background: transparent; opacity: 1; }
 .ds-icon-btn--quiet::before {
@@ -323,6 +342,9 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
 
 /* ── FocusPaper — the paper that rises from the bottom ──────────────── */
 .ds-focus {
+  /* one gutter for the whole sheet: title, rows, actions and the close
+     mark all line up on it */
+  --focus-pad: var(--space-6);
   position: fixed;
   left: 0;
   right: 0;
@@ -342,7 +364,9 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
   align-items: center;
   gap: var(--space-2);
   min-height: 52px;
-  padding: var(--space-2) var(--space-2) 0 var(--space-5);
+  /* room above the title (below the grip); the close button's 44px target
+     overhangs by 12px so the ✕ itself sits on the gutter */
+  padding: var(--space-6) calc(var(--focus-pad) - 12px) 0 var(--focus-pad);
 }
 .ds-focus-title { flex: 1; min-width: 0; margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title); line-height: var(--leading-title); }
 .ds-focus-body {
@@ -350,16 +374,18 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--space-3) var(--space-6) var(--space-4);
+  padding: var(--space-4) var(--focus-pad) var(--space-5);
   scrollbar-width: none;
 }
 .ds-focus-body::-webkit-scrollbar { display: none; }
+/* no footer: the last control stays clear of the home indicator (safe area) */
+.ds-focus-body:last-child { padding-bottom: calc(var(--space-6) + var(--safe-bottom)); }
 .ds-focus-foot {
   flex: none;
-  padding: var(--space-3) var(--space-5) calc(var(--space-4) + var(--safe-bottom));
+  padding: var(--space-3) var(--focus-pad) calc(var(--space-4) + var(--safe-bottom));
   border-top: 1px solid var(--ink-08);
 }
-.ds-focus-grip { position: absolute; top: 7px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--ink-14); }
+.ds-focus-grip { position: absolute; top: 10px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--ink-14); }
 
 @media (min-width: 500px) {
   .ds-focus { left: 50%; right: auto; width: 430px; margin-left: -215px; }
@@ -377,6 +403,8 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
   backdrop-filter: blur(3px);
   animation: ds-fade-in var(--motion-paper) var(--ease-sisi) both;
 }
+/* live sheets: the world behind stays exactly as it is (tap it to close) */
+.ds-modal--clear .ds-backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .ds-dialog {
   position: relative;
   z-index: var(--z-modal);

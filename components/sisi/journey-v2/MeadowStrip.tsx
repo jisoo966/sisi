@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 import { ParallaxLayer } from "@/components/sisi/journey-v2/ParallaxLayer";
 import { LAYER_SPEED } from "@/lib/worldMotion";
 import type { SkyPhase } from "@/lib/timeOfDay";
@@ -16,14 +18,14 @@ import type { SkyPhase } from "@/lib/timeOfDay";
  * Tiles overlap by 2px so no sub-pixel seam shows.
  */
 
-const STRIP: Record<SkyPhase, { src: string; ih: number; bottom: number }> = {
+export const STRIP: Record<SkyPhase, { src: string; ih: number; bottom: number }> = {
   // ih: image height; bottom: lowest painted row (measured)
   morning: { src: "/V2/time-of-day/meadow-strip-morning.png", ih: 232, bottom: 226 },
   afternoon: { src: "/V2/time-of-day/meadow-strip-afternoon.png", ih: 242, bottom: 214 },
   evening: { src: "/V2/time-of-day/meadow-strip-evening.png", ih: 241, bottom: 200 },
 };
 /** strip height (for a 242px image) as a fraction of the stage height */
-const BASE_H = 0.12;
+export const BASE_H = 0.12;
 export const MEADOW_FADE_MS = 15000;
 
 type Layer = { id: number; phase: SkyPhase; shown: boolean };
@@ -32,7 +34,8 @@ export function MeadowStrip({ phase, zIndex = 2 }: { phase: SkyPhase | null; zIn
   const [layers, setLayers] = useState<Layer[]>([]);
   const nextId = useRef(1);
 
-  useEffect(() => {
+  // before the first paint, so a freshly mounted page never shows an empty frame
+  useIsoLayoutEffect(() => {
     if (!phase) return;
     setLayers((ls) => {
       const top = ls[ls.length - 1];
