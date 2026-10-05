@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { isRealPhoto, loadTrail, type MomentItem, type RestItem } from "@/lib/moments";
 import { layoutTimeline, TimelineMotion, type TrailEntry } from "@/lib/momentsTimeline";
-import { FilterChip, IconButton, IconClose, IconLandscape, IconList, IconSearch, MemoryPaper, StickerNavigation, TextAction } from "@/components/ds";
+import { FilterChip, IconButton, SegmentedSwitch, StarGlyph, IconClose, IconLandscape, IconList, IconSearch, MemoryPaper, StickerNavigation, TextAction } from "@/components/ds";
 import { MomentDetail, MomentsSharedStyles, originOf, RestDetail, type Origin } from "./shared";
 import { MomentsWorld, type MomentsWorldHandle } from "./MomentsWorld";
 import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
@@ -102,6 +102,14 @@ export function MomentsScreen() {
   useEffect(() => onMomentsChanged(reload), [reload]);
 
   const [filter, setFilter] = useState<Filter>("all");
+  /** one Star's history (from its Star screen: "See its moments") */
+  const [starFilter, setStarFilter] = useState<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("star");
+    if (!id) return;
+    setStarFilter(id);
+    setView("list"); // a Star's history reads best as a list
+  }, []);
   // Search opens only when asked for (browsing by date comes first).
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -117,13 +125,18 @@ export function MomentsScreen() {
     setSearchOpen(false);
   };
   const shown = useMemo(() => {
+    if (entries && starFilter) return entries.filter((e) => e.type === "moment" && e.starId === starFilter);
     if (!entries || filter === "all") return entries;
     return entries.filter((e) =>
       filter === "stars" ? (e.type === "moment" ? !!e.starId : true) : e.type === "moment" && isRealPhoto(e.image),
     );
-  }, [entries, filter]);
+  }, [entries, filter, starFilter]);
   const pickFilter = (f: Filter) => {
-    if (f === filter) return;
+    if (starFilter) {
+      // leaving one Star's history for the wider Moments
+      setStarFilter(null);
+      router.replace("/gallery", { scroll: false });
+    } else if (f === filter) return;
     motion.jumpTo(0); // a different set of Moments: start again at Today
     setFilter(f);
   };
@@ -171,42 +184,57 @@ export function MomentsScreen() {
 
       <header className={`mm-header${headerIn && !turned ? "" : " is-out"}`}>
         <h1 className="ds-screen-title mm-title">Moments</h1>
-        <IconButton
-          quiet
-          surface="dark"
-          className="mm-toggle"
-          label="Search your Moments"
-          aria-expanded={searchOpen}
-          onClick={() => (searchOpen ? searchRef.current?.focus() : openSearch())}
-        >
-          <IconSearch />
-        </IconButton>
-        <IconButton
-          quiet
-          surface="dark"
-          className="mm-toggle"
-          label={view === "trail" ? "Show as a list" : "Show the Memory Trail"}
-          onClick={() => {
+        {/* how to see them: the trail or a list (what to see is the chips below) */}
+        <SegmentedSwitch
+          label="See your Moments as"
+          surface="sky"
+          className="mm-view"
+          value={view}
+          onChange={(v) => {
             if (leaving) return;
-            if (view === "list") closeSearch();
-            setView((v) => (v === "trail" ? "list" : "trail"));
+            if (v === "trail") closeSearch();
+            setView(v);
           }}
-        >
-          {view === "trail" ? (
-            <IconList />
-          ) : (
-            <IconLandscape />
-          )}
-        </IconButton>
+          options={[
+            { value: "trail", label: "Trail", icon: <IconLandscape /> },
+            { value: "list", label: "List", icon: <IconList /> },
+          ]}
+        />
       </header>
 
       {/* filters */}
-      <div className={`mm-filters ds-chip-row${headerIn && !turned ? "" : " is-out"}`} role="group" aria-label="Show">
+      {/* on the trail the row rests on the sky; in the list it sits at the top
+          of the paper, with the list it filters (search takes its place) */}
+      <div
+        className={`mm-filters ds-chip-row${headerIn && !turned ? "" : " is-out"}${view === "list" ? " is-on-paper" : ""}${view === "list" && searchOpen ? " is-searching" : ""}`}
+        role="group"
+        aria-label="Show"
+      >
         {FILTERS.map((f) => (
-          <FilterChip key={f.key} surface="sky" selected={filter === f.key} onClick={() => pickFilter(f.key)}>
+          <FilterChip key={f.key} surface={view === "list" ? "paper" : "sky"} selected={!starFilter && filter === f.key} onClick={() => pickFilter(f.key)}>
             {f.label}
           </FilterChip>
         ))}
+        {/* one Star's history: its own chip, selected; any other chip widens again */}
+        {starFilter && (
+          <FilterChip surface={view === "list" ? "paper" : "sky"} selected className="mm-star-chip" onClick={() => undefined}>
+            <StarGlyph size={12} />
+            <span className="mm-star-chip-label">{starById.get(starFilter)?.wish ?? "This Star"}</span>
+          </FilterChip>
+        )}
+        {/* find sits with the filters; how to see them is in the header */}
+        <span className="mm-tools">
+        <IconButton
+            quiet
+            surface={view === "list" ? "paper" : "dark"}
+            className="mm-toggle"
+            label="Search your Moments"
+            aria-expanded={searchOpen}
+            onClick={() => (searchOpen ? searchRef.current?.focus() : openSearch())}
+          >
+            <IconSearch />
+          </IconButton>
+        </span>
       </div>
 
       {/* search: a compact field beneath the filters, only when asked for */}
@@ -239,7 +267,7 @@ export function MomentsScreen() {
                 </button>
               )}
             </label>
-            <TextAction surface="dark" className="mm-search-cancel" onClick={closeSearch}>
+            <TextAction className="mm-search-cancel" onClick={closeSearch}>
               Cancel
             </TextAction>
           </fm.div>
@@ -278,19 +306,19 @@ export function MomentsScreen() {
           <fm.div
             key="list"
             className="mm-list-wrap"
-            style={searchOpen ? ({ ["--ml-top" as string]: "calc(var(--header-top) + 152px)" } as React.CSSProperties) : undefined}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%", transition: { duration: 0.35, ease: [0.4, 0, 1, 1] } }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             <MomentsList
+              hideStar={!!starFilter}
               query={searchOpen ? query : ""}
               placed={listPlaced}
-              onPick={(i) => {
-                closeSearch();
-                setView("trail");
-                motion.goToIndex(i);
+              // a row opens its Moment right here (the list stays underneath)
+              onPick={(i, el) => {
+                const hit = listPlaced.find((p) => p.index === i);
+                if (hit) openEntry(hit.item, el);
               }}
             />
           </fm.div>
@@ -376,21 +404,36 @@ export function MomentsScreen() {
         .mm-nav.is-waiting { opacity: 0.25; pointer-events: none; }
         .mm-nav.is-waiting * { pointer-events: none !important; }
         .mm-header.is-out * { pointer-events: none !important; }
-        .mm-title { margin: 0; color: var(--sisi-ink); }
-        .mm-header .mm-toggle { pointer-events: auto; }
-        .mm-header { gap: 1px; }
+        .mm-title { margin: 0; color: var(--on-sky); transition: color 4s ease; } /* the sky's colour rule */
+        .mm-tools .ds-icon-btn { color: var(--on-sky); }
+        /* list view: the paper rises to just under the title; the filters,
+           tools and search sit at its top, with the list */
+        .mm-filters { transition: top var(--motion-paper) var(--ease-sisi), opacity 300ms ease; }
+        .mm-filters.is-on-paper { z-index: 21; top: calc(var(--header-top) + 70px); }
+        .mm-filters.is-on-paper .mm-tools .ds-icon-btn { color: var(--sisi-ink); }
+        .mm-filters.is-searching { opacity: 0; pointer-events: none; }
+        .mm-list-wrap { --ml-top: calc(var(--header-top) + 52px); }
+        .mm-list-wrap .ml-scroll { padding-top: 78px; }
+        .mm-filters { display: flex; align-items: center; flex-wrap: nowrap; }
+        /* tools at the row's end; their 44px targets overhang so the marks sit on the gutter */
+        .mm-tools { margin-left: auto; margin-right: -10px; display: inline-flex; align-items: center; gap: 1px; flex: none; }
         .mm-header .mm-title { flex: 1; min-width: 0; }
+        .mm-star-chip { min-width: 0; flex: 0 1 auto; display: inline-flex; align-items: center; gap: 5px; }
+        .mm-star-chip-label { min-width: 0; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-view { pointer-events: auto; flex: none; margin-top: 3px; } /* centred on the title's lowercase letters, not its line box */
         .mm-search {
-          position: absolute; z-index: 21; left: var(--stage-padding); right: calc(var(--stage-padding) - 8px);
-          top: calc(var(--header-top) + 100px);
+          position: absolute; z-index: 22; left: var(--stage-padding); right: calc(var(--stage-padding) - 8px);
+          top: calc(var(--header-top) + 64px); /* in the filters' place, on the paper */
           display: flex; align-items: center; gap: 2px;
         }
         .mm-search-field {
-          flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 14px;
-          border-radius: 999px; background: var(--paper-90); color: var(--ink-60);
-          box-shadow: var(--paper-shadow-soft);
+          flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 14px;
+          border-radius: 14px; background: none; color: var(--ink-60);
+          /* the design system's hand-drawn field */
+          border: 1px solid transparent;
+          border-image: url("/assets/ui/sketch-box-thin-ink.svg") 24 / 24px / 0 stretch;
         }
-        .mm-search-field:focus-within { outline: 2px solid var(--paper-90); outline-offset: 2px; }
+        .mm-search-field:focus-within { border-image-source: url("/assets/ui/sketch-box-bold-ink.svg"); }
         .mm-search-field input {
           flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; color: var(--sisi-ink);
           font-family: var(--font-editorial); font-size: 16px; -webkit-appearance: none; appearance: none;

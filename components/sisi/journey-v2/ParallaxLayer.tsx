@@ -115,10 +115,16 @@ export function ParallaxLayer({
     <div
       ref={containerRef}
       className={`parallax-layer align-${align} ${className}`}
+      // the essentials are inline too, so the very first paint (before the
+      // scoped styles arrive, e.g. on a refresh) never shows the copies stacked
       style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        overflow: "hidden",
         zIndex,
         height: heightPct >= 1 ? "100%" : `${Math.max(0, heightPct * 100)}%`,
-        ...(bottom !== undefined && align === "bottom" ? { bottom } : {}),
+        ...(align === "bottom" ? { bottom: bottom ?? 0 } : align === "top" ? { top: 0 } : { top: 0, bottom: 0 }),
         ...(opacity !== undefined ? { opacity } : {}),
         ...(filter ? { filter } : {}),
         ...(maskImage ? { maskImage, WebkitMaskImage: maskImage } : {}),
@@ -126,7 +132,7 @@ export function ParallaxLayer({
       aria-label={ariaLabel}
       aria-hidden={!ariaLabel}
     >
-      <div className="parallax-lane" ref={laneRef}>
+      <div className="parallax-lane" ref={laneRef} style={{ position: "absolute", left: 0, height: "100%", width: "max-content", display: "flex" }}>
         {Array.from({ length: copies }).map((_, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -136,7 +142,7 @@ export function ParallaxLayer({
             className="parallax-img"
             draggable={false}
             onError={onImgError}
-            style={{ marginRight: `-${seamOverlap}px` }}
+            style={{ marginRight: `-${seamOverlap}px`, height: "100%", width: "auto", maxWidth: "none", display: "block" }}
           />
         ))}
       </div>

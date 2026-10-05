@@ -3,18 +3,16 @@
 import { useId, useState } from "react";
 import {
   ConfirmationDialog,
+  IconCheck,
   IconPencil,
   IconTrash,
-  IconUnlink,
   ModalDialog,
   ModalPortal,
-  OverflowMenu,
+  IconButton,
   PrimaryButton,
-  SecondaryButton,
   StarConnectionRow,
   StarGlyph,
   TextAction,
-  type MenuItem,
 } from "@/components/ds";
 import type { Sign, Star } from "@/lib/myStars";
 import { unrestStar } from "@/lib/myStars";
@@ -147,17 +145,33 @@ export function MomentDetail({
   const [style] = useState(() => expandFrom(from));
   const id = item.momentId;
   const titleId = useId();
-  // A Star reflection belongs to its Star; other Moments may be (dis)connected.
-  const canDisconnect = !!starNow && item.source !== "star_check_in";
+  // A Star reflection belongs to its Star; other Moments may be (re)connected.
+  const canReconnect = item.source !== "star_check_in";
+  // in edit: which Star it will belong to (null = none)
+  const [draftStar, setDraftStar] = useState<Star | null>(star ?? null);
+  // the Stars to choose from, with its current one (even fulfilled) first
+  const choices = starNow && !stars.some((s) => s.id === starNow.id) ? [starNow, ...stars] : stars;
+  const startEdit = () => {
+    setDraft(text);
+    setDraftStar(starNow ?? null);
+    setMode("edit");
+  };
+  const cancelEdit = () => {
+    setDraft(text);
+    setMode("view");
+  };
+  const starChanged = (draftStar?.id ?? null) !== (starNow?.id ?? null);
 
   const save = async () => {
     const t = draft.trim();
     if ((!t && !item.image) || busy) return;
     setBusy(true);
     const btn = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
-    await updateMoment(id, { text: t || null }); // the same record, everywhere
+    // the same record, everywhere (text, and which Star it belongs to)
+    await updateMoment(id, { text: t || null, ...(canReconnect && starChanged ? { starId: draftStar?.id ?? null } : {}) });
     softGlint(btn);
     setText(t);
+    if (canReconnect) setStarNow(draftStar ?? undefined);
     setBusy(false);
     setMode("view");
     onSaved();
@@ -178,14 +192,10 @@ export function MomentDetail({
   };
 
   const typeLabel = TYPE_LABEL[item.mtype];
-  const menuItems: MenuItem[] = [
-    ...(canDisconnect ? [{ label: "Disconnect from Star", icon: <IconUnlink size={20} />, destructive: false, onSelect: () => connect(null) }] : []),
-    { label: "Delete moment", icon: <IconTrash size={20} />, destructive: true, onSelect: () => setConfirmDelete(true) },
-  ];
 
   return (
     <>
-      <ModalPortal open onClose={mode === "edit" ? () => { setDraft(text); setMode("view"); } : onClose} labelledBy={titleId}>
+      <ModalPortal open onClose={mode === "edit" ? cancelEdit : onClose} labelledBy={titleId}>
         <ModalDialog
           className={`ds-paper--memory${style ? " ds-dialog--from" : ""}`}
           style={style}
@@ -197,24 +207,30 @@ export function MomentDetail({
               {item.mtype === "companion_note" ? " · A note from Sísí" : ""}
             </p>
           }
-          menu={mode === "view" ? <OverflowMenu items={menuItems} label="Moment options" /> : undefined}
+          // looking: a quiet pencil; editing: the bin takes its place (deleting is rare, and asks first)
+          menu={
+            mode === "view" ? (
+              <IconButton label="Edit moment" onClick={startEdit}>
+                <IconPencil />
+              </IconButton>
+            ) : mode === "edit" ? (
+              <IconButton label="Delete moment" onClick={() => setConfirmDelete(true)}>
+                <IconTrash />
+              </IconButton>
+            ) : undefined
+          }
           actions={
             mode === "edit" ? (
               <div className="ds-actions ds-actions--row">
-                <SecondaryButton onClick={() => { setDraft(text); setMode("view"); }}>Cancel</SecondaryButton>
+                <TextAction onClick={cancelEdit}>Cancel</TextAction>
                 <PrimaryButton loading={busy} disabled={!draft.trim() && !item.image} onClick={save}>Save</PrimaryButton>
               </div>
-            ) : mode === "view" ? (
-              <div className="ds-actions ds-actions--row">
-                <SecondaryButton onClick={() => setMode("edit")}>
-                  <IconPencil size={20} /> Edit moment
-                </SecondaryButton>
-                {starNow && <PrimaryButton onClick={() => onViewStar(starNow.id)}>Visit Star</PrimaryButton>}
-              </div>
-            ) : undefined
+            ) : undefined /* looking needs no buttons: the memory, then its Star */
           }
         >
           {mode === "edit" ? (
+            <>
+            <p className="ds-kicker">Your words</p>
             <textarea
               className="ds-field mm-dinput"
               rows={3}
@@ -232,6 +248,7 @@ export function MomentDetail({
                 fitField(e.target);
               }}
             />
+            </>
           ) : (
             text && <p className="t-dialogue mm-dtext">{text}</p>
           )}
@@ -242,9 +259,42 @@ export function MomentDetail({
             </div>
           )}
 
-          {starNow && mode !== "connect" && (
+          {/* edit: choose which Star it belongs to, or none */}
+          {mode === "edit" && canReconnect && choices.length > 0 && (
+            <div className="mm-dsection" role="radiogroup" aria-label="Connected to">
+              <p className="ds-kicker">Connected to</p>
+              <div className="mm-dchoices">
+                {choices.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={draftStar?.id === s.id}
+                    className="ds-star-row ds-star-row--choice"
+                    onClick={() => setDraftStar(s)}
+                  >
+                    <StarGlyph size={18} className="ds-star-row-glyph" />
+                    <span className="ds-star-row-main"><span className="ds-star-row-title">{s.wish}</span></span>
+                    {draftStar?.id === s.id && <IconCheck size={20} />}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!draftStar}
+                  className="ds-star-row ds-star-row--choice ds-star-row--none"
+                  onClick={() => setDraftStar(null)}
+                >
+                  <span className="ds-star-row-main"><span className="ds-star-row-title">No Star</span></span>
+                  {!draftStar && <IconCheck size={20} />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {starNow && mode !== "connect" && !(mode === "edit" && canReconnect) && (
             <div className="mm-dsection">
-              <StarConnectionRow title={starNow.wish} status={starStatus(starNow)} onClick={() => onViewStar(starNow.id)} />
+              <StarConnectionRow plain title={starNow.wish} status={starStatus(starNow)} onClick={() => onViewStar(starNow.id)} />
             </div>
           )}
 
@@ -382,6 +432,7 @@ export function MomentsSharedStyles() {
       /* the photo keeps its aspect; its height never pushes the text or the actions away */
       .mm-d-pc { height: clamp(190px, 35dvh, 300px); width: auto; max-width: 100%; margin: 0; transform: rotate(-1.5deg); }
       .mm-dsection { margin-top: 20px; }
+      .mm-dchoices { display: flex; flex-direction: column; gap: 8px; }
     `}</style>
   );
 }

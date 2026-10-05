@@ -96,7 +96,8 @@ export function JourneyHeader({
           justify-content: space-between;
           gap: 12px;
           z-index: 12;
-          color: var(--sisi-ink);
+          color: var(--on-sky); /* the sky's colour rule (ds.css) */
+          transition: color 4s ease;
         }
         :global(.journey-header.is-dark) { color: var(--paper-90); }
 
@@ -108,7 +109,7 @@ export function JourneyHeader({
           font-size: var(--text-meta);
           line-height: var(--leading-meta);
           margin: 0 0 8px 0;
-          color: var(--ink-80);
+          color: var(--on-sky-soft);
           letter-spacing: 0.01em;
         }
         :global(.journey-header.is-dark) .date-line { color: var(--paper-80); }
@@ -124,6 +125,7 @@ export function JourneyHeader({
         .name-italic { font-style: italic; }
         /* the trailing period stays upright — an italic period visually drifts */
         .soft-dot { font-style: normal; }
+        .right-col :global(.ds-icon-btn) { color: var(--on-sky); transition: color 4s ease, opacity var(--motion-instant) ease, transform var(--motion-instant) ease; }
         /* quiet tools: one row, 44px targets, ~45px between centres */
         .right-col { display: flex; flex-direction: row; align-items: center; gap: 1px; flex-shrink: 0; margin-right: -10px; }
         .menu-wrap { position: relative; display: inline-flex; }

@@ -21,16 +21,16 @@ import { FX } from "@/lib/fxAssets";
 
 export type AtmospherePhase = "open" | "in" | "out" | "after";
 
-/** where the Star's centre is (matches .sms-screen.is-ritual .sms-scroll) */
-const STAR_CY = "calc(max(calc(var(--safe-top) + 32px), calc(21dvh - 44px)) + 44px)";
+/** where the Star's centre is (matches .sms-screen.is-picturing .sms-scroll) */
+const STAR_CY = "40dvh"; // picturing: the Star rests at the centre of the night
 
 // a few grains, placed once (percent of the screen), each drifting away from the Star
 const GRAINS = Array.from({ length: 16 }, (_, i) => {
   const x = ((i * 37 + 11) % 86) + 7;
   const y = ((i * 53 + 17) % 70) + 6;
-  // direction away from the Star (50%, ~21%), screen is ~2.2× taller than wide
+  // direction away from the Star (50%, ~40%), screen is ~2.2× taller than wide
   const vx = x - 50;
-  const vy = (y - 21) * 2.2;
+  const vy = (y - 40) * 2.2;
   const len = Math.hypot(vx, vy) || 1;
   return {
     x,

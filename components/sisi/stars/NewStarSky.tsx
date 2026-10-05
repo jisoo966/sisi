@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { createStar, saveStar } from "@/lib/myStars";
-import { IconButton, IconClose, PrimaryButton } from "@/components/ds";
+import { IconButton, IconClose, PrimaryButton, useKeyboardInset } from "@/components/ds";
 import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
 import { CURRENT_STAR_POS } from "@/components/sisi/journey-v2/StarWorld";
 
@@ -48,8 +48,9 @@ export function NewStarSky({
   const [busy, setBusy] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 390, h: 844 });
+  /** where the paper's top edge is (it moves with the keyboard), in the root's space */
   const [paperTop, setPaperTop] = useState<number | null>(null);
+  const [size, setSize] = useState({ w: 390, h: 844 });
   const reduced = useRef(false);
 
   useEffect(() => {
@@ -68,13 +69,42 @@ export function NewStarSky({
     onDirtyRef.current?.(open && phase === "write" && wish.trim().length > 0);
   }, [open, phase, wish]);
 
+  // the paper always sits above the keyboard (or the tabs), on every phone
+  useKeyboardInset(open && phase === "write");
+  useEffect(() => {
+    const el = paperRef.current;
+    const root = rootRef.current;
+    if (!open || phase !== "write" || !el || !root) return;
+    const measure = () => setPaperTop(el.getBoundingClientRect().top - root.getBoundingClientRect().top);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    ro.observe(root);
+    // the paper rises (0.6s) and slides with the keyboard (0.22s): read again once it settles
+    el.addEventListener("transitionend", measure);
+    const vv = window.visualViewport;
+    let t2 = 0;
+    const onViewport = () => {
+      measure();
+      clearTimeout(t2);
+      t2 = window.setTimeout(measure, 260);
+    };
+    vv?.addEventListener("resize", onViewport);
+    const t = window.setTimeout(measure, 750);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("transitionend", measure);
+      vv?.removeEventListener("resize", onViewport);
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
+  }, [open, phase]);
+
   useLayoutEffect(() => {
     if (!open) return;
     const measure = () => {
       const r = rootRef.current;
       if (r) setSize({ w: r.offsetWidth, h: r.offsetHeight });
-      const p = paperRef.current;
-      if (p) setPaperTop(p.offsetTop);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -84,15 +114,8 @@ export function NewStarSky({
   const sx = size.w * CURRENT_STAR_POS.x;
   const sy = size.h * CURRENT_STAR_POS.y;
 
-  // Thin, slightly imperfect thread: seed → paper (write), star → note (birth).
-  const thread = (y0: number, y1: number) => {
-    const len = y1 - y0;
-    const j = (k: number) => Math.sin(k * 2.3 + 0.7) * 2.6;
-    return `M ${sx} ${y0} C ${sx + j(1)} ${y0 + len * 0.3}, ${sx + j(2)} ${y0 + len * 0.66}, ${sx} ${y1}`;
-  };
-  const writeThread = paperTop !== null ? thread(sy + 14, paperTop + 1) : "";
+  // the Star's light falls from the seed to the paper (write), and from the Star to its note (birth)
   const noteY = sy + Math.min(size.h * 0.2, 170);
-  const birthThread = thread(sy + 44, noteY);
 
   const create = async () => {
     const w = wish.trim();
@@ -112,7 +135,11 @@ export function NewStarSky({
     }
   };
 
-  const seedScale = phase === "birth" ? CURRENT_STAR_POS.scale : 0.5;
+  const seedScale = phase === "birth" ? CURRENT_STAR_POS.scale : 1.15; // the seed: waiting for the words, clearly there
+  // while writing, the seed rests in the middle of the sky that is left above
+  // the paper (whatever the phone or keyboard); once born it rises to its place
+  const seedY = paperTop === null ? sy : Math.min(sy, Math.max(56, paperTop / 2 + 8));
+  const starY = phase === "birth" ? sy : seedY;
 
   return (
     <AnimatePresence>
@@ -129,12 +156,15 @@ export function NewStarSky({
           {/* the seed-star, in the Current Star's place on the path */}
           <motion.div
             className="ns-star"
-            style={{ left: sx, top: sy }}
+            style={{ left: sx, top: starY }}
             initial={{ scale: 0.3, opacity: 0 }}
             animate={{
               scale: seedScale,
-              opacity: phase === "birth" ? 1 : 0.45,
-              filter: phase === "birth" ? ["brightness(1)", "brightness(1.4)", "brightness(1)"] : "brightness(0.9)",
+              opacity: phase === "birth" ? 1 : 0.85,
+              filter:
+                phase === "birth"
+                  ? ["brightness(1) drop-shadow(0 0 14px rgba(241, 196, 94, 0.55))", "brightness(1.4) drop-shadow(0 0 22px rgba(241, 196, 94, 0.7))", "brightness(1) drop-shadow(0 0 14px rgba(241, 196, 94, 0.55))"]
+                  : "brightness(1) drop-shadow(0 0 14px rgba(241, 196, 94, 0.55))",
             }}
             transition={
               phase === "birth"
@@ -150,18 +180,8 @@ export function NewStarSky({
             <StarLayers staged revealed focused={phase === "birth"} />
           </motion.div>
 
-          <AnimatePresence>
-            {phase === "write" && writeThread && (
-              <motion.svg key="wt" className="ns-thread" aria-hidden exit={{ opacity: 0, transition: { duration: 0.3 } }}>
-                <motion.path
-                  d={writeThread}
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.7, delay: 0.3, ease: EASE }}
-                />
-              </motion.svg>
-            )}
-          </AnimatePresence>
+          {/* while writing there is no light yet: only the quiet seed of a Star
+              waits above (the light falls once it is born) */}
 
           {/* ── write ── */}
           <AnimatePresence>
@@ -181,8 +201,8 @@ export function NewStarSky({
                   <IconButton className="ns-close" label="Not now" onClick={onClose}>
                     <IconClose />
                   </IconButton>
-                  <h2 className="t-card-title ns-title">What do you want to bring into your life?</h2>
-                  <p className="t-body ns-sub">Write it in your own words.</p>
+                  <h2 className="ns-title">What do you want to bring into your life?</h2>
+                  <p className="ns-sub">Write it in your own words.</p>
                   <textarea
                     className="ds-field ns-input"
                     aria-label="Your wish"
@@ -217,14 +237,14 @@ export function NewStarSky({
               >
                 {born.wish}
               </motion.p>
-              <svg className="ns-thread" aria-hidden>
-                <motion.path
-                  d={birthThread}
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 0.6, delay: reduced.current ? 0.2 : 1.45, ease: EASE }}
-                />
-              </svg>
+              <motion.span
+                className="ns-trail"
+                aria-hidden
+                style={{ left: sx, top: sy + 18, height: Math.max(0, noteY - sy - 18) }}
+                initial={{ clipPath: "inset(0 0 100% 0)" }}
+                animate={{ clipPath: "inset(0 0 0% 0)" }}
+                transition={{ duration: 0.6, delay: reduced.current ? 0.2 : 1.45, ease: EASE }}
+              />
               <motion.div
                 className="ns-note ds-paper ds-paper--memory"
                 style={{ left: sx, top: noteY }}
@@ -242,29 +262,57 @@ export function NewStarSky({
             .ns-root > * { pointer-events: none; }
             .ns-root .ns-paper-wrap { pointer-events: auto; }
             .ns-star {
-              position: absolute; width: ${STAR_PX}px; height: ${STAR_PX}px;
+              position: absolute; transition: top 0.9s var(--ease-sisi); width: ${STAR_PX}px; height: ${STAR_PX}px;
               margin: -${STAR_PX / 2}px 0 0 -${STAR_PX / 2}px; transform-origin: center;
             }
-            .ns-thread { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-            .ns-thread path { fill: none; stroke: var(--sisi-paper); stroke-width: 1.2; stroke-linecap: round; opacity: 0.85; }
+            .ns-trail {
+              position: absolute; width: 48px; margin-left: -24px;
+              background: url("/assets/ui/star-trail.webp") 50% 0 / 48px 384px repeat-y;
+              /* it begins inside the Star's own glow (no cut edge) and thins as it falls */
+              -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 60%, rgba(0, 0, 0, 0.35) 100%);
+              mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 60%, rgba(0, 0, 0, 0.35) 100%);
+              filter: drop-shadow(0 0 3px rgba(241, 196, 94, 0.45));
+              animation: ns-drift 16s linear infinite;
+            }
+            @keyframes ns-drift { to { background-position: 50% 384px; } }
+            @media (prefers-reduced-motion: reduce) { .ns-trail { animation: none; } }
+            /* every phone: the paper sits 12px above whichever is higher, the tabs
+               or the keyboard; 16px (or the safe area) at the sides, at most 420px
+               wide; and at least 112px of night always stays above it for the
+               seed. If that leaves too little room, the paper scrolls inside. */
+            .ns-root {
+              --ns-bottom: max(calc(var(--nav-total) + 12px), calc(var(--ds-kb, 0px) + 12px));
+            }
             .ns-paper-wrap {
-              position: absolute;
-              left: max(14px, var(--safe-left));
-              right: max(14px, var(--safe-right));
-              /* sits above the dock; never taller than the lower ~55% */
-              bottom: calc(var(--nav-total) + 12px);
-              max-height: calc(55% - var(--nav-total) - 12px);
+              position: absolute; left: 0; right: 0; margin: 0 auto;
+              width: min(calc(100% - 2 * max(16px, var(--safe-left), var(--safe-right))), 420px);
+              bottom: var(--ns-bottom);
+              max-height: calc(100% - var(--ns-bottom) - var(--safe-top) - 112px);
+              display: flex; flex-direction: column;
+              transition: bottom 220ms var(--ease-sisi);
             }
             .ns-paper {
-              position: relative; max-height: inherit; overflow-y: auto; overscroll-behavior-y: contain;
+              position: relative; flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain;
               padding: var(--space-6) var(--space-5) var(--space-5); border-radius: var(--paper-radius);
               box-shadow: 0 10px 30px rgba(16, 45, 50, 0.45); scrollbar-width: none;
             }
             .ns-paper::-webkit-scrollbar { display: none; }
             .ns-close { position: absolute; right: 6px; top: 6px; }
-            .ns-title { margin: 0 40px 8px 0; }
-            .ns-sub { margin: 0 0 14px; font-style: italic; color: var(--ink-60); }
-            .ns-input { margin-bottom: 16px; }
+            .ns-title {
+              margin: 0 40px 6px 0; font-family: var(--font-editorial); font-weight: 300;
+              font-size: clamp(22px, 6.6vw, 27px); line-height: 1.18; letter-spacing: -0.015em; color: var(--sisi-ink);
+            }
+            .ns-sub { margin: 0 0 20px; font-family: var(--font-editorial); font-style: italic; font-size: 15px; line-height: 1.4; color: var(--ink-60); }
+            /* their wish, in their own words: written larger than the guide */
+            .ns-input { margin-bottom: 16px; font-family: var(--font-editorial); font-size: 18px; line-height: 1.4; }
+            .ns-input::placeholder { font-size: 16px; color: var(--ink-35); }
+            .ns-input { min-height: 88px; resize: none; }
+            /* short phones (SE, mini): tighter, so the button stays in view above the keyboard */
+            @media (max-height: 700px) {
+              .ns-paper { padding: var(--space-5) var(--space-4) var(--space-4); }
+              .ns-sub { margin-bottom: 14px; }
+              .ns-input { min-height: 72px; margin-bottom: 12px; }
+            }
             .ns-error { margin: -8px 0 12px; }
             .ns-wish {
               position: absolute; margin: 0; width: min(76vw, 320px); translate: -50% 0;

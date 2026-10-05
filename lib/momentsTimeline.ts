@@ -64,7 +64,7 @@ export type TimelineLayout = {
   foxX: number;
 };
 
-export const CARD_W = { note: 104, photo: 88, rest: 112 } as const;
+export const CARD_W = { note: 116, photo: 88, rest: 112 } as const;
 
 function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();

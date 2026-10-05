@@ -711,8 +711,11 @@ export default function JourneyPage() {
     worldCoord.holdForeground = false;
   }, []);
 
-  const goToMoments = () => {
+  /** "See its moments": Moments opens on this Star's history */
+  const momentsFor = useRef<string | null>(null);
+  const goToMoments = (starId?: string) => {
     if (leavingTo) return;
+    momentsFor.current = starId ?? null;
     if (isStarView) {
       // From the Star World: straight down through the clouds onto the
       // Memory Trail. Close any open Star first (glow softens, thread
@@ -725,7 +728,7 @@ export default function JourneyPage() {
         () =>
           descendToGate((t0, reduced) => {
             handOff("moments", worldClock().getDistance(), { via: "stars", t0, reduced });
-            router.push("/gallery");
+            router.push(momentsFor.current ? `/gallery?star=${encodeURIComponent(momentsFor.current)}` : "/gallery");
           }),
         hadCard ? 220 : 0,
       );
@@ -1127,6 +1130,7 @@ export default function JourneyPage() {
                 setStarMode("journey");
                 backToMeadow();
               }}
+              onSeeMoments={(s) => goToMoments(s.id)}
               onRest={letStarRest}
               onEdited={starEdited}
               onCreateStar={startNewStar}

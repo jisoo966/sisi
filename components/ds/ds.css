@@ -3,6 +3,18 @@
  * Page files compose these classes/components; they don't restyle them.
  * ───────────────────────────────────────────────────────────────────── */
 
+/* ── Colour on the world ─────────────────────────────────────────────
+   A colour follows what is directly behind it.
+     · on the open sky (headers: titles, greeting, top tools, sky chips):
+       ink on the light morning sky, ivory on the deeper afternoon / evening
+       blue — one colour for the whole header (html[data-sky], set by the
+       time of day), easing over with the sky
+     · on the ground (tabs): ivory over the dark grass, ink over the cloud
+       bank (Stars) and over paper — the ground never changes, so neither
+       do the tabs */
+:root { --on-sky: var(--sisi-paper); --on-sky-soft: var(--paper-80); }
+html[data-sky="light"] { --on-sky: var(--sisi-ink); --on-sky-soft: var(--ink-80); }
+
 /* ── Buttons ─────────────────────────────────────────────────────────── */
 .ds-btn {
   position: relative;
@@ -22,6 +34,7 @@
   letter-spacing: var(--tracking-editorial);
   text-align: center;
   text-decoration: none;
+  white-space: nowrap; /* a button's words never break onto two lines */
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--motion-instant) ease, opacity var(--motion-instant) ease,
@@ -144,6 +157,8 @@
 .ds-actions { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-6); }
 .ds-actions--row { flex-direction: row; justify-content: center; flex-wrap: wrap; }
 .ds-actions--row > .ds-btn { flex: 1 1 0; min-width: 0; }
+/* the way out (Cancel) is words, not a second button: only the action is a shape */
+.ds-actions--row > .ds-text-action { flex: 1 1 0; min-width: 0; }
 
 /* ── Menu (three dots) ───────────────────────────────────────────────── */
 .ds-menu { position: relative; display: inline-flex; }
@@ -194,33 +209,61 @@
   white-space: nowrap;
 }
 /* status — informative, not tappable */
-.ds-status { background: var(--ink-08); color: var(--ink-80); }
-.ds-status.ds-on-dark { background: var(--paper-14); color: var(--paper-80); }
+/* status — a small mark, not a pill: (a gold star for Star states) + italic words */
+.ds-status { height: auto; padding: 0; gap: 6px; background: none; color: var(--ink-60); font-family: var(--font-editorial); font-style: italic; font-weight: 400; font-size: var(--text-body); letter-spacing: var(--tracking-editorial); }
+.ds-status.ds-on-dark { background: none; color: var(--paper-80); }
+.ds-status--star .ds-status-dot { display: none; }
 .ds-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; }
 .ds-status--star .ds-status-dot { background: var(--sisi-gold); opacity: 1; }
-/* filter — interactive; wrapper keeps a 44px target */
+/* filter — interactive; wrapper keeps a 44px target.
+   Like the buttons: unselected = a hand-drawn outline, selected = filled. */
 .ds-filter {
   position: relative;
-  border: 1px solid var(--ink-14);
-  background: var(--paper-80);
+  border: 1px solid transparent;
+  border-image: url("/assets/ui/sketch-pill-thin-ink.svg") 24 / 24px / 0 stretch;
+  background: none;
   color: var(--sisi-ink);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .ds-filter::before { content: ""; position: absolute; inset: -7px -2px; }
-.ds-filter[aria-pressed="true"] { background: var(--sisi-blue); border-color: var(--sisi-blue); color: var(--sisi-paper); }
-.ds-filter.ds-on-dark { background: var(--paper-14); border-color: var(--paper-35); color: var(--sisi-paper); }
-.ds-filter.ds-on-dark[aria-pressed="true"] { background: var(--sisi-blue); border-color: var(--sisi-blue); }
-/* over the blue sky, Sísí Blue can't mark selection: paper → ink */
-.ds-filter.ds-on-sky { background: var(--paper-60); border-color: var(--paper-80); color: var(--sisi-ink); height: 32px; }
-.ds-filter.ds-on-sky[aria-pressed="true"] { background: var(--sisi-ink); border-color: var(--sisi-ink); color: var(--sisi-paper); }
+.ds-filter[aria-pressed="true"] { border-image: none; border-color: var(--sisi-ink); background: var(--sisi-ink); color: var(--sisi-paper); }
+/* on the night or the blue sky: ivory outline; selected = ivory fill */
+.ds-filter.ds-on-dark, .ds-filter.ds-on-sky { border-image-source: url("/assets/ui/sketch-pill-thin-paper.svg"); background: none; color: var(--sisi-paper); }
+.ds-filter.ds-on-sky { height: 32px; font-size: 13px; font-weight: 600; transition: color 4s ease, background-color 4s ease; }
+html[data-sky="light"] .ds-filter.ds-on-sky { border-image-source: url("/assets/ui/sketch-pill-thin-ink.svg"); color: var(--sisi-ink); }
+html[data-sky="light"] .ds-filter.ds-on-sky[aria-pressed="true"] { border-color: var(--sisi-ink); background: var(--sisi-ink); color: var(--sisi-paper); }
+.ds-filter.ds-on-dark[aria-pressed="true"], .ds-filter.ds-on-sky[aria-pressed="true"] { border-image: none; border-color: var(--sisi-paper); background: var(--sisi-paper); color: var(--sisi-ink); }
+/* segmented switch — two ways to see the same things (Trail · List).
+   Same 32px height, 13px/600 type and fill rule as the filters; joined. */
+.ds-seg {
+  display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 2px;
+  border: 1px solid transparent;
+  border-image: url("/assets/ui/sketch-pill-thin-ink.svg") 24 / 24px / 0 stretch;
+  color: var(--sisi-ink);
+}
+.ds-seg-item {
+  position: relative; display: inline-flex; align-items: center; gap: 5px;
+  height: 26px; padding: 0 11px; border: 0; border-radius: 999px; background: none;
+  color: inherit; font-family: var(--font-ui); font-size: 13px; font-weight: 600; line-height: 1;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+.ds-seg-item::before { content: ""; position: absolute; inset: -9px -1px; } /* 44px target */
+.ds-seg-item > svg { width: 16px; height: 16px; flex: none; }
+.ds-seg-item[aria-checked="true"] { background: var(--sisi-ink); color: var(--sisi-paper); cursor: default; }
+.ds-seg.ds-on-dark, .ds-seg.ds-on-sky { border-image-source: url("/assets/ui/sketch-pill-thin-paper.svg"); color: var(--sisi-paper); }
+.ds-seg.ds-on-dark .ds-seg-item[aria-checked="true"], .ds-seg.ds-on-sky .ds-seg-item[aria-checked="true"] { background: var(--sisi-paper); color: var(--sisi-ink); }
+html[data-sky="light"] .ds-seg.ds-on-sky { border-image-source: url("/assets/ui/sketch-pill-thin-ink.svg"); color: var(--sisi-ink); }
+html[data-sky="light"] .ds-seg.ds-on-sky .ds-seg-item[aria-checked="true"] { background: var(--sisi-ink); color: var(--sisi-paper); }
 .ds-reply-chip {
   position: relative;
   min-height: 36px;
   padding: 0 14px;
   border-radius: 999px;
-  border: 1px solid var(--ink-14);
-  background: var(--paper-80);
+  border: 1px solid transparent;
+  border-image: url("/assets/ui/sketch-pill-thin-ink.svg") 24 / 24px / 0 stretch;
+  background: none;
   color: var(--sisi-ink);
   font-family: var(--font-editorial);
   font-size: var(--text-body);
@@ -229,7 +272,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .ds-reply-chip::before { content: ""; position: absolute; inset: -4px 0; }
-.ds-reply-chip:hover { border-color: var(--ink-35); }
+.ds-reply-chip:hover { background: var(--ink-08); }
 .ds-chip-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
 /* ── Paper ───────────────────────────────────────────────────────────── */
@@ -267,20 +310,20 @@
 :root {
   --deckle-mask:
     linear-gradient(#000 0 0) 50% 50% / calc(100% - 8px) calc(100% - 8px) no-repeat,
-    url("/assets/ui/paper-edge-top.svg?v=3") 0 0 / 64px 8px repeat-x,
-    url("/assets/ui/paper-edge-bottom.svg?v=3") 0 100% / 64px 8px repeat-x,
-    url("/assets/ui/paper-edge-left.svg?v=3") 0 0 / 8px 64px repeat-y,
-    url("/assets/ui/paper-edge-right.svg?v=3") 100% 0 / 8px 64px repeat-y;
+    url("/assets/ui/paper-edge-top.svg?v=4") 0 0 / 64px 8px repeat-x,
+    url("/assets/ui/paper-edge-bottom.svg?v=4") 0 100% / 64px 8px repeat-x,
+    url("/assets/ui/paper-edge-left.svg?v=4") 0 0 / 8px 64px repeat-y,
+    url("/assets/ui/paper-edge-right.svg?v=4") 100% 0 / 8px 64px repeat-y;
   --deckle-mask-tb:
     linear-gradient(#000 0 0) 0 50% / 100% calc(100% - 8px) no-repeat,
-    url("/assets/ui/paper-edge-top.svg?v=3") 0 0 / 64px 8px repeat-x,
-    url("/assets/ui/paper-edge-bottom.svg?v=3") 0 100% / 64px 8px repeat-x;
+    url("/assets/ui/paper-edge-top.svg?v=4") 0 0 / 64px 8px repeat-x,
+    url("/assets/ui/paper-edge-bottom.svg?v=4") 0 100% / 64px 8px repeat-x;
   --deckle-mask-top:
     linear-gradient(#000 0 0) 0 100% / 100% calc(100% - 4px) no-repeat,
-    url("/assets/ui/paper-edge-top.svg?v=3") 0 0 / 64px 8px repeat-x;
+    url("/assets/ui/paper-edge-top.svg?v=4") 0 0 / 64px 8px repeat-x;
   --deckle-mask-sheet:
     linear-gradient(#000 0 0) 0 100% / 100% calc(100% - 3px) no-repeat,
-    url("/assets/ui/paper-edge-top.svg?v=3") 0 -2px / 64px 8px repeat-x;
+    url("/assets/ui/paper-edge-top.svg?v=4") 0 -2px / 64px 8px repeat-x;
 }
 .ds-deckle, .ds-note, .ds-menu-list {
   isolation: isolate;
@@ -552,9 +595,10 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   width: 100%;
   min-height: 48px;
   padding: 12px 16px;
-  border: 1px solid var(--ink-14);
+  border: 1px solid transparent;
+  border-image: url("/assets/ui/sketch-box-thin-soft.svg") 24 / 24px / 0 stretch; /* resting: a soft line; writing: bold ink */
   border-radius: 14px;
-  background: rgba(245, 239, 221, 0.7);
+  background: none;
   color: var(--sisi-ink);
   font-family: var(--font-editorial);
   font-size: 16px; /* ≥16px: iOS never zooms the page on focus */
@@ -562,8 +606,9 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   resize: none;
 }
 .ds-field::placeholder { color: var(--ink-35); }
-.ds-field:focus-visible { outline: 2px solid var(--blue-60); outline-offset: 1px; border-color: transparent; }
-.ds-field.ds-on-dark { background: var(--paper-14); border-color: var(--paper-35); color: var(--sisi-paper); }
+.ds-field:focus, .ds-field:focus-visible { outline: none; border-image-source: url("/assets/ui/sketch-box-bold-ink.svg"); }
+.ds-field.ds-on-dark { background: none; border-image-source: url("/assets/ui/sketch-box-thin-paper.svg"); color: var(--sisi-paper); }
+.ds-field.ds-on-dark:focus, .ds-field.ds-on-dark:focus-visible { border-image-source: url("/assets/ui/sketch-box-bold-paper.svg"); }
 .ds-field.ds-on-dark::placeholder { color: var(--paper-35); }
 .ds-label { display: block; margin-bottom: var(--space-2); font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
 .ds-error { margin-top: var(--space-2); font-family: var(--font-ui); font-size: var(--text-meta); color: var(--sisi-coral); letter-spacing: 0.005em; }
@@ -577,7 +622,9 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   width: 100%;
   min-height: 56px;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--ink-14);
+  /* the hand-drawn box, like fields and choices */
+  border: 1px solid transparent;
+  border-image: url("/assets/ui/sketch-box-thin-ink.svg") 24 / 24px / 0 stretch;
   border-radius: 14px;
   background: transparent;
   color: var(--sisi-ink);
@@ -585,7 +632,16 @@ html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
   font: inherit;
 }
 button.ds-star-row { cursor: pointer; }
-button.ds-star-row:hover { border-color: var(--ink-35); }
+/* plain: information, not a box — the gold star and › say where it leads */
+.ds-star-row--plain { border-image: none; border-color: transparent; min-height: 48px; padding: var(--space-1) var(--space-2); margin: 0 calc(-1 * var(--space-2)); width: calc(100% + 2 * var(--space-2)); border-radius: 12px; }
+.ds-star-row--plain > svg:last-child { color: var(--ink-60); }
+button.ds-star-row:hover { background: var(--ink-08); }
+/* as a choice (edit: which Star): the picked one gets the bold box and a tick */
+.ds-star-row--choice { min-height: 52px; }
+.ds-star-row--choice[aria-checked="true"] { border-image-source: url("/assets/ui/sketch-box-bold-ink.svg"); }
+.ds-star-row--choice > svg:last-child { flex: none; }
+.ds-star-row--none .ds-star-row-title { font-style: italic; color: var(--ink-60); }
+.ds-star-row--none[aria-checked="true"] .ds-star-row-title { color: var(--sisi-ink); }
 .ds-star-row-glyph { flex: none; color: var(--sisi-gold); }
 .ds-star-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .ds-star-row-title { font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-body); line-height: 1.25; overflow-wrap: anywhere; }

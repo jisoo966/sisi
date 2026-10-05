@@ -10,7 +10,7 @@ import { emitFx, glintPoint, softGlint } from "@/lib/fx";
 import { RitualAudio, VOICE_LINES, appSoundOn, type VoiceId } from "@/lib/ritualAudio";
 import { haptic } from "@/lib/haptics";
 import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
-import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
+import { awardStarlight, localDate, starlightMessage, starlightRows } from "@/lib/starlight";
 import {
   ConfirmationDialog,
   FilterChip,
@@ -21,17 +21,17 @@ import {
   IconEye,
   IconLeaf,
   IconMoon,
-  IconPath,
+  IconPaws,
   IconSound,
   IconSoundOff,
   IconPencil,
   OverflowMenu,
   PrimaryButton,
+  SecondaryButton,
   StarGlyph,
   StatusChip,
   TextAction,
 } from "@/components/ds";
-import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
 import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
 import { PictureItAtmosphere } from "@/components/sisi/journey-v2/PictureItAtmosphere";
@@ -95,6 +95,8 @@ type Props = {
   onWalkWith?: (star: Star) => void;
   /** "Return to Journey" */
   onReturnToJourney?: () => void;
+  /** "See its moments": this Star's history lives in Moments */
+  onSeeMoments?: (star: Star) => void;
 };
 
 export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
@@ -122,8 +124,8 @@ const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpressio
   "picture-anchor": { text: "What stayed with you?", face: "listening" },
   "note-ask": { text: "Would you like to leave a small note for this Star?", face: "listening" },
   reflect: { text: "What would you like your Star to remember about today?", face: "listening" },
-  saved: { text: "I’ll keep this close to your Star.", face: "comfort" },
-  done: { text: <>That was enough for today.<br />Your Star is still here.</>, face: "comfort" },
+  saved: { text: <>Kept.<br />Your Star is a little brighter.</>, face: "comfort" },
+  done: { text: <>That was enough for today.<br />Your Star is a little brighter.</>, face: "comfort" },
   celebrate: { text: "Your Star is here.", face: "comfort" },
   fulfilled: { text: <>You carried this wish all the way here.<br />It will keep shining in your sky.</>, face: "comfort" },
 };
@@ -217,6 +219,7 @@ export function StarMemoryCard({
   initialMode = "journey",
   onWalkWith,
   onReturnToJourney,
+  onSeeMoments,
 }: Props) {
   const [mode, setMode] = useState<Mode>(
     placeholder ? "invite" : initialMode === "reflect" ? "reflect" : initialMode === "celebrate" ? "celebrate" : initialMode === "quick" ? "invite" : "journey",
@@ -236,6 +239,17 @@ export function StarMemoryCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(star.wish);
   const [signs, setSigns] = useState<Sign[] | null>(null);
+  /** every time spent with this wish: its Moments, and the days walked with it.
+   *  Only ever grows (no streaks): resting never dims a Star. */
+  const walks = useMemo(
+    () => (placeholder ? 0 : starlightRows().filter((r) => r.star_id === star.id && r.source_type === "walk_with_it_completed").length),
+    // re-read after each completed step (mode changes back to the Star)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [star.id, placeholder, mode],
+  );
+  const care = (signs?.length ?? 0) + walks;
+  /** 0 → 1: how much brighter the Star has grown (a gentle curve, full by ~12) */
+  const glow = Math.min(1, Math.sqrt(care / 12));
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardTop, setCardTop] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -376,7 +390,7 @@ export function StarMemoryCard({
   const [picBright, setPicBright] = useState(false);
   const [picNote, setPicNote] = useState("");
   const [picSaving, setPicSaving] = useState(false);
-  const [newFootprint, setNewFootprint] = useState<string | null>(null);
+  const [, setNewFootprint] = useState<string | null>(null); // the footprint stamp (its card now lives in Moments)
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const later = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
   const clearTimers = () => {
@@ -579,7 +593,8 @@ export function StarMemoryCard({
   /** the global tabs step aside during the choice and the completion moments */
   /** the ritual (settle → breathe → picture → anchor): the tabs are disabled throughout */
   const picturing = mode === "picture-intro" || mode === "picture" || mode === "picture-anchor";
-  const hideNav = focus || completion || mode === "ceremony" || picturing;
+  // the journey too: a back arrow leads out, so the record and its one action get the screen
+  const hideNav = focus || completion || mode === "ceremony" || picturing || mode === "journey";
   useEffect(() => {
     const el = document.documentElement;
     if (hideNav) {
@@ -594,11 +609,68 @@ export function StarMemoryCard({
   const hasControls =
     mode === "journey" ||
     completion ||
-    (mode === "invite" && !placeholder) ||
     mode === "picture-intro" ||
     mode === "picture-anchor" ||
     (mode === "picture" && canContinue) ||
     mode === "reflect";
+  /** the step's actions sit inside the card whenever the card is showing
+   *  (one ✕ in the corner; nothing floats over the card's edge) */
+  const paperControls = hasControls && !hasHeader && mode !== "picture";
+  const controls = (onPaper: boolean) => {
+    const primary = onPaper ? "ds-btn ds-btn--primary ds-btn--block" : "ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta";
+    const secondary = onPaper ? "ds-btn ds-btn--secondary ds-btn--block" : "ds-btn ds-btn--secondary ds-on-dark ds-btn--block sms-cta";
+    const textSurface = onPaper ? "paper" : "dark";
+    return mode === "journey" ? (
+      <button type="button" className={primary} onClick={() => startPractice("journey")}>
+        Spend a quiet moment
+      </button>
+    ) : completion ? (
+      <div className="sms-cta-pair">
+        <button
+          type="button"
+          className={primary}
+          onClick={() => {
+            setSaved(null);
+            setMode("journey");
+          }}
+        >
+          {mode === "celebrate" ? "View my Star" : "Back to my Star"}
+        </button>
+        <button type="button" className={secondary} onClick={() => onReturnToJourney?.()}>
+          Return to Journey
+        </button>
+      </div>
+    ) : mode === "picture-intro" ? (
+      <div className="sms-cta-pair">
+        {/* voice-guided: may be done with closed eyes */}
+        <button type="button" className={primary} onClick={(e) => beginPicture("sound", e)}>
+          Begin with sound
+        </button>
+        <button type="button" className={secondary} onClick={(e) => beginPicture("silent", e)}>
+          Continue silently
+        </button>
+      </div>
+    ) : mode === "picture" && canContinue ? (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 1.4 } }}>
+        <button type="button" className={primary} onClick={toAnchor}>
+          Continue
+        </button>
+      </motion.div>
+    ) : mode === "picture-anchor" ? (
+      <div className="sms-cta-pair">
+        <button type="button" className={primary} disabled={!picNote.trim() || picSaving} onClick={keepFeeling}>
+          Keep this feeling
+        </button>
+        <TextAction surface={textSurface} className="sms-cta-secondary" onClick={() => setMode("journey")}>
+          Done without writing
+        </TextAction>
+      </div>
+    ) : mode === "reflect" ? (
+      <button type="button" className={primary} disabled={!text.trim() || saving} onClick={save}>
+        Save to my Star
+      </button>
+    ) : null;
+  };
   // each step starts with its Star in view (not wherever the last one scrolled)
   useLayoutEffect(() => {
     listRef.current?.scrollTo({ top: 0 });
@@ -637,7 +709,7 @@ export function StarMemoryCard({
         {onScreen && (
           <motion.div
             key="sms"
-            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-anchor" || mode === "picture-intro" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}${picturing ? " is-ritual" : ""}`}
+            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-anchor" || mode === "picture-intro" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}${picturing ? " is-ritual" : ""}${mode === "journey" ? " is-journey" : ""}`}
             style={{ ["--star-top" as string]: `${Math.max(8, anchor.y - 44)}px` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -654,7 +726,7 @@ export function StarMemoryCard({
                 <span className="smj-icon" aria-hidden />
               )}
               <div className="smj-titles">
-                {editing ? (
+                {mode === "journey" ? null : editing ? (
                   <div className="smj-edit ds-paper">
                     <textarea
                       className="ds-field smc-edit-input"
@@ -673,7 +745,12 @@ export function StarMemoryCard({
                 ) : (
                   <h2 className="smj-title">{star.wish || "Your Star"}</h2>
                 )}
-                <StatusChip surface="dark" tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
+                {mode !== "journey" && (
+                  <p className="smj-status">
+                    <StarGlyph size={12} />
+                    {star.fulfilledAt ? "Fulfilled" : "Still walking"}
+                  </p>
+                )}
               </div>
               {mode === "journey" ? (
                 <OverflowMenu
@@ -700,16 +777,24 @@ export function StarMemoryCard({
               className="sms-scroll"
               ref={listRef}
               // without a header, the Star sits where it was in the sky
-              style={hasHeader || focus || picturing ? undefined : { paddingTop: Math.max(8, anchor.y - 44) }}
+              // the Star stays where it was in the sky — unless it sits low, then
+              // it rises toward the top so her words and the card always fit
+              style={hasHeader || focus || picturing ? undefined : { paddingTop: `min(${Math.max(8, anchor.y - 44)}px, 14dvh)` }}
               onClick={(e) => {
                 // a tap on the open sky puts the paper away (not mid-visualization)
+                // (anywhere on the night — the words, the light, the gaps — except
+                // the paper, a card, Sísí or a control)
                 const t = e.target as HTMLElement;
-                if (!picturing && (t === e.currentTarget || t.classList.contains("sms-path"))) onClose();
+                if (picturing) return;
+                if (t.closest(".sms-paper-wrap, .sms-card, .smc-sisi, button, a, input, textarea, [role='dialog']")) return;
+                onClose();
               }}
             >
               <div className={`sms-path${shine ? ` is-${shine}` : ""}`}>
-                {mode !== "picture" && <span className="sms-thread" aria-hidden />}
-                <div ref={(el) => fxAnchorRef("selectedStar", el)} className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? ` is-breathing ph-${phase}` : ""}${wishTouch ? " is-wished" : ""}`} aria-hidden>
+                {mode !== "picture" && mode !== "journey" && mode !== "ceremony" && <span className="sms-thread" aria-hidden />}
+                <div ref={(el) => fxAnchorRef("selectedStar", el)} style={mode === "journey" ? { ["--care" as string]: String(1 + glow * 0.35) } : undefined} className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? ` is-breathing ph-${phase}` : ""}${wishTouch ? " is-wished" : ""}`} aria-hidden>
+                  {/* the more time spent with this wish, the wider its light */}
+                  {mode === "journey" && <span className="smj-glow" aria-hidden style={{ opacity: 0.35 + glow * 0.65, transform: `translate(-50%, -50%) scale(${0.8 + glow * 0.6})` }} />}
                   <span className="sms-star-inner">
                     <StarLayers staged revealed focused />
                   </span>
@@ -731,9 +816,19 @@ export function StarMemoryCard({
                     {/* Sísí's words above her; she rests on the paper's edge */}
                     {!placeholder && mode !== "picture" && (
                       <div className="sms-say sms-say--card" aria-live="polite">
+                        {/* Sísí's words written softly on the night itself (no
+                            box): the Star's light runs down through them */}
                         <AnimatePresence mode="wait">
                           {say && (
-                            <SisiSpeechBubble key={mode} tailPosition="bottom-right" align="center" delay={0.2} message={say.text} />
+                            <motion.p
+                              key={mode}
+                              className="sms-words"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0, transition: { delay: 0.2, duration: 0.5, ease: EASE } }}
+                              exit={{ opacity: 0, y: -4, transition: { duration: 0.22 } }}
+                            >
+                              {say.text}
+                            </motion.p>
                           )}
                         </AnimatePresence>
                       </div>
@@ -793,10 +888,19 @@ export function StarMemoryCard({
                       </>
                     ) : (
                       <>
-                        <StatusChip tone="star">{star.fulfilledAt ? "Fulfilled" : "Still walking"}</StatusChip>
-                        <TextAction className="smc-journey-link" onClick={() => setMode("journey")}>
-                          View journey <IconChevronRight size={20} />
-                        </TextAction>
+                        {/* status as a small crayon mark, not a grey pill */}
+                        <p className="smc-status-mark">
+                          <StarGlyph size={14} /> {star.fulfilledAt ? "Fulfilled" : "Still walking"}
+                        </p>
+                        {/* both ways on, on the paper: the one next step, then the journey */}
+                        <div className="smc-invite-actions">
+                          <PrimaryButton block onClick={() => startPractice("invite")}>
+                            Spend a quiet moment
+                          </PrimaryButton>
+                          <SecondaryButton block onClick={() => setMode("journey")}>
+                            View journey
+                          </SecondaryButton>
+                        </div>
                       </>
                     )}
                   </motion.div>
@@ -895,7 +999,7 @@ export function StarMemoryCard({
 
                 {mode === "reflect" && (
                   <motion.div key="reflect" className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode(reflectBack)} onClose={onClose} />
+                    <NavRow onBack={() => setMode(reflectBack)} />
                     <div className="ds-chip-row smc-chips" role="group" aria-label="What kind of note">
                       {(Object.keys(KIND) as EntryKind[]).map((k) => (
                         <FilterChip key={k} selected={kind === k} onClick={() => setKind(k)}>
@@ -917,50 +1021,59 @@ export function StarMemoryCard({
                 )}
 
                         </AnimatePresence>
+                        {paperControls && <div className="smc-paper-actions">{controls(true)}</div>}
                       </motion.div>
                     </motion.div>
                     )}
                   </div>
                 )}
 
-                {(mode === "journey" || mode === "ceremony") && (
-                  <>
-                    {(signs ?? []).map((s, i) => (
-                      <motion.article
-                        key={s.id}
-                        className="ds-memory sms-card"
-                        style={{ rotate: i % 2 ? 0.8 : -1 }}
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.35, delay: 0.1 + Math.min(i, 5) * 0.06, ease: SOFT }}
-                      >
-                        <div className="ds-memory-sheet ds-paper">
-                          <p className="sms-date">
-                            {dayLabel(s.createdAt)}
-                            {s.kind ? ` · ${KIND[s.kind].label}` : s.momentType === "companion_note" ? " · A note from Sísí" : s.momentType === "visualization" ? " · Visualization" : ""}
-                          </p>
-                          {s.momentType === "visualization" && (
-                            // one footprint on the Star's path, stamped on the paper
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img className={`sms-footprint${newFootprint === s.id ? " is-new" : ""}`} src={PIC.footprint} alt="" aria-hidden draggable={false} />
-                          )}
-                          <p className="sms-text">{s.text}</p>
-                          {s.image && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img className="ds-memory-image" src={s.image} alt="" loading="lazy" />
-                          )}
+                {mode === "journey" && (
+                  <motion.div className="smj-hero" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: SOFT }}>
+                    {editing ? (
+                      <div className="smj-edit ds-paper">
+                        <textarea
+                          className="ds-field smc-edit-input"
+                          aria-label="Your wish"
+                          value={draft}
+                          rows={2}
+                          maxLength={140}
+                          autoFocus
+                          onChange={(e) => setDraft(e.target.value)}
+                        />
+                        <div className="smc-edit-actions">
+                          <TextAction onClick={() => { setDraft(star.wish); setEditing(false); }}>Cancel</TextAction>
+                          <PrimaryButton onClick={saveEdit}>Save</PrimaryButton>
                         </div>
-                        <span className="sms-bead" aria-hidden />
-                      </motion.article>
-                    ))}
-                    <article className="ds-memory sms-card sms-card--origin" style={{ transform: "rotate(-0.5deg)" }}>
-                      <div className="ds-memory-sheet ds-paper">
-                        <p className="sms-date">{formatDate(star.createdAt)}</p>
-                        <p className="sms-text">Created this Star</p>
                       </div>
-                      <span className="sms-bead" aria-hidden />
-                    </article>
-                  </>
+                    ) : (
+                      <h2 className="smj-wish">{star.wish || "Your Star"}</h2>
+                    )}
+                    <p className="smj-status">
+                      <StarGlyph size={12} />
+                      {star.fulfilledAt ? "Fulfilled" : "Still walking"}
+                    </p>
+                    {/* the achievement is the light itself; Sísí only names it */}
+                    {signs !== null && (
+                      <p className="smj-say">
+                        {care === 0 ? (
+                          <>Your Star is here whenever you are.</>
+                        ) : (
+                          <>
+                            You’ve come back to this wish {care === 1 ? "once" : `${care} times`}.
+                            {care > 1 && <><br />It’s getting brighter.</>}
+                          </>
+                        )}
+                      </p>
+                    )}
+                    {/* its history lives in Moments, in one place */}
+                    {!!signs?.length && onSeeMoments && (
+                      <TextAction surface="dark" className="smj-moments" onClick={() => onSeeMoments(star)}>
+                        See its {signs.length === 1 ? "moment" : `${signs.length} moments`}
+                        <IconChevronRight size={16} />
+                      </TextAction>
+                    )}
+                  </motion.div>
                 )}
 
               </div>
@@ -974,67 +1087,17 @@ export function StarMemoryCard({
                 </IconButton>
               </div>
             )}
-            {hasControls && <div className="sms-controls">
-              {mode === "journey" ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => startPractice("journey")}>
-                  Spend a moment with this Star
-                </button>
-              ) : completion ? (
-                <div className="sms-cta-pair">
-                  <button
-                    type="button"
-                    className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta"
-                    onClick={() => {
-                      setSaved(null);
-                      setMode("journey");
-                    }}
-                  >
-                    {mode === "celebrate" ? "View my Star" : "Stay with my Star"}
-                  </button>
-                  <TextAction surface="dark" className="sms-cta-secondary" onClick={() => onReturnToJourney?.()}>
-                    Return to Journey
-                  </TextAction>
-                </div>
-              ) : mode === "invite" && !placeholder ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={() => startPractice("invite")}>
-                  Spend a quiet moment
-                </button>
-              ) : mode === "picture-intro" ? (
-                <div className="sms-cta-pair">
-                  {/* voice-guided: may be done with closed eyes */}
-                  <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={(e) => beginPicture("sound", e)}>
-                    Begin with sound
-                  </button>
-                  <TextAction surface="dark" className="sms-cta-secondary" onClick={(e) => beginPicture("silent", e)}>
-                    Continue silently
-                  </TextAction>
-                </div>
-              ) : mode === "picture" && canContinue ? (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 1.4 } }}>
-                  <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" onClick={toAnchor}>
-                    Continue
-                  </button>
-                </motion.div>
-              ) : mode === "picture-anchor" ? (
-                <div className="sms-cta-pair">
-                  <button
-                    type="button"
-                    className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta"
-                    disabled={!picNote.trim() || picSaving}
-                    onClick={keepFeeling}
-                  >
-                    Keep this feeling
-                  </button>
-                  <TextAction surface="dark" className="sms-cta-secondary" onClick={() => setMode("journey")}>
-                    Done without writing
-                  </TextAction>
-                </div>
-              ) : mode === "reflect" ? (
-                <button type="button" className="ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta" disabled={!text.trim() || saving} onClick={save}>
-                  Save to my Star
-                </button>
-              ) : null}
-            </div>}
+            {/* a quiet way out of a floating card (tapping the sky works too) */}
+            {!picturing && !hasHeader && !focus && (
+              <div className="smp-close">
+                <IconButton quiet surface="dark" label="Back to My Stars" onClick={onClose}>
+                  <IconClose />
+                </IconButton>
+              </div>
+            )}
+            {/* on the night, the one action is an ivory button (the system's on-dark primary) */}
+            {hasControls && !paperControls && <div className="sms-controls">{controls(false)}</div>}
+
 
             <ConfirmationDialog
               open={overlay === "confirm-fulfil"}
@@ -1088,10 +1151,21 @@ export function StarMemoryCard({
         .sms-scroll::-webkit-scrollbar { display: none; }
         .sms-path { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
         /* the thread runs from the Star down through every note (Star Gold family) */
+        /* the Star's light, painted down to the paper: a soft warm wash with
+           glints of gold drifting slowly down it (never a ruled line) */
         .sms-thread {
-          position: absolute; z-index: 0; left: 50%; top: 44px; bottom: 28px; width: 1.2px; margin-left: -0.6px;
-          background: var(--paper-80);
+          /* the Star's light, sprayed in gouache: grains and dabs of ivory and
+             gold drifting slowly down (public/assets/ui/star-trail.webp, seamless) */
+          position: absolute; z-index: 0; left: 50%; top: 44px; bottom: 28px; width: 48px; margin-left: -24px;
+          background: url("/assets/ui/star-trail.webp") 50% 0 / 48px 384px repeat-y;
+          -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 45%, rgba(0, 0, 0, 0.35) 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 45%, rgba(0, 0, 0, 0.35) 100%);
+          filter: drop-shadow(0 0 3px rgba(241, 196, 94, 0.45));
+          animation: sms-glints 16s linear infinite;
         }
+        /* one tile per loop, so the drift is seamless */
+        @keyframes sms-glints { to { background-position: 50% 384px; } }
+        @media (prefers-reduced-motion: reduce) { .sms-thread { animation: none; } }
         .sms-star { position: relative; z-index: 1; width: 88px; height: 88px; display: flex; align-items: center; justify-content: center; }
         .sms-star-inner { display: block; width: 48px; height: 48px; transform: scale(1.7); }
         .sms-card { position: relative; z-index: 2; width: min(76vw, 300px); margin: 0; color: var(--sisi-ink); }
@@ -1116,8 +1190,29 @@ export function StarMemoryCard({
         .sms-cta { pointer-events: auto; min-height: var(--cta-height); }
         .sms-stage { position: relative; z-index: 2; width: min(100%, 400px); display: flex; flex-direction: column; }
         /* bubble tail (≈29px in from its right edge) points at Sísí (72px in from the paper's right) */
-        .sms-say--card { width: 100%; justify-content: flex-end; padding-right: 43px; margin-bottom: 72px; min-height: 1px; }
+        /* lifted a little toward the Star, with room above Sísí's ears so the
+           tail's tip (aimed at her head) shows instead of hiding behind her */
+        .sms-say--card { position: relative; z-index: 1; width: 100%; justify-content: center; margin: 2px 0 92px; min-height: 1px; }
+        .sms-words {
+          position: relative; margin: 0; max-width: min(84vw, 320px); padding: 14px 18px;
+          text-align: center; color: var(--sisi-paper);
+          font-family: var(--font-editorial); font-size: clamp(18px, 5vw, 21px); line-height: 1.35; letter-spacing: var(--tracking-editorial);
+          text-shadow: 0 1px 10px rgba(5, 12, 24, 0.75);
+        }
+        /* the night pools softly behind the words, so the light passes beneath them */
+        .sms-words::before {
+          content: ""; position: absolute; inset: -6px -10px; z-index: -1; border-radius: 50%;
+          background: radial-gradient(closest-side, rgba(6, 14, 26, 0.92), rgba(6, 14, 26, 0.55) 60%, rgba(6, 14, 26, 0));
+        }
         .sms-paper-wrap { position: relative; }
+        .smc-status-mark {
+          display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0;
+          font-family: var(--font-editorial); font-style: italic; font-size: var(--text-body); color: var(--ink-60);
+        }
+        .smc-invite-actions { display: flex; flex-direction: column; gap: 10px; margin-top: var(--space-5); }
+        /* a step's actions, inside the card */
+        .smc-paper-actions { margin-top: var(--space-5); }
+        .smc-paper-actions .sms-cta-pair { display: flex; flex-direction: column; gap: 10px; }
         .sms-paper-wrap.is-quiet { width: min(60%, 220px); margin: 0 auto; }
         .sms-paper-wrap.is-quiet .smc-sisi { right: 50%; transform: scale(0.74) translateX(50%); }
         .sms-paper {
@@ -1145,10 +1240,13 @@ export function StarMemoryCard({
         .smc-choices { display: flex; flex-direction: column; gap: 10px; margin: 4px 0; }
         .smc-choice {
           display: flex; align-items: center; gap: 14px; width: 100%; min-height: 72px; padding: 12px 16px; text-align: left;
-          border-radius: 14px; border: 1px solid var(--ink-14); background: var(--paper-60); cursor: pointer; color: var(--sisi-ink);
-          transition: border-color var(--motion-instant) ease;
+          border-radius: 14px; cursor: pointer; color: var(--sisi-ink); background: none;
+          /* a hand-drawn box, like the buttons and fields */
+          border: 1px solid transparent;
+          border-image: url("/assets/ui/sketch-box-thin-ink.svg") 24 / 24px / 0 stretch;
+          transition: background-color var(--motion-instant) ease;
         }
-        .smc-choice:hover { border-color: var(--ink-35); }
+        .smc-choice:hover { background: var(--ink-08); }
         .smc-choice-icon { flex: 0 0 32px; width: 32px; height: 32px; color: var(--sisi-ink); }
         .smc-choice-icon svg { width: 100%; height: 100%; }
         .smc-choice-text { display: flex; flex-direction: column; gap: 3px; }
@@ -1165,20 +1263,26 @@ export function StarMemoryCard({
         .sms-screen.is-focus .sms-path { flex: 1 1 auto; min-height: 0; gap: 0; }
         /* the Star keeps its place in the sky, but never pushes the sheet off screen */
         .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 12dvh); flex: none; }
+        /* the light starts at the Star (never above it) */
+        .sms-screen.is-focus .sms-thread { top: calc(min(var(--star-top), 12dvh) + 44px); }
         .sms-screen.is-focus .sms-stage {
           flex: 1 1 auto; min-height: 150px; width: 100%; justify-content: flex-end;
         }
-        .sms-screen.is-focus .sms-say--card { padding: 0 43px 0 16px; }
-        .sms-screen.is-focus .sms-say--card .sisi-speech {
-          max-width: min(68vw, 290px); min-width: 0; padding: 12px 16px;
-          font-size: clamp(14px, 3.8vw, 17px);
+        /* her words float in the open sky between the Star and the sheet,
+           not pressed onto the paper */
+        .sms-screen.is-focus .sms-say--card {
+          flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+          margin: 0; padding: 8px var(--space-6) 64px;
         }
+        /* Sísí a little smaller here, so the choice keeps the room */
+        .sms-screen.is-focus .smc-sisi { transform: scale(0.6); }
         .sms-screen.is-focus .sms-paper-wrap { flex: 0 0 auto; }
 
         .sms-screen.is-focus .sms-paper {
           display: flex; flex-direction: column;
           max-height: calc(100dvh - var(--safe-top) - 170px);
-          padding: 0 14px calc(16px + var(--safe-bottom));
+          /* the same 24px gutter as every other sheet */
+          padding: var(--space-2) var(--space-6) calc(var(--space-5) + var(--safe-bottom));
           /* a bottom sheet: only the top edge is torn */
           --paper-mask: var(--deckle-mask-top);
           filter: drop-shadow(0 -6px 18px rgba(16, 45, 50, 0.26));
@@ -1186,7 +1290,8 @@ export function StarMemoryCard({
         .sms-screen.is-focus .sms-paper::before { border-radius: 20px 18px 0 0; }
         .sms-screen.is-focus .sms-paper > * { min-height: 0; display: flex; flex-direction: column; }
         .sms-screen.is-focus .smc-content { min-height: 0; flex: 1 1 auto; }
-        .sms-screen.is-focus .smc-navrow { flex: none; height: 44px; margin: 0 -8px; align-items: center; }
+        /* ‹ and ✕: their 44px targets overhang 12px so the marks sit on the gutter */
+        .sms-screen.is-focus .smc-navrow { flex: none; height: 44px; margin: 0 -12px 6px; align-items: center; }
         .smc-choice-list {
           display: flex; flex-direction: column; gap: 8px; min-height: 0;
           overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
@@ -1199,10 +1304,10 @@ export function StarMemoryCard({
           mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
         }
         .sms-screen.is-focus .smc-choice {
-          min-height: 68px; max-height: 76px; padding: 11px 14px; gap: 12px; border-radius: 14px; flex: none;
+          min-height: 68px; max-height: 78px; padding: 12px 18px; gap: 14px; border-radius: 14px; flex: none;
           transition: transform var(--motion-instant) var(--ease-sisi), opacity 200ms ease, border-color var(--motion-instant) ease;
         }
-        .smc-choice.is-picked { transform: scale(0.98); border-color: var(--sisi-ink); }
+        .smc-choice.is-picked { transform: scale(0.98); border-image-source: url("/assets/ui/sketch-box-bold-ink.svg"); }
         .smc-choice.is-faded { opacity: 0.35; }
         .sms-screen.is-focus .smc-choice-icon { flex: 0 0 32px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; }
         .sms-screen.is-focus .smc-choice-icon svg { width: 22px; height: 22px; }
@@ -1215,8 +1320,8 @@ export function StarMemoryCard({
         @media (max-height: 640px) {
           .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 6dvh); transform: scale(0.82); }
           .sms-screen.is-focus .sms-stage { min-height: 120px; }
-          .sms-screen.is-focus .sms-paper { padding: 0 12px calc(12px + var(--safe-bottom)); }
-          .sms-screen.is-focus .smc-choice { min-height: 64px; max-height: 68px; padding: 9px 12px; }
+          .sms-screen.is-focus .sms-paper { padding: var(--space-1) var(--space-5) calc(var(--space-3) + var(--safe-bottom)); }
+          .sms-screen.is-focus .smc-choice { min-height: 64px; max-height: 68px; padding: 10px 16px; }
           .sms-screen.is-focus .smc-choice-desc { font-size: 12px; }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -1230,7 +1335,7 @@ export function StarMemoryCard({
         .sms-path:is(.is-fold, .is-climb, .is-bright, .is-warm) .sms-card > .ds-memory-sheet { transform: translateY(18px) scaleY(0.4); opacity: 0; }
         .sms-path:is(.is-fold, .is-climb, .is-bright, .is-warm) .sms-card { opacity: 0 !important; }
         .sms-thread::after {
-          content: ""; position: absolute; left: -1px; right: -1px; bottom: 0; height: 0; opacity: 0;
+          content: ""; position: absolute; left: 7px; right: 7px; bottom: 0; height: 0; opacity: 0;
           background: linear-gradient(to top, rgba(241, 196, 94, 0), rgba(241, 196, 94, 0.9) 70%, rgba(245, 239, 221, 0.95));
           border-radius: 2px;
         }
@@ -1257,6 +1362,15 @@ export function StarMemoryCard({
         /* the Star stays in one place for the whole ritual: centred, ~21dvh down
            (never closer than 32px to the top safe area) */
         .sms-screen.is-ritual .sms-scroll { padding-top: max(calc(var(--safe-top) + 32px), calc(21dvh - 44px)); }
+        /* while picturing: the Star comes down to the centre of the night (it
+           returns up for the anchor's paper) and the words rest below it, in
+           one fixed place, so nothing moves as the lines change */
+        .sms-screen.is-ritual .sms-scroll { transition: padding-top 1.4s var(--ease-sisi); }
+        .sms-screen.is-picturing .sms-scroll { padding-top: calc(40dvh - 44px); }
+        .sms-screen.is-picturing .smp-prompt {
+          /* the Star ends at 40dvh + 44px; the words begin near 62dvh (the path's 20px gap included) */
+          height: auto; margin-top: calc(22dvh - 64px); justify-content: flex-start;
+        }
         /* entry card */
         .smp-entry-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
         .smp-entry-title { margin: 0; }
@@ -1358,9 +1472,37 @@ export function StarMemoryCard({
         .smc-saved-text { margin: 6px 0 0; white-space: pre-wrap; }
         .smc-saved-also { margin: 12px 0 0; color: var(--ink-60); }
 
+        /* ── the journey: a timeline of what belongs to this wish ── */
+        /* one screen: the Star (as bright as the time given to it) · the wish ·
+           Sísí's one line · a way to its Moments · one action */
+        .sms-screen.is-journey .sms-path { padding-top: 6dvh; gap: 0; }
+        .sms-screen.is-journey .sms-star { width: 132px; height: 132px; }
+        .sms-screen.is-journey .sms-star-inner { transform: scale(calc(1.75 * var(--care, 1))); transition: transform 1.2s var(--ease-sisi); }
+        .smj-glow {
+          position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; border-radius: 50%; pointer-events: none;
+          background: radial-gradient(circle, rgba(255, 228, 165, 0.42), rgba(241, 196, 94, 0.14) 42%, rgba(241, 196, 94, 0) 70%);
+          transition: opacity 1.2s ease, transform 1.2s var(--ease-sisi);
+        }
+        .smj-hero { position: relative; z-index: 2; width: min(100%, 340px); display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 18px; }
+        .smj-wish {
+          margin: 0; font-family: var(--font-editorial); font-weight: 300; font-size: clamp(26px, 7.4vw, 30px);
+          line-height: 1.18; letter-spacing: -0.01em; color: var(--sisi-paper); overflow-wrap: anywhere;
+        }
+        .smj-hero .smj-status { margin-top: 10px; }
+        .smj-say {
+          margin: 36px 0 0; font-family: var(--font-editorial); font-style: italic; font-size: 17px; line-height: 1.45; color: var(--paper-80);
+        }
+        .smj-moments { margin-top: 20px; font-family: var(--font-ui) !important; font-size: 14px !important; font-weight: 600 !important; letter-spacing: 0.01em; }
+        .smj-hero .smj-edit { width: 100%; text-align: left; }
+        .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 32px); }
+        .smj-status {
+          display: inline-flex; align-items: center; gap: 6px; margin: 0;
+          font-family: var(--font-editorial); font-style: italic; font-size: 15px; color: var(--paper-80);
+        }
+
         /* ── full journey header ── */
         .smj-icon { flex: 0 0 44px; width: 44px; height: 44px; }
-        .smj-titles { flex: 1; min-width: 0; padding-top: 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+        .smj-titles { flex: 1; min-width: 0; padding-top: 6px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
         .smj-title {
           margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title);
           line-height: var(--leading-title); color: var(--sisi-paper); overflow-wrap: anywhere;
@@ -1403,22 +1545,24 @@ function ChoiceList({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavRow({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+function NavRow({ onBack, onClose }: { onBack: () => void; onClose?: () => void }) {
   return (
     <div className="smc-navrow">
       <IconButton label="Back" onClick={onBack}>
         <IconBack />
       </IconButton>
-      <IconButton label="Close" onClick={onClose}>
-        <IconClose />
-      </IconButton>
+      {onClose && (
+        <IconButton label="Close" onClick={onClose}>
+          <IconClose />
+        </IconButton>
+      )}
     </div>
   );
 }
 
 /** Picture it · Walk with it · Reflect on today · Let it rest — the shared crayon marks */
 const EyeIcon = () => <IconEye />;
-const PathIcon = () => <IconPath />;
+const PathIcon = () => <IconPaws />; // walking with Sísí
 const LeafIcon = () => <IconLeaf />;
 const MoonIcon = () => <IconMoon size={20} />;
 

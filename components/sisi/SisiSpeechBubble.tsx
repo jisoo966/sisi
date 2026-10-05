@@ -164,20 +164,22 @@ export function SisiSpeechBubble({
           position: absolute;
           z-index: -1;
           bottom: -11px; /* tucked under the deckled bottom edge */
-          width: 22px;
+          /* a soft tail: its shoulders curve out of the bubble's body and the
+             tip is rounded (never a sharp triangle stuck on) */
+          width: 28px;
           height: 18px;
           background: var(--sisi-paper) var(--grain-speech) 0 0 / 180px 180px repeat;
           background-blend-mode: multiply;
         }
         .sisi-speech--bottom-right { transform-origin: calc(100% - 30px) 100%; }
-        .sisi-speech--bottom-right::after { right: 22px; clip-path: polygon(0 0, 100% 0, 32% 100%); }
+        .sisi-speech--bottom-right::after { right: 18px; clip-path: path("M0 0 L28 0 C19 1 13 6 10.6 15 Q9 18.6 7.8 15 C6.5 7 4 1.5 0 0 Z"); }
         .sisi-speech--bottom-left { transform-origin: 30px 100%; }
-        .sisi-speech--bottom-left::after { left: 22px; clip-path: polygon(0 0, 100% 0, 68% 100%); }
+        .sisi-speech--bottom-left::after { left: 18px; clip-path: path("M0 0 L28 0 C24 1.5 21.5 7 20.2 15 Q19 18.6 17.4 15 C15 6 9 1 0 0 Z"); }
         .sisi-speech--bottom-center { transform-origin: 50% 100%; }
-        .sisi-speech--bottom-center::after { left: calc(50% - 11px); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+        .sisi-speech--bottom-center::after { left: calc(50% - 14px); clip-path: path("M0 0 L28 0 C21 1 17.5 6 15.6 15 Q14 18.6 12.4 15 C10.5 6 7 1 0 0 Z"); }
         .sisi-speech--no-tail::after { display: none; }
         /* a caller may aim the tail: --tail-x = the tip's distance from the left edge */
-        .sisi-speech[style*="--tail-x"]::after { left: calc(var(--tail-x) - 11px); right: auto; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+        .sisi-speech[style*="--tail-x"]::after { left: calc(var(--tail-x) - 14px); right: auto; clip-path: path("M0 0 L28 0 C21 1 17.5 6 15.6 15 Q14 18.6 12.4 15 C10.5 6 7 1 0 0 Z"); }
 
         @media (prefers-reduced-motion: reduce) {
           .sisi-speech { transform: none !important; }

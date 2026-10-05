@@ -1,10 +1,9 @@
 /**
  * lib/starVisits — how a Star opens.
  *
- * Every visit opens the Star's timeline. Sísí's quiet invitation ("Shall
- * we spend a quiet moment with it?") appears only on a later visit from
- * the sky — never on the first visit, never right after the Star was
- * created, never from "Visit Star", and at most once a day per Star.
+ * Every visit opens the one Star screen (the Star as bright as the time
+ * given to it, the wish, Sísí's line, "Spend a quiet moment"); right after
+ * a Star is created it opens with the small celebration instead.
  */
 
 import type { StarEntry } from "@/components/sisi/journey-v2/StarMemoryCard";
@@ -12,7 +11,6 @@ import type { StarEntry } from "@/components/sisi/journey-v2/StarMemoryCard";
 const KEY = "sisi:star-visits";
 type Visits = Record<string, { count: number; invited?: string }>;
 
-const today = () => new Date().toDateString();
 
 function read(): Visits {
   try {
@@ -36,11 +34,9 @@ export function entryForVisit(starId: string, from: "sky" | "visit" | "created")
   const prev = v[starId] ?? { count: 0 };
   const next = { ...prev, count: prev.count + 1 };
   let entry: StarEntry = "journey";
+  // one Star screen for every visit: the Star, the wish, Sísí's line and
+  // "Spend a quiet moment" (the separate invitation step is folded into it)
   if (from === "created") entry = "celebrate";
-  else if (from === "sky" && prev.count >= 1 && prev.invited !== today()) {
-    entry = "quick";
-    next.invited = today();
-  }
   v[starId] = next;
   write(v);
   return entry;

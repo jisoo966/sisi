@@ -855,12 +855,13 @@ export const MomentsWorld = forwardRef<
         .mw-thread { animation: mw-thread-in 600ms ease-out both; }
         @keyframes mw-thread-in { from { opacity: 0; clip-path: inset(100% 0 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
         .mw-star-title {
-          display: flex; align-items: center; gap: 4px; max-width: 100%; margin: 0 0 4px; padding: 0; border: 0;
+          display: flex; align-items: flex-start; gap: 4px; max-width: 100%; margin: 0 0 5px; padding: 0; border: 0;
           background: transparent; cursor: pointer; text-align: left;
           font-family: var(--font-editorial); font-weight: 500; font-size: 11.5px; color: var(--ink-80);
         }
-        .mw-star-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .mw-star-title img { width: 11px; height: 11px; flex: 0 0 auto; }
+        /* the Star's name: up to two lines, never cut after a few letters */
+        .mw-star-title span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+        .mw-star-title img { width: 11px; height: 11px; flex: 0 0 auto; margin-top: 2px; }
         .mw-card--photo .mw-star-title { color: rgba(245, 239, 221, 0.92); margin: 0 0 3px 2px; }
         .mw-starmark img { width: 100%; height: 100%; display: block; }
         .mw-starmark {
@@ -878,6 +879,7 @@ export const MomentsWorld = forwardRef<
           font-family: var(--font-editorial); font-size: 13.5px; line-height: 1.3; margin: 0 0 5px;
         }
         .mw-note-kicker { display: block; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-chip); color: var(--ink-60); margin-bottom: 3px; letter-spacing: 0.005em; }
+        .mw-nowrap { white-space: nowrap; }
         .mw-note-date { display: block; font-family: var(--font-ui); font-size: var(--text-helper); color: var(--ink-60); letter-spacing: 0.005em; }
         .mw-label {
           position: absolute; left: 2px; bottom: calc(100% + 7px); white-space: nowrap;
@@ -978,13 +980,15 @@ function Card({ p, onStar }: { p: Placed; onStar?: (starId: string) => void }) {
       <span className="mw-note-text">{it.text}</span>
       <span className="mw-note-date">
         {typeLabel && it.mtype !== "companion_note" ? `${typeLabel} · ` : ""}
-        {shortDate(it.at)}
+        {/* the date never splits across lines */}
+        <span className="mw-nowrap">{shortDate(it.at)}</span>
       </span>
     </div>
   );
 }
 
-const shortDate = (iso: string) => whenLabel(iso, true).split(" · ")[0];
+/** "Oct 1" — the month and year are already on the trail's month marker */
+const shortDate = (iso: string) => whenLabel(iso, false).split(" · ")[0];
 
 /* ── background layers ─────────────────────────────────────────────── */
 

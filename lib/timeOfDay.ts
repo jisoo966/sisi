@@ -91,6 +91,9 @@ export function useTimeOfDay(): TimeOfDay | null {
       root.setProperty("--tod-b", String(g.b));
       root.setProperty("--tod-s", String(g.s));
       root.setProperty("--tod-cb", String(g.cb));
+      // what sits on the open sky reads in one colour: ink on the light
+      // morning sky, ivory on the deeper afternoon / evening blue (ds.css)
+      document.documentElement.dataset.sky = t.phase === "morning" ? "light" : "deep";
     };
     update();
     // Slow transitions only once the first frame is on screen: a fresh launch
