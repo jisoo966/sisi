@@ -273,15 +273,10 @@ export function CompanionCues({
               <div className="cc-actions cc-actions--wrap">
                 {/* her answer to choose is a reply chip (as in a talk with her); a quiet one stays text */}
                 {shown.actions.map((a) =>
-                  a.quiet ? (
-                    <button key={a.label} type="button" className="ds-text-action cc-link cc-link--quiet" onClick={(e) => a.act(e)}>
-                      {a.label}
-                    </button>
-                  ) : (
-                    <button key={a.label} type="button" className="ds-reply-chip cc-chip" onClick={(e) => a.act(e)}>
-                      {a.label}
-                    </button>
-                  ),
+                  // the system's pair, small: primary (filled) · secondary (outlined) — same size
+                  <button key={a.label} type="button" className={`cc-btn ${a.quiet ? "is-secondary" : "is-primary"}`} onClick={(e) => a.act(e)}>
+                    {a.label}
+                  </button>,
                 )}
               </div>
             ) : null}
@@ -321,16 +316,31 @@ export function CompanionCues({
            bottom when text buttons (with their own air) close the bubble */
         .cc-thought.sisi-speech { padding: 14px 16px 12px; } /* her lines are dialogue size (17px): one px less above */
         .cc-thought.sisi-speech.has-x { padding-right: 40px; }
-        .cc-thought.sisi-speech.has-actions { padding-bottom: 13px; } /* a chip carries its own edge */
+        .cc-thought.sisi-speech.has-actions { padding-top: 14px; padding-bottom: 14px; } /* a chip carries its own edge */
         .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); } /* Sísí's voice: one size everywhere */
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         /* her choices sit on one row under her words (Yes, please · Not now) */
         .cc-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 8px 0 0 -12px; }
-        .cc-actions--wrap { margin-left: 0; } /* a chip starts on the words' line */
+        /* buttons start on the words' line; the gap to them is less than the paper's
+           padding (text · 10 · buttons, and 14 above and below) */
+        .cc-actions--wrap { margin: 10px 0 0; gap: 8px; }
         /* a chip a step smaller than her words (a reply, not a headline);
            the tap target stays 44px */
-        .cc-chip.ds-reply-chip { white-space: nowrap; min-height: 28px; padding: 0 11px; font-size: 13.5px; border-image-width: 20px; }
-        .cc-chip.ds-reply-chip::before { inset: -8px -4px; }
+        /* her choices: the system's primary + secondary, small (28px), side by side */
+        .cc-btn {
+          position: relative; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+          min-height: 30px; padding: 0 13px; border-radius: 999px; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
+          font-family: var(--font-editorial); font-size: 13.5px; line-height: 1;
+        }
+        .cc-btn::before { content: ""; position: absolute; inset: -7px -3px; } /* a 44px target */
+        .cc-btn.is-primary { background: var(--sisi-ink); color: var(--sisi-paper); }
+        .cc-btn.is-primary:active { background: var(--ink-80); }
+        /* outlined: the system's secondary (the hand-drawn pill) */
+        .cc-btn.is-secondary {
+          background: none; color: var(--sisi-ink); border: 1px solid transparent;
+          border-image: url("/assets/ui/sketch-pill-thin-ink.svg") 24 / 20px / 0 stretch;
+        }
+        .cc-btn.is-secondary:active { background: var(--ink-08); }
         .cc-actions .cc-link { min-height: 40px; white-space: nowrap; }
         .cc-thought .cc-actions--wrap { flex-wrap: wrap; }
         .cc-link { color: var(--sisi-ink); font-weight: 500; }

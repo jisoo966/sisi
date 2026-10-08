@@ -20,6 +20,7 @@ import {
   FilterChip,
   IconBack,
   IconButton,
+  IconChevronRight,
   IconClose,
   IconEye,
   IconMoon,
@@ -237,7 +238,7 @@ export function StarMemoryCard({
     setMode("practice");
   };
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const [kind, setKind] = useState<EntryKind>("something_good");
+  const [kind, setKind] = useState<EntryKind | null>(null); // optional: a moment is enough
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Sign | null>(null);
@@ -259,6 +260,8 @@ export function StarMemoryCard({
     [star.id, placeholder, signs, mode],
   );
   const marks = useMemo(() => marksFor(star.id, signs ?? []), [star.id, signs, days]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** the latest words left on this wish (a moment, a sign, a step, or what was pictured) */
+  const latestWords = signs?.find((x) => !!x.text?.trim()) ?? null;
   /** the journal of this wish (null: closed), opened on one kind */
   const [journal, setJournal] = useState<JournalKind | null>(null);
   /** 0 → 1: how much brighter the Star has grown (the same as in the sky) */
@@ -328,7 +331,7 @@ export function StarMemoryCard({
     setSaving(true); // no duplicate submissions
     try {
       // the same Star-entry record as the check-in: shown on this Star AND in Moments
-      const sign = await addSign(star.id, t, "manual", kind);
+      const sign = await addSign(star.id, t, "manual", kind ?? undefined);
       setSigns((list) => [sign, ...(list ?? [])]);
       setSaved(sign);
       setText("");
@@ -642,9 +645,22 @@ export function StarMemoryCard({
     const secondary = onPaper ? "ds-btn ds-btn--secondary ds-btn--block" : "ds-btn ds-btn--secondary ds-on-dark ds-btn--block sms-cta";
     const textSurface = onPaper ? "paper" : "dark";
     return mode === "journey" ? (
-      <button type="button" className={primary} onClick={() => startPractice("journey")}>
-        Spend a quiet moment
-      </button>
+      // the wish's own story first: keep a moment on it; the quiet practices under it
+      <div className="sms-cta-pair">
+        <button
+          type="button"
+          className={primary}
+          onClick={() => {
+            primeKeyboard(); // the writing page opens with the keyboard (iOS: inside the tap)
+            openReflect("journey");
+          }}
+        >
+          Leave a moment
+        </button>
+        <TextAction surface={textSurface} className="sms-cta-secondary" onClick={() => startPractice("journey")}>
+          Picture it, or walk with it
+        </TextAction>
+      </div>
     ) : completion ? (
       <div className="sms-cta-pair">
         <button
@@ -1077,6 +1093,18 @@ export function StarMemoryCard({
                     {/* what has been done for this wish, one mark per activity (the same
                         icon as its card: eye · paws · pencil); each opens
                         its journal on that kind. Before anything, one gentle line. */}
+                    {/* what you actually left for it, first: the latest moment, in your words */}
+                    {latestWords && (
+                      <button type="button" className="smj-latest" onClick={() => setJournal("all")}>
+                        <span className="smj-latest-meta">{dayLabel(latestWords.createdAt)}</span>
+                        <span className="smj-latest-text">“{latestWords.text}”</span>
+                        <span className="smj-latest-more">
+                          {/* the count lives once, in the marks below */}
+                          {marks.reflected > 1 ? "See all moments" : "Read it"}
+                          <IconChevronRight size={14} />
+                        </span>
+                      </button>
+                    )}
                     {signs !== null && care > 0 ? (
                       <div className="smj-marks" role="group" aria-label="Your way with this wish">
                         {(
@@ -1509,10 +1537,22 @@ export function StarMemoryCard({
              (italic is kept for quiet states and for quoting your words) */
           margin: 36px 0 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); letter-spacing: var(--tracking-editorial); color: var(--paper-80); text-wrap: balance;
         }
+        /* the latest moment: your own words, first (then the marks) */
+        .smj-latest {
+          margin-top: 20px; max-width: 320px; min-height: 44px; padding: 8px 12px; border: 0; background: none; border-radius: 14px;
+          display: flex; flex-direction: column; align-items: center; gap: 6px; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .smj-latest:active { background: rgba(245, 239, 230, 0.06); }
+        .smj-latest-meta { font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.02em; color: var(--paper-80); }
+        .smj-latest-text {
+          font-family: var(--font-editorial); font-size: 17px; line-height: 1.4; color: var(--sisi-paper); text-wrap: balance;
+          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .smj-latest-more { display: inline-flex; align-items: center; gap: 2px; font-family: var(--font-ui); font-size: 13px; color: var(--paper-80); }
         /* the three marks: the system's mark square, round, on the night */
-        .smj-marks { display: flex; justify-content: center; gap: 6px; width: 100%; margin-top: 40px; }
+        .smj-marks { display: flex; justify-content: center; gap: 6px; width: 100%; margin-top: 16px; }
         .smj-mark {
-          flex: 1 1 0; max-width: 116px; min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+          flex: 1 1 0; max-width: 116px; min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 8px;
           padding: 6px 2px; border: 0; background: none; color: var(--sisi-paper); cursor: pointer; border-radius: 14px;
           -webkit-tap-highlight-color: transparent;
         }
@@ -1528,7 +1568,8 @@ export function StarMemoryCard({
         /* nothing of this kind yet: still there, quieter */
         .smj-mark.is-zero { opacity: 0.62; }
         .smj-hero .smj-edit { width: 100%; text-align: left; }
-        .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 32px); }
+        /* the pair (Leave a moment · Picture it, or walk with it) fits above the safe area */
+        .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 64px); }
         .smj-status {
           display: inline-flex; align-items: center; gap: 6px; margin: 0;
           font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.02em; color: var(--paper-80);
@@ -1567,15 +1608,15 @@ export function StarMemoryCard({
         open={mode === "reflect"}
         onClose={() => setMode(reflectBack)}
         label="Reflect on today"
-        question={KIND[kind].ph}
+        question={kind ? KIND[kind].ph : "What happened along the way?"}
         text={text}
         onText={setText}
         wish={star}
         extra={
           // choosing the kind keeps the keyboard up
-          <div className="ds-chip-row" role="group" aria-label="What kind of note" onMouseDown={(e) => e.preventDefault()}>
+          <div className="ds-chip-row" role="group" aria-label="What kind of moment (optional)" onMouseDown={(e) => e.preventDefault()}>
             {(Object.keys(KIND) as EntryKind[]).map((k) => (
-              <FilterChip key={k} selected={kind === k} onClick={() => setKind(k)}>
+              <FilterChip key={k} selected={kind === k} onClick={() => setKind((c) => (c === k ? null : k))}>
                 {KIND[k].chip}
               </FilterChip>
             ))}

@@ -266,7 +266,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
 
   const startKeep = (mode: Keep["mode"], text: string) => {
     setExpr("listening");
-    setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "something_good" });
+    setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "general" });
   };
 
   const confirmKeep = async () => {
@@ -442,13 +442,13 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
                   </button>
                 ))}
               </div>
-              <p className="ds-label" style={{ margin: "8px 0 0" }}>What kind of note is this?</p>
+              <p className="ds-label" style={{ margin: "8px 0 0" }}>What kind of moment? (optional)</p>
               <div className="ds-chip-row">
                 {([
                   ["something_good", "A sign"],
                   ["small_step", "A small step"],
                 ] as const).map(([t, label]) => (
-                  <FilterChip key={t} selected={keep.type === t} onClick={() => setKeep({ ...keep, type: t })}>
+                  <FilterChip key={t} selected={keep.type === t} onClick={() => setKeep({ ...keep, type: keep.type === t ? "general" : t })}>
                     {label}
                   </FilterChip>
                 ))}

@@ -6,6 +6,8 @@ import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment } from "@/lib/momentStore";
 import { markHint } from "@/lib/hints";
 import { WritingPage, type WritingPhoto } from "@/components/sisi/WritingPage";
+import { FilterChip } from "@/components/ds";
+import type { EntryKind } from "@/lib/myStars";
 import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 
 /**
@@ -32,6 +34,8 @@ export function MomentCapture({
   const [stars, setStars] = useState<Star[]>([]);
   const [wish, setWish] = useState<Star | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  /** optional: a sign, or a small step (else simply a moment) */
+  const [kind, setKind] = useState<EntryKind | null>(null);
 
   // put away (✕ or a tap outside) keeps what was written; saving clears it
   useEffect(() => {
@@ -72,7 +76,7 @@ export function MomentCapture({
     try {
       await createMoment({
         source: "journey_capture",
-        type: "general",
+        type: kind ?? "general",
         text: text.trim() || null,
         image: photo?.dataURL ?? null,
         imageWidth: photo?.width,
@@ -84,6 +88,7 @@ export function MomentCapture({
       setPhoto(null);
       setText("");
       setWish(null);
+      setKind(null);
       onClose();
       setToast(wish ? `Kept. It’s part of “${wish.wish}” now.` : "Kept. It’s in your Moments.");
     } catch {
@@ -98,7 +103,7 @@ export function MomentCapture({
         open={open}
         onClose={close}
         label="Capture a moment"
-        question="What did you notice today?"
+        question="What would you like to keep from today?"
         text={text}
         onText={setText}
         photo={photo}
@@ -107,6 +112,21 @@ export function MomentCapture({
         wish={wish}
         wishes={stars}
         onWish={setWish}
+        extra={
+          // the same writing everywhere: what kind of moment, if you like
+          <div className="ds-chip-row" role="group" aria-label="What kind of moment (optional)" onMouseDown={(e) => e.preventDefault()}>
+            {(
+              [
+                ["something_good", "A sign"],
+                ["small_step", "A small step"],
+              ] as const
+            ).map(([k, label]) => (
+              <FilterChip key={k} selected={kind === k} onClick={() => setKind((c) => (c === k ? null : k))}>
+                {label}
+              </FilterChip>
+            ))}
+          </div>
+        }
         saving={saving}
         canSave={canSave}
         onSave={save}
