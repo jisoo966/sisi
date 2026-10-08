@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
 import { IconButton, IconCustomize, IconMenu } from "@/components/ds";
-import { hintDone, markHint } from "@/lib/hints";
+import { markHint } from "@/lib/hints";
 
 /**
  * JourneyHeader — minimal, quiet header per mockup "Quiet main journey".
@@ -33,7 +32,7 @@ type Props = {
   onCameraClick?: () => void;
   /** Open the satchel (optional customization drawer). */
   onSatchelClick?: () => void;
-  /** the first times: the tool's name beside it (until it has been used) */
+  /** @deprecated the tool is pointed out by Sísí at the first Starlight (no name label) */
   showNames?: boolean;
 };
 
@@ -43,10 +42,8 @@ export function JourneyHeader({
   onMenuClick,
   onCameraClick,
   onSatchelClick,
-  showNames = false,
 }: Props) {
-  const [nameCustomize, setNameCustomize] = useState(false);
-  useEffect(() => setNameCustomize(!hintDone("customize")), []);
+
   return (
     <motion.header
       className={`journey-header ${isDark ? "is-dark" : ""}`}
@@ -77,26 +74,16 @@ export function JourneyHeader({
               className="satchel-btn"
               onClick={() => {
                 markHint("customize");
-                setNameCustomize(false);
                 onSatchelClick();
               }}
             >
               <IconCustomize />
             </IconButton>
-            {showNames && nameCustomize && <span className="tool-name" aria-hidden>Customize</span>}
           </span>
         )}
       </div>
 
       <style jsx>{`
-        /* a small name under a tool, the first times (a label, never a bubble) */
-        .tool-wrap { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
-        .tool-name {
-          position: absolute; top: calc(100% - 2px); right: 50%; translate: 50% 0; white-space: nowrap; pointer-events: none;
-          font-family: var(--font-ui); font-size: 11.5px; letter-spacing: 0.02em; color: var(--sisi-paper);
-          text-shadow: 0 1px 6px rgba(16, 45, 50, 0.55); animation: tool-name-in 600ms ease 900ms both;
-        }
-        @keyframes tool-name-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 0.92; transform: none; } }
         :global(.journey-header) {
           position: absolute;
           top: var(--header-top);

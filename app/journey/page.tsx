@@ -998,6 +998,12 @@ export default function JourneyPage() {
       }),
     [],
   );
+  // while she explains the first Starlight, the tool where its worlds live glows
+  const pointingAtWorlds = firstLightLine && !walkLine && tour === 0 && isWalking;
+  useEffect(() => {
+    document.documentElement.classList.toggle("first-light", pointingAtWorlds);
+    return () => document.documentElement.classList.remove("first-light");
+  }, [pointingAtWorlds]);
   /** what Starlight is: said once, and it waits for you (never on a timer) */
   const firstLightSeen = () => {
     setFirstLightLine(false);
@@ -1301,7 +1307,6 @@ export default function JourneyPage() {
             hasNudge={hasNudge}
             onMenuClick={() => setMenuOpen(true)}
             onSatchelClick={() => !busy && setSatchelOpen(true)}
-            showNames={!first && tour === 0 && isWalking}
           />
           {/* capturing — the main action — within the thumb's reach */}
           {/* only while walking: in the Stars it is out of sight, and must not
@@ -1497,7 +1502,21 @@ export default function JourneyPage() {
                   actions: [{ label: "Let’s walk", act: () => setTour(0) }],
                 }
               : firstLightLine && !walkLine && tour === 0 // one voice: after her first walk with you
-              ? { key: "first-light", text: FIRST_STARLIGHT_LINE, actions: [{ label: "Keep walking", act: firstLightSeen }] }
+              ? {
+                  key: "first-light",
+                  text: FIRST_STARLIGHT_LINE,
+                  // the worlds it opens live behind the tool up there (it glows while she says this)
+                  actions: [
+                    {
+                      label: "Show me",
+                      act: () => {
+                        firstLightSeen();
+                        setSatchelOpen(true);
+                      },
+                    },
+                    { label: "Keep walking", quiet: true, act: firstLightSeen },
+                  ],
+                }
               : helloLine && !carried
               ? {
                   key: helloLine.key,

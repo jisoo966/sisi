@@ -66,7 +66,8 @@ export function CaptureFAB({ onClick, look = "sketch", showName = false }: Props
           position: absolute; z-index: 12; pointer-events: none; white-space: nowrap;
           right: calc(var(--fab-right) + var(--fab-size) + 8px);
           bottom: calc(var(--fab-bottom) + var(--fab-size) / 2); translate: 0 50%;
-          font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0.02em; color: var(--sisi-paper);
+          /* the same type as the tabs' names */
+          font-family: var(--font-editorial); font-weight: 500; font-size: 13px; color: var(--sisi-paper);
           text-shadow: 0 1px 6px rgba(16, 45, 50, 0.6); animation: fab-name-in 600ms ease 1s both;
         }
         @keyframes fab-name-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 0.95; transform: none; } }
