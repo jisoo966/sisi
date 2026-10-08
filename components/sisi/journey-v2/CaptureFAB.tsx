@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { hintDone } from "@/lib/hints";
 
 import { IconPencil } from "@/components/ds";
 
@@ -18,10 +20,19 @@ import { IconPencil } from "@/components/ds";
  * Anchor: bottom = --fab-bottom · right = --fab-right · size = --fab-size.
  */
 
-type Props = { onClick: () => void; look?: "paper" | "quiet" | "sketch" };
+type Props = {
+  onClick: () => void;
+  look?: "paper" | "quiet" | "sketch";
+  /** the first times: its name beside it (until the first moment is kept) */
+  showName?: boolean;
+};
 
-export function CaptureFAB({ onClick, look = "sketch" }: Props) {
+export function CaptureFAB({ onClick, look = "sketch", showName = false }: Props) {
+  const [named, setNamed] = useState(false);
+  useEffect(() => setNamed(!hintDone("capture")), []);
   return (
+    <>
+    {showName && named && <span className="capture-fab-name" aria-hidden>Keep a moment</span>}
     <motion.button
       type="button"
       onClick={onClick}
@@ -51,6 +62,14 @@ export function CaptureFAB({ onClick, look = "sketch" }: Props) {
           -webkit-tap-highlight-color: transparent;
         }
         .capture-fab svg { width: 26px; height: 26px; }
+        .capture-fab-name {
+          position: absolute; z-index: 12; pointer-events: none; white-space: nowrap;
+          right: calc(var(--fab-right) + var(--fab-size) + 8px);
+          bottom: calc(var(--fab-bottom) + var(--fab-size) / 2); translate: 0 50%;
+          font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0.02em; color: var(--sisi-paper);
+          text-shadow: 0 1px 6px rgba(16, 45, 50, 0.6); animation: fab-name-in 600ms ease 1s both;
+        }
+        @keyframes fab-name-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 0.95; transform: none; } }
         /* paper: warm paper with its grain, a soft lift */
         .capture-fab.is-paper {
           color: var(--sisi-ink);
@@ -79,5 +98,6 @@ export function CaptureFAB({ onClick, look = "sketch" }: Props) {
         .capture-fab.is-sketch svg { position: relative; z-index: 1; }
       `}</style>
     </motion.button>
+    </>
   );
 }

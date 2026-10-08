@@ -71,7 +71,7 @@ function isSameDay(a: Date, b: Date) {
 }
 
 export function layoutTimeline(entries: TrailEntry[], W: number): TimelineLayout {
-  const focusX = W * 0.52; // where the focused card's centre rests
+  const focusX = W * 0.47; // where the focused card's centre rests (clear of Sísí, even enlarged)
   const foxX = W * 0.79; // Sísí's centre (lower right)
 
   // Which Star each entry belongs to, and the first (oldest) entry of each Star.

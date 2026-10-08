@@ -9,6 +9,7 @@ import Link from "next/link";
 import { SisiChatCharacter } from "@/components/sisi/journey-v2/SisiChatCharacter";
 import { NightBackdrop } from "@/components/sisi/stars/NightBackdrop";
 import { usePageBg } from "@/lib/usePageBg";
+import { RESTORE_AFTER_SIGN_IN } from "@/lib/cloudSave";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,21 @@ function LoginInner() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  /** keep: this phone's guest (an anonymous account) adds an email — the same
+   *  account, everything kept stays. signin: an account made before. */
+  const [mode, setMode] = useState<"keep" | "signin">("signin");
+  const [taken, setTaken] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("mode") === "signin") return;
+    createClient()
+      .auth.getSession()
+      .then(({ data }) => {
+        const anon = data.session?.user.is_anonymous;
+        const kept = !!(localStorage.getItem("sisi:stars") || localStorage.getItem("sisi:moments-v1"));
+        if (anon && kept) setMode("keep");
+      })
+      .catch(() => undefined);
+  }, [searchParams]);
   usePageBg("#06101f");
   useKeyboardInset(!submitted);
 
@@ -72,6 +88,22 @@ function LoginInner() {
     setError("");
 
     const supabase = createClient();
+    if (mode === "keep") {
+      // the same account: the email is added to it (nothing moves, nothing is lost)
+      const { error } = await supabase.auth.updateUser(
+        { email: email.trim().toLowerCase() },
+        { emailRedirectTo: `${window.location.origin}/auth/confirm?next=/journey` },
+      );
+      setLoading(false);
+      if (error) {
+        const already = /already|registered|exists/i.test(error.message);
+        setTaken(already);
+        setError(already ? "That email already has a place here." : "It didn’t send just now. Try once more?");
+      } else setSubmitted(true);
+      return;
+    }
+    // signing in to an account made before: its backup comes to this phone
+    localStorage.setItem(RESTORE_AFTER_SIGN_IN, "1");
     // 유저가 지금 있는 도메인 그대로 redirect — 쿠키 domain 안 맞아서 세션 소실되는 문제 방지.
     // ⚠️ Supabase Dashboard → Auth → URL Configuration에 아래 URL 두 개 다 추가되어 있어야 함:
     //     https://hellosisi.co/auth/confirm
@@ -115,8 +147,19 @@ function LoginInner() {
           <AnimatePresence mode="wait" initial={false}>
             {!submitted ? (
               <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-                <h1 className="lg-title">Welcome back.</h1>
-                <p className="lg-say">I’ll send a link to your email. Open it here, and your Stars will be waiting.</p>
+                {mode === "keep" ? (
+                  <>
+                    <h1 className="lg-title">Keep what you’ve left.</h1>
+                    <p className="lg-say">
+                      Right now your Stars and moments live on this phone, with a quiet backup. Add your email to carry them to any device.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="lg-title">Welcome back.</h1>
+                    <p className="lg-say">I’ll send a link to your email. Open it here, and your Stars will be waiting.</p>
+                  </>
+                )}
                 <form onSubmit={handleSubmit}>
                   <input
                     id="email"
@@ -134,13 +177,31 @@ function LoginInner() {
                       {error}
                     </p>
                   )}
+                  {taken && mode === "keep" && (
+                    <TextAction
+                      className="lg-quiet lg-switch"
+                      onClick={() => {
+                        setMode("signin");
+                        setTaken(false);
+                        setError("");
+                      }}
+                    >
+                      Sign in with it instead
+                    </TextAction>
+                  )}
                   <PrimaryButton type="submit" block loading={loading} disabled={!email.trim()}>
                     Send me a link
                   </PrimaryButton>
                 </form>
-                <TextAction className="lg-quiet" onClick={continueAsGuest}>
-                  Begin as a guest instead
-                </TextAction>
+                {mode === "keep" ? (
+                  <TextAction className="lg-quiet" onClick={() => setMode("signin")}>
+                    I already have an account
+                  </TextAction>
+                ) : (
+                  <TextAction className="lg-quiet" onClick={continueAsGuest}>
+                    Begin as a guest instead
+                  </TextAction>
+                )}
                 <p className="lg-legal">
                   By continuing, you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy policy</Link>.
                 </p>
@@ -149,7 +210,8 @@ function LoginInner() {
               <motion.div key="sent" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
                 <h1 className="lg-title">Check your email.</h1>
                 <p className="lg-say">
-                  A link is on its way to <em>{email}</em>. It will find you.
+                  A link is on its way to <em>{email}</em>.{" "}
+                  {mode === "keep" ? "Open it to confirm. Everything you’ve kept stays as it is." : "It will find you."}
                 </p>
                 <p className="lg-helper">Open it in this same browser. If it opens inside your mail app, choose “Open in Safari”.</p>
                 <TextAction
@@ -185,6 +247,7 @@ function LoginInner() {
         .lg-field { margin-bottom: var(--space-4); font-family: var(--font-editorial); font-size: 17px; }
         .lg-error { margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
         .lg-quiet { display: block; margin: var(--space-2) auto 0; }
+        .lg-switch { margin: calc(-1 * var(--space-2)) auto var(--space-3); }
         .lg-helper { margin: 0 0 var(--space-3); font-family: var(--font-ui); font-size: var(--text-meta); line-height: 1.5; color: var(--ink-60); }
         .lg-legal { margin: var(--space-3) 0 0; text-align: center; font-family: var(--font-ui); font-size: 11.5px; color: var(--ink-60); }
         .lg-legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

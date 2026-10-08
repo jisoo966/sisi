@@ -248,6 +248,10 @@
 }
 
 /* ── World layer — everything that moves ── */
+/* opening the app: the world waits (unseen) until its pictures are ready, then
+   the sky, the meadow and Sísí arrive together */
+.journey-stage-v2 .journey-world-layer, .journey-stage-v2 .journey-ui-layer { transition: opacity 420ms ease; }
+.journey-stage-v2.is-arriving .journey-world-layer, .journey-stage-v2.is-arriving .journey-ui-layer { opacity: 0; transition: none; }
 .journey-world-layer {
   position: absolute;
   inset: 0;

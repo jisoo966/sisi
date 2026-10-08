@@ -206,12 +206,8 @@ export const MomentsWorld = forwardRef<
   helloDone.current = onHelloDone;
   useEffect(() => {
     if (!sayHello) return;
+    // an explanation stays until you put it away (a tap anywhere), never on a timer
     if (emptyNoteAway) return void helloDone.current?.();
-    const t = setTimeout(() => {
-      setEmptyNoteAway(true);
-      helloDone.current?.();
-    }, 7000);
-    return () => clearTimeout(t);
   }, [sayHello, emptyNoteAway]);
   const foxRootRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
@@ -440,6 +436,10 @@ export const MomentsWorld = forwardRef<
         if (w) w.style.transform = `translate3d(${view.toFixed(2)}px,0,0)`;
         const fr = foxRootRef.current;
         if (fr) fr.style.transform = off ? `translate3d(${off.toFixed(2)}px,0,0)` : "";
+        // where Sísí really is on screen (a card fades before it reaches her)
+        const foxBox = fr?.querySelector(".tf-root")?.getBoundingClientRect();
+        const rootLeft = rootRef.current?.getBoundingClientRect().left ?? 0;
+        const foxLeft = foxBox && foxBox.width ? foxBox.left - rootLeft + foxBox.width * 0.18 : focusX + W * 0.14;
         // Only whole cards are readable: fade anything leaving the frame or
         // passing behind Sísí, so nothing rests awkwardly cropped.
         for (const p of layout.placed) {
@@ -449,7 +449,8 @@ export const MomentsWorld = forwardRef<
           const left = sx - p.cardW / 2;
           const right = sx + p.cardW / 2;
           const edge = clamp01((left + 30) / 40) * clamp01((W + 30 - right) / 40);
-          const behind = 1 - smooth((sx - (focusX + W * 0.14)) / (W * 0.12));
+          // gone by the time its edge is a little way into her (never read through her)
+          const behind = 1 - smooth((right - foxLeft + 8) / 36);
           const o = edge * behind;
           el.style.opacity = o.toFixed(3);
           el.style.visibility = o < 0.01 ? "hidden" : "visible";
@@ -720,7 +721,7 @@ export const MomentsWorld = forwardRef<
                   <img className="mw-light" src={LIGHTS[p.light].src} alt="" draggable={false} style={lightStyle(p.light, p.lightDx, ly)} />
                 )}
                 <div
-                  className={`mw-card mw-card--${p.kind}`}
+                  className={`mw-card mw-card--${p.kind}${p.index === focus ? " is-focused" : ""}`}
                   data-mkey={p.key}
                   role="button"
                   tabIndex={0}
@@ -826,7 +827,7 @@ export const MomentsWorld = forwardRef<
 
       {hint && entries.length > 1 && phase === "ready" && (
         <div className="mw-hint" aria-hidden>
-          <span>Pull the past closer</span>
+          <span>Drag to explore · Tap to read</span>
           <span className="mw-hint-track">
             <i />
             <svg className="mw-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -890,12 +891,14 @@ export const MomentsWorld = forwardRef<
           filter: drop-shadow(0 1px 2px rgba(16, 45, 50, 0.35));
         }
         @keyframes mw-light-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        .mw-card { position: absolute; cursor: pointer; transform-origin: 50% 100%; outline: none; translate: 0 0; }
+        .mw-card { position: absolute; cursor: pointer; transform-origin: 50% 100%; outline: none; translate: 0 0; scale: 0.96; transition: scale 320ms var(--ease-sisi); }
+        /* the one you are on reads a little larger */
+        .mw-card.is-focused { scale: 1.12; z-index: 1; }
         .mw-card:focus-visible { outline: 2px solid var(--paper-90); outline-offset: 4px; }
         .mw-note { position: relative; padding: 11px 12px 9px; color: var(--sisi-ink); }
         .mw-note > :not(.mm-art) { position: relative; }
         .mw-note-text {
-          display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
           font-family: var(--font-editorial); font-size: 13.5px; line-height: 1.3; margin: 0 0 5px;
         }
         .mw-note-kicker { display: block; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-chip); color: var(--ink-60); margin-bottom: 3px; letter-spacing: 0.005em; }

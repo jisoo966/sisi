@@ -10,6 +10,7 @@ import { BackgroundMusic } from "@/components/sisi/BackgroundMusic";
 import { EffectsHost } from "@/components/sisi/effects/EffectsHost";
 import { DevKeyboard } from "@/components/sisi/DevKeyboard";
 import { CloudSave } from "@/components/sisi/CloudSave";
+import { UndoDelete } from "@/components/sisi/UndoDelete";
 
 // Inter — functional metadata only (dates, statuses, helpers, chips).
 const inter = Inter({
@@ -107,6 +108,7 @@ export default function RootLayout({
               transformed world container, inside the phone frame on desktop. */}
           <div id="sisi-overlay-root" />
           <EffectsHost />
+          <UndoDelete />
           {/* development only, on a computer: an iPhone-sized test keyboard */}
           <DevKeyboard />
           <CloudSave />

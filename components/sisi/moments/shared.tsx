@@ -76,7 +76,7 @@ export function Postcard({ image, caption, className = "" }: { image: string; ca
       <ArtFill art={ART.postcard} />
       <span className="mm-pc-win">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image} alt="" loading="lazy" draggable={false} />
+        <img src={image} alt="" loading="lazy" draggable={false} onError={(e) => e.currentTarget.setAttribute("data-failed", "")} />
       </span>
       <ArtFill art={ART.tapes} />
       {caption && <span className="mm-pc-cap">{caption}</span>}
@@ -410,6 +410,10 @@ export function MomentsSharedStyles() {
   return (
     <style jsx global>{`
       .mm-art { position: absolute; max-width: none; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+      /* while the paper art and photos arrive, a plain paper shape holds their place (never a broken image) */
+      .mw-note, .mm-pc { background: rgba(245, 239, 230, 0.92); border-radius: 3px; }
+      .mm-pc-win { background: #e8dfcf; }
+      .mm-pc-win img[data-failed] { visibility: hidden; }
       .mm-crop { position: relative; display: block; }
       .mm-text { display: block; font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); margin: 0 0 6px; }
       .mm-muted { font-style: italic; color: var(--ink-60); }

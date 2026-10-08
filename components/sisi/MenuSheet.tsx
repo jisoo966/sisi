@@ -145,8 +145,8 @@ export function MenuSheet({
         // no account to sign out of: keeping the Stars safe on every device is the offer
         <Link href="/login" onClick={onClose} className="menu-row menu-keep">
           <span className="menu-row-label">
-            Keep your Stars safe
-            <span className="menu-row-sub">Add your email to find them on any phone.</span>
+            Keep your moments on any device
+            <span className="menu-row-sub">Right now they live on this phone, with a quiet backup.</span>
           </span>
           <IconChevronRight size={20} />
         </Link>

@@ -37,6 +37,17 @@ export function MomentsScreen() {
   const [stars, setStars] = useState<Star[]>([]);
   const [signs, setSigns] = useState<Sign[]>([]);
   const [view, setView] = useState<"trail" | "list">("trail");
+  // Trail or List: the way you last looked is how Moments opens next time
+  const VIEW_KEY = "sisi:moments-view";
+  const viewRead = useRef(false);
+  useEffect(() => {
+    if (viewRead.current) return;
+    viewRead.current = true;
+    if (new URLSearchParams(window.location.search).get("star")) return; // a Star's own list
+    try {
+      if (localStorage.getItem(VIEW_KEY) === "list") setView("list");
+    } catch {}
+  }, []);
   const [open, setOpen] = useState<{ item: MomentItem; from: Origin } | null>(null);
   const [openRest, setOpenRest] = useState<{ item: RestItem; from: Origin } | null>(null);
 
@@ -207,6 +218,9 @@ export function MomentsScreen() {
             if (leaving) return;
             if (v === "trail") closeSearch();
             setView(v);
+            try {
+              localStorage.setItem(VIEW_KEY, v);
+            } catch {}
           }}
           options={[
             { value: "trail", label: "Trail", icon: <IconLandscape /> },

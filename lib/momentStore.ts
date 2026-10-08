@@ -314,8 +314,38 @@ export async function updateMoment(
   writeLocal(list);
 }
 
+/** a deleted Moment, for a few seconds: "Deleted · Undo" brings it back as it was */
+export const MOMENT_DELETED = "sisi:moment-deleted";
+
+/** Put a just-deleted Moment back exactly as it was (same id, same day). */
+export async function restoreMoment(m: Moment): Promise<void> {
+  const user = await currentUser();
+  if (user) {
+    const { error } = await createClient().from("signs").insert({
+      id: m.id,
+      user_id: user.id,
+      star_id: m.starId,
+      text: m.text,
+      source: m.source,
+      type: m.type,
+      image_url: m.image,
+      image_width: m.imageWidth ?? null,
+      image_height: m.imageHeight ?? null,
+      created_at: m.createdAt,
+      updated_at: m.updatedAt,
+    });
+    if (error) throw error;
+    notify();
+    return;
+  }
+  const list = syncLegacy(readLocal()).filter((x) => x.id !== m.id);
+  writeLocal([m, ...list].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)));
+}
+
 /** Remove a Moment from every view (it was saved once, so once is enough). */
 export async function deleteMoment(id: string): Promise<void> {
+  const gone = (await loadMoments()).find((m) => m.id === id) ?? null;
+  if (gone && typeof window !== "undefined") window.dispatchEvent(new CustomEvent<Moment>(MOMENT_DELETED, { detail: gone }));
   const user = await currentUser();
   if (user) {
     const { error } = await createClient().from("signs").delete().eq("id", id).eq("user_id", user.id);

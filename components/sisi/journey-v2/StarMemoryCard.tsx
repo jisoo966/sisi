@@ -121,7 +121,9 @@ const KIND: Record<EntryKind, { chip: string; label: string; ph: string }> = {
 const PRACTICES = [
   // what each is, and why it helps: seeing it as yours · keeping it close · noticing it arrive
   { id: "picture", title: "Picture it", desc: "Close your eyes and see it as already yours." },
-  { id: "walk", title: "Walk with it", desc: "Carry it into your Journey, and keep it close today." },
+  // what counts, said before you start: choosing it makes today a day walked
+  // (lib/starActivity); half a minute together adds the day's Starlight
+  { id: "walk", title: "Walk with it", desc: "Carry it into your Journey. Today becomes a day walked with it." },
   { id: "reflect", title: "Reflect on today", desc: "Notice a sign or a small step. Proof it’s on its way." },
 ] as const;
 
@@ -150,6 +152,7 @@ const FACE: Partial<Record<Mode, SisiChatExpression>> = { picture: "comfort", "p
  * Never advances past the end by itself: "Continue" leads to the Anchor.
  */
 type RitualMode = "sound" | "silent";
+const RITUAL_STEPS = ["Settle", "Breathe", "Picture", "Keep"] as const;
 type Phase = "open" | "in" | "out" | "p0" | "p1" | "p2" | "p3" | "rest" | "wish" | "return";
 /**
  * sound: Sísí's recorded lines lead; each step lasts as long as her words
@@ -644,6 +647,10 @@ export function StarMemoryCard({
   /** the step's actions sit inside the card whenever the card is showing
    *  (one ✕ in the corner; nothing floats over the card's edge) */
   const paperControls = hasControls && !hasHeader && mode !== "picture";
+  const ritualStep =
+    mode === "picture-intro" ? 0 : mode === "picture-anchor" ? 3 : phase === "open" || phase === "in" || phase === "out" ? 1 : 2;
+  /** the parts that move on by themselves (with her voice: all of it; silent: the breath) */
+  const ritualGuided = mode === "picture" && !canContinue && phase !== "wish" && phase !== "return" && (ritual === "sound" || ritualStep === 1);
   const controls = (onPaper: boolean) => {
     const primary = onPaper ? "ds-btn ds-btn--primary ds-btn--block" : "ds-btn ds-btn--primary ds-on-dark ds-btn--block sms-cta";
     const secondary = onPaper ? "ds-btn ds-btn--secondary ds-btn--block" : "ds-btn ds-btn--secondary ds-on-dark ds-btn--block sms-cta";
@@ -1140,6 +1147,19 @@ export function StarMemoryCard({
             </div>
 
             {picturing && (
+              // where you are in it (Settle · Breathe · Picture · Keep), and whether
+              // to tap: the timed parts say so, so no one waits for a button
+              <div className="smp-steps" aria-live="polite">
+                <ol aria-label={`Step ${ritualStep + 1} of 4: ${RITUAL_STEPS[ritualStep]}`}>
+                  {RITUAL_STEPS.map((n, i) => (
+                    <li key={n} className={i === ritualStep ? "is-on" : i < ritualStep ? "is-done" : undefined} aria-hidden />
+                  ))}
+                </ol>
+                <span className="smp-steps-name">{RITUAL_STEPS[ritualStep]}</span>
+                {ritualGuided && <span className="smp-steps-note">Sísí will guide you. No need to tap.</span>}
+              </div>
+            )}
+            {picturing && (
               <div className="smp-close">
                 <IconButton surface="dark" label="Leave and return to my Star" onClick={leaveRitual}>
                   <IconClose />
@@ -1446,6 +1466,17 @@ export function StarMemoryCard({
         .smp-prompt-text.is-breath { font-style: italic; }
         .smp-next { min-height: 44px; }
         .smp-next-slot { min-height: 44px; }
+        .smp-steps {
+          position: absolute; z-index: 4; left: 50%; translate: -50% 0; top: calc(var(--safe-top) + 14px);
+          display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; text-align: center;
+          width: min(70vw, 260px);
+        }
+        .smp-steps ol { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+        .smp-steps li { width: 18px; height: 3px; border-radius: 2px; background: rgba(245, 239, 230, 0.22); transition: background 400ms ease; }
+        .smp-steps li.is-done { background: rgba(245, 239, 230, 0.55); }
+        .smp-steps li.is-on { background: var(--sisi-gold, #f1c45e); }
+        .smp-steps-name { font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0.04em; color: rgba(245, 239, 230, 0.78); }
+        .smp-steps-note { font-family: var(--font-editorial); font-style: italic; font-size: 13px; color: rgba(245, 239, 230, 0.6); }
         .smp-close { position: absolute; z-index: 4; top: calc(var(--safe-top) + 8px); right: max(8px, var(--safe-right)); pointer-events: auto; }
 
         /* layers: atmosphere (fixed root, z 0) · Star (z 3) · words and controls (z 4) */

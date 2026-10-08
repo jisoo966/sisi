@@ -998,14 +998,11 @@ export default function JourneyPage() {
       }),
     [],
   );
-  useEffect(() => {
-    if (!firstLightLine || tour > 0) return; // after her tour (one voice at a time)
-    const t = setTimeout(() => {
-      setFirstLightLine(false);
-      if (!visitsAsked()) setVisitAsk("ask");
-    }, 7500);
-    return () => clearTimeout(t);
-  }, [firstLightLine, tour]);
+  /** what Starlight is: said once, and it waits for you (never on a timer) */
+  const firstLightSeen = () => {
+    setFirstLightLine(false);
+    if (!visitsAsked()) setVisitAsk("ask");
+  };
   // arriving: Sísí says hello herself, once per part of the day
   useEffect(() => {
     const g = tod?.greeting;
@@ -1304,6 +1301,7 @@ export default function JourneyPage() {
             hasNudge={hasNudge}
             onMenuClick={() => setMenuOpen(true)}
             onSatchelClick={() => !busy && setSatchelOpen(true)}
+            showNames={!first && tour === 0 && isWalking}
           />
           {/* capturing — the main action — within the thumb's reach */}
           {/* only while walking: in the Stars it is out of sight, and must not
@@ -1315,6 +1313,7 @@ export default function JourneyPage() {
                 primeKeyboard(); // the writing page opens with the keyboard (iOS: only inside the tap)
                 setMomentOpen(true);
               }}
+              showName={!first && tour === 0 && isWalking}
             />
           </div>
           {/* The one primary action on the home screen. */}
@@ -1498,7 +1497,7 @@ export default function JourneyPage() {
                   actions: [{ label: "Let’s walk", act: () => setTour(0) }],
                 }
               : firstLightLine && !walkLine && tour === 0 // one voice: after her first walk with you
-              ? { key: "first-light", text: FIRST_STARLIGHT_LINE }
+              ? { key: "first-light", text: FIRST_STARLIGHT_LINE, actions: [{ label: "Keep walking", act: firstLightSeen }] }
               : helloLine && !carried
               ? {
                   key: helloLine.key,

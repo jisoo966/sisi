@@ -45,6 +45,8 @@ const KEPT = [
 ];
 
 const PUSH_AFTER_MS = 2000;
+/** set just before signing in with email on this phone: bring that account's backup here */
+export const RESTORE_AFTER_SIGN_IN = "sisi:restore-after-sign-in";
 let userId: string | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let lastPushed = "";
@@ -92,9 +94,11 @@ export async function startCloudSave(): Promise<boolean> {
   const supabase = createClient();
 
   // 1 · the same person on every launch, without a login
+  let signedInWithEmail = false;
   try {
     const { data } = await supabase.auth.getSession();
     userId = data.session?.user.id ?? null;
+    signedInWithEmail = !!data.session && !data.session.user.is_anonymous;
     if (!userId) {
       const { data: anon, error } = await supabase.auth.signInAnonymously();
       if (error) return false;
@@ -109,7 +113,25 @@ export async function startCloudSave(): Promise<boolean> {
   // (only a backup with something real in it — Stars, Moments or a name — and
   // only once per session, so a restore can never loop)
   let restored = false;
-  if (phoneIsEmpty() && !sessionStorage.getItem("sisi:restored")) {
+  // signed in on this phone with an account that has a backup: that account's
+  // Stars and Moments come here (what was on the phone is kept aside, never lost)
+  if (localStorage.getItem(RESTORE_AFTER_SIGN_IN) === "1" && signedInWithEmail) {
+    localStorage.removeItem(RESTORE_AFTER_SIGN_IN);
+    try {
+      const { data } = await supabase.from("device_state").select("data").eq("user_id", userId).maybeSingle();
+      const kept = (data?.data ?? null) as Record<string, string> | null;
+      if (kept && (kept["sisi:stars"] || kept["sisi:moments-v1"])) {
+        localStorage.setItem("sisi:before-sign-in", JSON.stringify(snapshot()));
+        for (const [k, v] of Object.entries(kept)) if (KEPT.includes(k)) localStorage.setItem(k, v);
+        lastPushed = JSON.stringify(snapshot());
+        sessionStorage.setItem("sisi:restored", "1");
+        restored = true;
+      }
+    } catch {
+      // nothing to bring: what is on this phone becomes the account's
+    }
+  }
+  if (!restored && phoneIsEmpty() && !sessionStorage.getItem("sisi:restored")) {
     try {
       const { data } = await supabase.from("device_state").select("data").eq("user_id", userId).maybeSingle();
       const kept = (data?.data ?? null) as Record<string, string> | null;
