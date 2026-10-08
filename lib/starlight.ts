@@ -56,6 +56,8 @@ export type LedgerRow = {
 export type AwardResult = {
   /** the caller shows its own feedback (no global note / glint) */
   silent?: boolean;
+  /** what was done (so the feedback can say it) */
+  source?: StarlightSource;
   /** Starlight actually added (0 when already rewarded or today's light is full) */
   awarded: number;
   /** today's maximum was reached (nothing, or less, was added) */
@@ -215,7 +217,7 @@ export async function awardStarlight(input: {
         balance: r.balance,
         unlocked: crossed(before, r.balance),
       };
-      afterAward({ ...result, silent: input.silent });
+      afterAward({ ...result, silent: input.silent, source: input.source });
       return result;
     }
     console.warn("award_starlight unavailable, keeping Starlight on this device:", error?.message);
@@ -245,7 +247,7 @@ export async function awardStarlight(input: {
     writeLocal(next);
     return { awarded: amount, duplicate: false, capped: amount < want, balance, unlocked } as AwardResult;
   });
-  afterAward({ ...result, silent: input.silent });
+  afterAward({ ...result, silent: input.silent, source: input.source });
   return result;
 }
 
@@ -262,7 +264,21 @@ function afterAward(r: AwardResult) {
 
 /** Starlight feedback: fired after each award attempt that earned (or hit the day's limit). */
 /** Sísí's one line the very first time Starlight is earned */
-export const FIRST_STARLIGHT_LINE = "Your first Starlight. Gather a little more, and a new world opens.";
+export const FIRST_STARLIGHT_LINE = "This time together added a little Starlight. Gather a little more, and a new world opens.";
+
+/** what was done, in a few words (the feedback names it) */
+export const STARLIGHT_FOR: Partial<Record<StarlightSource, string>> = {
+  picture_it_completed: "Pictured it",
+  walk_with_it_completed: "Walked with it",
+  something_good_saved: "A moment kept",
+  small_step_saved: "A small step kept",
+};
+
+/** the next World and how far along: "Cloud Garden · 7 / 12" (null once all are open) */
+export function nextWorldProgress(balance: number): { name: string; have: number; need: number } | null {
+  const next = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => w.threshold > balance);
+  return next ? { name: next.name, have: balance, need: next.threshold } : null;
+}
 
 export function onStarlight(fn: (r: AwardResult) => void): () => void {
   const h = (e: Event) => fn((e as CustomEvent<AwardResult>).detail);

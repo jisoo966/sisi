@@ -5,6 +5,7 @@ import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
 import { createMoment } from "@/lib/momentStore";
 import { markHint } from "@/lib/hints";
+import { awardStarlight } from "@/lib/starlight";
 import { WritingPage, type WritingPhoto } from "@/components/sisi/WritingPage";
 import { FilterChip } from "@/components/ds";
 import type { EntryKind } from "@/lib/myStars";
@@ -21,11 +22,17 @@ import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 export function MomentCapture({
   open,
   onClose,
+  question,
+  forStar = null,
 }: {
   open: boolean;
   /** @deprecated captures are no longer linked to the Current Star automatically */
   star?: Star | null;
   onClose: () => void;
+  /** her question, when she asked one (else: what to keep from today) */
+  question?: string;
+  /** the wish she asked about (chosen already; can be changed) */
+  forStar?: Star | null;
 }) {
   const [photo, setPhoto] = useState<WritingPhoto | null>(null);
   const [text, setText] = useState("");
@@ -43,6 +50,8 @@ export function MomentCapture({
     setSaving(false);
     setError("");
     loadStars().then((s) => setStars(walkingStars(s)));
+    if (forStar) setWish(forStar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   useEffect(() => {
     if (!toast) return;
@@ -74,7 +83,7 @@ export function MomentCapture({
     setSaving(true);
     setError("");
     try {
-      await createMoment({
+      const saved = await createMoment({
         source: "journey_capture",
         type: kind ?? "general",
         text: text.trim() || null,
@@ -83,6 +92,8 @@ export function MomentCapture({
         imageHeight: photo?.height,
         starId: wish?.id ?? null, // only if the person chose one
       });
+      // kept on a wish: the same Starlight as anywhere else a moment is kept on one
+      if (wish) awardStarlight({ source: kind === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: saved.id, starId: wish.id });
       markHint("capture");
       markHint("moments"); // their first Moment — Moments needn't explain itself now
       setPhoto(null);
@@ -103,7 +114,7 @@ export function MomentCapture({
         open={open}
         onClose={close}
         label="Capture a moment"
-        question="What would you like to keep from today?"
+        question={question ?? "What would you like to keep from today?"}
         text={text}
         onText={setText}
         photo={photo}

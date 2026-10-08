@@ -271,6 +271,17 @@ export function SatchelDrawer({
         /* Sísí sits whole in her card */
         .sd-card-img.is-sisi { object-fit: contain; padding: 10px 12px 8px; box-sizing: border-box; }
         .sd-world-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* a small scene from the Journey's own layers */
+        .sd-scene { position: relative; overflow: hidden; }
+        .sd-scene img { position: absolute; display: block; pointer-events: none; }
+        .sd-scene .sd-scene-sky, .sd-scene .sd-scene-own { inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .sd-scene .sd-scene-cloud { width: 62%; height: auto; object-fit: contain; opacity: 0.95; }
+        .sd-scene .c1 { left: 6%; top: 14%; }
+        .sd-scene .c2 { right: -8%; top: 30%; width: 54%; }
+        .sd-scene .sd-scene-tree { right: 12%; bottom: 13%; width: 30%; height: auto; object-fit: contain; }
+        .sd-scene .sd-scene-meadow { left: 0; right: 0; bottom: 0; width: 100%; height: 34%; object-fit: cover; object-position: center top; }
+        /* winter: a hush of snow-light over everything */
+        .sd-scene.is-quiet-winter::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(240, 244, 250, 0.38)); }
         .sd-badge {
           position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; justify-content: center;
           width: 30px; height: 30px; border-radius: 50%; background: var(--sisi-paper); color: var(--sisi-ink);
@@ -284,13 +295,45 @@ export function SatchelDrawer({
   );
 }
 
-/** The World's own preview when its pack has arrived; otherwise today's sky. */
+/** the meadow each World walks through (until its own pack arrives) */
+const PREVIEW_MEADOW: Record<WorldId, "morning" | "afternoon" | "evening"> = {
+  "morning-meadow": "morning",
+  "cloud-garden": "afternoon",
+  "golden-afternoon": "afternoon",
+  "evening-field": "evening",
+  "quiet-winter": "morning",
+};
+
+/**
+ * The World's own preview when its pack has arrived; otherwise a small scene
+ * made of the Journey's real layers (its sky, clouds, a far tree and the
+ * meadow), in the World's own light — never a flat swatch.
+ */
 function WorldPreview({ id }: { id: WorldId }) {
-  const [src, setSrc] = useState(worldAsset(id, "preview"));
+  const [own, setOwn] = useState(true);
+  const look = WORLD_LOOK[id];
+  const many = look.clouds >= 1.4;
   return (
-    <span className="sd-world-thumb" aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" onError={() => src !== WORLD_LOOK[id].preview && setSrc(WORLD_LOOK[id].preview)} style={{ filter: WORLD_LOOK[id].grade }} />
+    <span className={`sd-world-thumb sd-scene is-${id}`} aria-hidden style={{ filter: look.grade }}>
+      {own ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="sd-scene-own" src={worldAsset(id, "preview")} alt="" onError={() => setOwn(false)} />
+      ) : (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="sd-scene-sky" src={look.preview} alt="" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="sd-scene-cloud c1" src="/V2/time-of-day/cloud-04-mid-rounded.webp" alt="" />
+          {many && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="sd-scene-cloud c2" src="/V2/time-of-day/cloud-06-mid-broken.webp" alt="" />
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="sd-scene-tree" src="/V2/time-of-day/tree-far-01.webp" alt="" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="sd-scene-meadow" src={`/V2/time-of-day/meadow-strip-${PREVIEW_MEADOW[id]}.webp`} alt="" />
+        </>
+      )}
     </span>
   );
 }

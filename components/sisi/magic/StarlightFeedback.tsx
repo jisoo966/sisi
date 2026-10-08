@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { onStarlight, type AwardResult } from "@/lib/starlight";
+import { STARLIGHT_FOR, nextWorldProgress, onStarlight, type AwardResult } from "@/lib/starlight";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -14,9 +14,12 @@ import { haptic } from "@/lib/haptics";
  *            three little dabs twinkle beside it — with one light haptic
  *   release  the mark floats up a little and fades
  *
- * No confetti, no counters. Starlight is time spent with Sísí (it opens
- * Worlds) and stays apart from any one wish, so nothing flies to or from a
- * Star. When today's light is already full nothing shows at all.
+ * It says what earned it and where it leads: "✦ +1 · A moment kept", and
+ * under it "Cloud Garden · 7 / 12". No confetti. Starlight is time spent
+ * with Sísí (it opens Worlds) and stays apart from any one wish, so nothing
+ * flies to or from a Star. When today's light is already full, what you did
+ * is still acknowledged (without a number): "A moment kept · Today’s
+ * Starlight is full".
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -32,20 +35,24 @@ const TWINKLES = [
 ];
 
 export function StarlightFeedback() {
-  const [gain, setGain] = useState<{ id: number; n: number } | null>(null);
+  const [gain, setGain] = useState<{ id: number; n: number; what: string | null; toward: string | null } | null>(null);
   const seq = useRef(0);
   const reduced = useRef(false);
 
   useEffect(() => {
     reduced.current = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     return onStarlight((r: AwardResult) => {
-      if (r.silent || r.awarded <= 0) return;
+      if (r.silent || r.duplicate) return;
+      if (r.awarded <= 0 && !r.capped) return;
       const id = ++seq.current;
+      const what = (r.source && STARLIGHT_FOR[r.source]) ?? null;
+      const next = nextWorldProgress(r.balance);
+      const toward = r.awarded <= 0 ? "Today’s Starlight is full" : next ? `${next.name} · ${next.have} / ${next.need}` : null;
       // let the saved paper settle first
-      setTimeout(() => setGain({ id, n: r.awarded }), 450);
+      setTimeout(() => setGain({ id, n: r.awarded, what, toward }), 450);
       // the moment the light lands
-      setTimeout(() => haptic("starlight"), 450 + (reduced.current ? 100 : 640));
-      setTimeout(() => setGain((g) => (g && g.id === id ? null : g)), 450 + 2200);
+      if (r.awarded > 0) setTimeout(() => haptic("starlight"), 450 + (reduced.current ? 100 : 640));
+      setTimeout(() => setGain((g) => (g && g.id === id ? null : g)), 450 + 3200);
     });
   }, []);
 
@@ -61,12 +68,13 @@ export function StarlightFeedback() {
               key={gain.id}
               className="sl-gain"
               role="status"
-              aria-label={`${gain.n} Starlight`}
+              aria-label={[gain.n > 0 ? `${gain.n} Starlight` : "", gain.what ?? "", gain.toward ?? ""].filter(Boolean).join(". ")}
               initial={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16, transition: { duration: 0.6, ease: EASE } }}
             >
               {/* gather: dabs drift in with a gentle swirl and meet */}
               {!still &&
+                gain.n > 0 &&
                 DABS.map((d, i) => (
                   <motion.span
                     key={i}
@@ -103,10 +111,22 @@ export function StarlightFeedback() {
                 >
                   <path d="M12 2.4L13.7 10.3L20.4 12L13.7 13.7L12 21.2L10.3 13.7L4 12L10.3 10.3Z" fill="#F1C45E" />
                 </motion.svg>
-                +{gain.n}
+                {gain.n > 0 && <b>+{gain.n}</b>}
+                {gain.what && <span className="sl-what">{gain.n > 0 ? "· " : ""}{gain.what}</span>}
               </motion.span>
+              {gain.toward && (
+                <motion.span
+                  className="sl-toward"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: still ? 0 : 0.9, duration: 0.4, ease: EASE }}
+                >
+                  {gain.toward}
+                </motion.span>
+              )}
               {/* and a few little dabs twinkle beside it */}
               {!still &&
+                gain.n > 0 &&
                 TWINKLES.map((t, i) => (
                   <motion.span
                     key={`t${i}`}
@@ -125,7 +145,7 @@ export function StarlightFeedback() {
       )}
       <style jsx global>{`
         .sl-gain {
-          position: fixed; z-index: var(--z-toast); left: 50%; bottom: calc(var(--safe-bottom) + 168px);
+          position: fixed; z-index: var(--z-toast); left: 50%; top: 38%; /* up in the sky, clear of the toast and the tabs */
           width: 0; height: 0; pointer-events: none;
         }
         .sl-dab {
@@ -149,6 +169,13 @@ export function StarlightFeedback() {
           box-shadow: 0 0 18px rgba(241, 196, 94, 0.35), inset 0 0 0 1px rgba(245, 239, 221, 0.12);
         }
         .sl-mark svg { overflow: visible; }
+        .sl-mark b { font-weight: 600; }
+        .sl-what { font-weight: 500; color: var(--paper-90, rgba(245, 239, 230, 0.9)); }
+        .sl-toward {
+          position: absolute; left: 0; top: 26px; translate: -50% 0; white-space: nowrap;
+          padding: 3px 10px; border-radius: 999px; background: rgba(16, 45, 50, 0.45);
+          font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0.02em; color: rgba(245, 239, 230, 0.86);
+        }
       `}</style>
     </>
   );

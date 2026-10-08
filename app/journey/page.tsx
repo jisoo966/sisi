@@ -87,6 +87,8 @@ import { useStarAscent } from "@/lib/useStarAscent";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 import { loadSigns, loadStars, type Star, restStar, walkingStars } from "@/lib/myStars";
+import { loadMoments } from "@/lib/momentStore";
+import { readAndMarkVisit, suggestionFor, type Suggestion } from "@/lib/todaysSuggestion";
 import { careByStar } from "@/lib/starCare";
 import { logActivity } from "@/lib/starActivity";
 import { primeKeyboard } from "@/lib/keyboard";
@@ -255,9 +257,12 @@ export default function JourneyPage() {
   const introShown = useRef<string | null>(null);
   // Talking with Sísí (optionally starting from a thought).
   const [chatOpening, setChatOpening] = useState<string | null>(null);
-  const openChat = (opening?: string) => {
+  /** the wish the talk is about, when opened from its Star */
+  const [chatStar, setChatStar] = useState<Star | null>(null);
+  const openChat = (opening?: string, about?: Star) => {
     markHint("talk");
     setChatOpening(opening ?? null);
+    setChatStar(about ?? null);
     setChatOpen(true);
   };
 
@@ -302,8 +307,12 @@ export default function JourneyPage() {
   }, [tour]);
   /** the name being written into the greeting (first time) */
   const [draftName, setDraftName] = useState("");
-  /** arriving: Sísí greets you once per part of the day ("Good afternoon, jisoo.") */
-  const [helloLine, setHelloLine] = useState<string | null>(null);
+  /** arriving: Sísí greets you once per part of the day, with one thing for today */
+  const [helloLine, setHelloLine] = useState<Suggestion | null>(null);
+  /** the day you were last here (read once, as you arrive) */
+  const lastVisit = useRef<Date | null | undefined>(undefined);
+  /** her question for the moment page, when she asked one */
+  const [momentAsk, setMomentAsk] = useState<{ question: string; star: Star | null } | null>(null);
   const keepName = () => {
     const n = draftName.trim();
     if (!n) return;
@@ -1004,11 +1013,27 @@ export default function JourneyPage() {
     const key = `${new Date().toDateString()} ${g}`;
     if (localStorage.getItem("sisi:hello-last") === key) return;
     localStorage.setItem("sisi:hello-last", key);
-    const t1 = setTimeout(() => setHelloLine(`${g}, ${name}.`), 900);
-    const t2 = setTimeout(() => setHelloLine(null), 6500);
+    if (lastVisit.current === undefined) lastVisit.current = readAndMarkVisit();
+    let alive = true;
+    let t2: ReturnType<typeof setTimeout> | undefined;
+    const t1 = setTimeout(async () => {
+      const [stars, moments] = await Promise.all([loadStars(), loadMoments()]);
+      if (!alive) return;
+      const sug = suggestionFor({
+        greeting: g,
+        name,
+        stars: walkingStars(stars).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        moments,
+        lastVisit: lastVisit.current ?? null,
+      });
+      setHelloLine(sug);
+      // a suggestion waits a little longer (and × or a tap on her button puts it away)
+      t2 = setTimeout(() => setHelloLine(null), sug.action ? 16000 : 7000);
+    }, 900);
     return () => {
+      alive = false;
       clearTimeout(t1);
-      clearTimeout(t2);
+      if (t2) clearTimeout(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [first, name, tod?.greeting, isWalking, busy]);
@@ -1383,6 +1408,7 @@ export default function JourneyPage() {
                 backToMeadow();
               }}
               onRest={letStarRest}
+              onTalk={(s) => openChat(undefined, s)}
               onEdited={starEdited}
               onCreateStar={startNewStar}
               onEntrySaved={(entry) => {
@@ -1474,7 +1500,25 @@ export default function JourneyPage() {
               : firstLightLine && !walkLine && tour === 0 // one voice: after her first walk with you
               ? { key: "first-light", text: FIRST_STARLIGHT_LINE }
               : helloLine && !carried
-              ? { key: "hello-arrive", text: helloLine }
+              ? {
+                  key: helloLine.key,
+                  text: helloLine.text,
+                  onDismiss: helloLine.action ? () => setHelloLine(null) : undefined,
+                  actions: helloLine.action
+                    ? [
+                        {
+                          label: helloLine.action.label,
+                          act: () => {
+                            const a = helloLine.action!;
+                            setHelloLine(null);
+                            setMomentAsk({ question: a.question, star: a.star });
+                            primeKeyboard();
+                            setMomentOpen(true);
+                          },
+                        },
+                      ]
+                    : undefined,
+                }
               : visitAsk === "ask"
               ? {
                   key: "visit-ask",
@@ -1642,7 +1686,16 @@ export default function JourneyPage() {
         />
 
         <SatchelDrawer open={satchelOpen && isWalking} onClose={() => setSatchelOpen(false)} />
-        <MomentCapture open={momentOpen && isWalking} star={featuredStar} onClose={() => setMomentOpen(false)} />
+        <MomentCapture
+          open={momentOpen && isWalking}
+          star={featuredStar}
+          question={momentAsk?.question}
+          forStar={momentAsk?.star ?? null}
+          onClose={() => {
+            setMomentOpen(false);
+            setMomentAsk(null);
+          }}
+        />
         <EveningReflection
           open={eveningOpen && isWalking && !chatOpen && !practiceOpen && !satchelOpen && !momentOpen}
           star={featuredStar}
@@ -1662,7 +1715,9 @@ export default function JourneyPage() {
           setTimeout(() => goToStars(), 380);
         }}
         onClose={() => setChatOpen(false)}
-        star={featuredStar}
+        // the wish being talked about: from its Star, the one you walk with,
+        // or your only one (with several, Sísí lets you choose)
+        star={chatStar ?? carried ?? (pathStars.length === 1 ? featuredStar : null)}
         // ordinary conversation never earns Starlight
       />
 

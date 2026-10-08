@@ -91,6 +91,15 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
   const [keepBusy, setKeepBusy] = useState(false);
   const [stars, setStars] = useState<Star[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  /** the wish chosen in this talk ("Help me with a Star"); else the one given */
+  const [picked, setPicked] = useState<Star | null>(null);
+  /** Sísí asked which wish: the wishes are offered as replies (never retyped) */
+  const [picking, setPicking] = useState(false);
+  /** one of your own notes, tapped: "Keep this as a moment" under it */
+  const [keepAt, setKeepAt] = useState<string | null>(null);
+  /** each Star's kept words, newest first (so Sísí knows the story) */
+  const keptByStar = useRef<Record<string, string[]>>({});
+  const about = picked ?? star;
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   // Sísí's expression — one explicit state, changed only when it means something
   const [expr, setExpr] = useState<SisiChatExpression>("seated");
@@ -126,6 +135,9 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
       if (shownId.current !== c.id || opening) showThread(c);
       setDraft("");
       setKeep(null);
+      setPicked(null);
+      setPicking(false);
+      setKeepAt(null);
       // a first welcome: seated; resuming or opening from a thought: listening
       setExpr(opening || c.turns.length ? "listening" : "seated");
       loadStars().then((s) => setStars(walkingStars(s)));
@@ -134,6 +146,10 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         const t: Record<string, string> = {};
         for (const m of ms) if (m.starId && m.image && !t[m.starId]) t[m.starId] = m.image;
         setThumbs(t);
+        const k: Record<string, string[]> = {};
+        for (const m of [...ms].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+          if (m.starId && m.text?.trim() && m.type !== "visualization") (k[m.starId] ??= []).push(m.text.trim());
+        keptByStar.current = k;
       });
     }
   }, [open]);
@@ -165,14 +181,18 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     setExpr("seated");
   };
 
-  async function send(preset?: string) {
+  async function send(preset?: string, withStar?: Star | null) {
     const text = (preset ?? draft).trim();
     if (!text || sending) return;
+    const ctx = withStar !== undefined ? withStar : about;
+    setPicking(false);
+    setKeepAt(null);
     // the user's words join the thread BEFORE the request is built
     let c = addTurn(conv.current ?? activeConversation(), "user", text);
     conv.current = c;
     const payload = requestPayload(c, {
-      currentStar: star?.wish ?? null,
+      currentStar: ctx?.wish ?? null,
+      starMoments: ctx ? (keptByStar.current[ctx.id] ?? []).slice(0, 5) : [],
       // numbered, so Sísí can suggest visiting one by name ([VISIT:n])
       stars: stars.map((st) => st.wish).slice(0, 8),
     });
@@ -264,9 +284,21 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     }
   }
 
+  /** "Help me with a Star": the wish already here, the only one, or a choice */
+  const helpWithStar = () => {
+    const one = about ?? (stars.length === 1 ? stars[0] : null);
+    if (one) {
+      setPicked(one);
+      send(`Can you help me with “${one.wish}”?`, one);
+    } else if (stars.length > 1) {
+      setExpr("listening");
+      setPicking(true);
+    } else send("Can you help me with one of my Stars?", null);
+  };
+
   const startKeep = (mode: Keep["mode"], text: string) => {
     setExpr("listening");
-    setKeep({ mode, text, starId: mode === "star" ? star?.id ?? stars[0]?.id ?? null : null, type: "general" });
+    setKeep({ mode, text, starId: mode === "star" ? about?.id ?? stars[0]?.id ?? null : null, type: "general" });
   };
 
   const confirmKeep = async () => {
@@ -466,11 +498,34 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
             ) : (
               <p className="t-dialogue cs-greet-q">What’s on your mind?</p>
             )}
+            {about && (
+              <p className="t-meta cs-about">
+                <StarGlyph size={13} /> {about.wish}
+              </p>
+            )}
           </div>
-          {!hasTalked && (
+          {picking && (
+            <div className="cs-turn">
+              <p className="t-dialogue cs-sisi">Which wish shall we look at together?</p>
+              <div className="ds-chip-row cs-chips" aria-label="Your wishes">
+                {stars.map((st) => (
+                  <ReplyChip
+                    key={st.id}
+                    onClick={() => {
+                      setPicked(st);
+                      send(`Can you help me with “${st.wish}”?`, st);
+                    }}
+                  >
+                    {st.wish}
+                  </ReplyChip>
+                ))}
+              </div>
+            </div>
+          )}
+          {!hasTalked && !picking && (
             <div className="ds-chip-row cs-chips" aria-label="Ways to begin">
               {STARTERS.map((st) => (
-                <ReplyChip key={st.label} onClick={() => send(st.say)}>
+                <ReplyChip key={st.label} onClick={() => (st.label === "Help me with a Star" ? helpWithStar() : send(st.say))}>
                   {st.label}
                 </ReplyChip>
               ))}
@@ -486,9 +541,22 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
               );
             if (m.from === "user")
               return (
-                <p key={m.id} className="t-body cs-user">
-                  {m.text}
-                </p>
+                <div key={m.id} className="cs-user-wrap">
+                  {/* tap your own words to keep them (nothing is kept on its own) */}
+                  <button
+                    type="button"
+                    className="t-body cs-user"
+                    aria-expanded={keepAt === m.id}
+                    onClick={() => setKeepAt((k) => (k === m.id ? null : m.id))}
+                  >
+                    {m.text}
+                  </button>
+                  {keepAt === m.id && (
+                    <TextAction className="cs-keep-this" onClick={() => startKeep(about ? "star" : "moment", m.text)}>
+                      Keep this as a moment
+                    </TextAction>
+                  )}
+                </div>
               );
             const p = pillsFor(m);
             return (
@@ -547,7 +615,12 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         .cs-sisi { margin: 0; align-self: flex-start; max-width: 92%; color: var(--sisi-ink); white-space: pre-wrap; }
         .cs-turn { display: flex; flex-direction: column; gap: var(--space-3); }
         /* the person's words: a soft blue note on the right */
+        .cs-user-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+        .cs-keep-this { margin-right: -8px; }
+        .cs-about { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px auto 0; max-width: 90%; color: var(--ink-60); }
+        .cs-about svg { flex: 0 0 auto; }
         .cs-user {
+          border: 0; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
           margin: 0; align-self: flex-end; max-width: 82%; padding: 10px 14px; border-radius: 14px 14px 4px 14px;
           background: var(--blue-20); color: var(--sisi-ink); white-space: pre-wrap;
         }

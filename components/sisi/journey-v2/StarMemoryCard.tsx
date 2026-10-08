@@ -19,6 +19,7 @@ import {
   ConfirmationDialog,
   FilterChip,
   IconBack,
+  IconBubble,
   IconButton,
   IconChevronRight,
   IconClose,
@@ -101,6 +102,8 @@ type Props = {
   onWalkWith?: (star: Star) => void;
   /** "Return to Journey" */
   onReturnToJourney?: () => void;
+  /** talk with Sísí about this wish */
+  onTalk?: (star: Star) => void;
 };
 
 export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
@@ -224,6 +227,7 @@ export function StarMemoryCard({
   initialMode = "journey",
   onWalkWith,
   onReturnToJourney,
+  onTalk,
 }: Props) {
   const [mode, setMode] = useState<Mode>(
     placeholder ? "invite" : initialMode === "reflect" ? "reflect" : initialMode === "celebrate" ? "journey" : initialMode === "quick" ? "invite" : "journey",
@@ -803,6 +807,7 @@ export function StarMemoryCard({
                   surface="dark"
                   label="Manage this Star"
                   items={[
+                    ...(onTalk ? [{ label: "Talk with Sísí about it", icon: <IconBubble size={20} />, destructive: false, onSelect: () => onTalk(star) }] : []),
                     { label: "Edit Star", icon: <IconPencil size={20} />, destructive: false, onSelect: () => setEditing(true) },
                     ...(star.fulfilledAt
                       ? []

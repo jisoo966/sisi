@@ -152,6 +152,18 @@ export function CompanionCues({
 
   // a speech bubble sits centred on the screen; its tail slides to her head
   const speaking = visible && ((talkHint && !line) || !!shown) && shown?.placement !== "sky";
+  // where the bubble sits stays put while it fades out (dropping the class at
+  // once moved the closing bubble back toward Sísí: it slid left as it went)
+  const nowLayout = shown?.placement === "sky" ? "is-sky" : speaking ? "is-centred" : "";
+  const [layout, setLayout] = useState(nowLayout);
+  useEffect(() => {
+    if (nowLayout) {
+      setLayout(nowLayout);
+      return;
+    }
+    const t = setTimeout(() => setLayout(""), EXIT_MS + 60);
+    return () => clearTimeout(t);
+  }, [nowLayout]);
   const rootRef = useRef<HTMLDivElement>(null);
   const headRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -182,7 +194,7 @@ export function CompanionCues({
     <span ref={headRef} className="cc-head" aria-hidden />
     <div
       ref={rootRef}
-      className={`cc-root${shown?.placement === "sky" ? " is-sky" : speaking ? " is-centred" : ""}`}
+      className={`cc-root${layout ? ` ${layout}` : ""}`}
       aria-live="polite"
     >
       <AnimatePresence>
