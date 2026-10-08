@@ -776,7 +776,7 @@ export default function JourneyPage() {
 
   // Sísí pauses and notices a newly found place
   const worldPaused =
-    !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine) || discovering || first === "hello" || first === "tap";
+    !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine) || discovering || first === "tap"; // (she walks on, slowly, as she says hello; she stops only to look up)
 
   // Offer the evening reflection once, a little after arriving at night —
   // never in the middle of walking with a wish (that time is the wish's).
