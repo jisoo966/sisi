@@ -534,3 +534,14 @@ html.first-run .ds-nav-tab { pointer-events: none !important; }
 }
 /* writing your name (keyboard up): her question has been heard — the bubble steps back so nothing overlaps */
 html.first-run.kb-open .sisi-speech { opacity: 0 !important; transition: opacity 200ms ease; }
+
+/* An app, not a web page: a long press on the world (hold to light, the
+   sky, Sísí) never opens the browser's image menu or selects the art.
+   Text you write or read stays selectable. */
+img, svg, .journey-stage-v2, .ns-root, .sisi-speech, .ds-btn, button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+img { -webkit-user-drag: none; }
+input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
