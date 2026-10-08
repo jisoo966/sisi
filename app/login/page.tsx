@@ -1,20 +1,21 @@
 "use client";
 
-import { IconBack, IconButton, PrimaryButton, SecondaryButton, StarGlyph, TextAction } from "@/components/ds";
+import { IconBack, IconButton, PrimaryButton, TextAction, useKeyboardInset } from "@/components/ds";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
+import { SisiChatCharacter } from "@/components/sisi/journey-v2/SisiChatCharacter";
+import { NightBackdrop } from "@/components/sisi/stars/NightBackdrop";
+import { usePageBg } from "@/lib/usePageBg";
 
 export const dynamic = "force-dynamic";
 
 /**
- * /login — sísí 브랜드에 맞춘 magic link 로그인.
- *   - Splash와 같은 여우 배경 이미지
- *   - Sentient Light 폰트
- *   - journey palette (cream / navy / purple)
+ * /login — signing in with a magic link, in the night of the beginning:
+ * the same sky as the first night (/intro), one floating paper, Sísí on its
+ * edge (she is the one speaking). Or begin as a guest instead.
  */
 function LoginInner() {
   const router = useRouter();
@@ -23,6 +24,8 @@ function LoginInner() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  usePageBg("#06101f");
+  useKeyboardInset(!submitted);
 
   // 매직링크 실패 시 confirm route가 ?error= 붙여서 login으로 되돌림.
   // 유저가 무슨 일 있었는지 이해할 수 있도록 명확히 표시.
@@ -30,11 +33,11 @@ function LoginInner() {
     const err = searchParams.get("error");
     if (!err) return;
     if (err === "link_expired") {
-      setError("that link expired. request a fresh one below.");
+      setError("That link expired. Ask for a new one below.");
     } else if (err === "wrong_browser") {
-      setError("open the link in the same browser you started in.");
+      setError("Open the link in the same browser you started in.");
     } else {
-      setError(`sign-in failed (${err}). try again below.`);
+      setError(`Signing in didn’t work (${err}). Try once more below.`);
     }
   }, [searchParams]);
 
@@ -58,7 +61,7 @@ function LoginInner() {
     // 이전 게스트 이름/온보딩 상태 리셋 — 항상 새로 이름 물어봄
     localStorage.removeItem("sisi:guest-name");
     localStorage.removeItem("sisi:guest-onboarded");
-    router.push("/onboarding");
+    router.push("/journey"); // the first time begins in the meadow, with Sísí
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -90,132 +93,67 @@ function LoginInner() {
   }
 
   return (
-    <main className="relative min-h-dvh w-full overflow-hidden bg-journey-cream">
-      {/* Background — same as splash */}
-      <Image
-        src="/journey/OnboardingScreen.png"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover opacity-70"
-      />
-      {/* Soft cream overlay — 여우 이미지 위 텍스트 readability를 위해 강화.
-          가운데(form 영역)를 더 진하게 해서 label/placeholder 잘 보이게. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-paper/55 via-paper/85 to-paper/95" />
+    <main className="lg">
+      <NightBackdrop />
 
-      {/* Back */}
-      <IconButton href="/" label="Back" filled className="absolute top-[calc(var(--safe-top)+16px)] left-[16px] z-20">
-        <IconBack />
-      </IconButton>
+      <header className="lg-head">
+        <IconButton surface="dark" label="Back" onClick={() => router.push("/")}>
+          <IconBack />
+        </IconButton>
+      </header>
 
-      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-[24px]">
-        <div className="w-full max-w-[340px]">
-          {/* Title */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mb-[48px]"
-          >
-            <p className="t-affirmation text-ink mb-3">Enter your journey</p>
-            <h1 className="t-display text-ink">Sísí</h1>
-          </motion.div>
-
-          <AnimatePresence mode="wait">
+      <motion.section
+        className="lg-wrap"
+        initial={{ y: "120%" }}
+        animate={{ y: 0, transition: { duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+        aria-label={submitted ? "Check your email" : "Sign in"}
+      >
+        <div className="lg-sisi" aria-hidden>
+          <SisiChatCharacter expression="listening" />
+        </div>
+        <div className="lg-paper ds-paper ds-deckle">
+          <AnimatePresence mode="wait" initial={false}>
             {!submitted ? (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{
-                  duration: 0.6,
-                  delay: 0.1,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div>
-                    <label htmlFor="email" className="ds-label">
-                      Your email
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      required
-                      autoComplete="email"
-                      className="ds-field"
-                    />
-                  </div>
-
+              <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+                <h1 className="lg-title">Welcome back.</h1>
+                <p className="lg-say">I’ll send a link to your email. Open it here, and your Stars will be waiting.</p>
+                <form onSubmit={handleSubmit}>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    aria-label="Your email"
+                    required
+                    autoComplete="email"
+                    className="ds-field lg-field"
+                  />
                   {error && (
-                    <p className="ds-error" role="alert">
+                    <p className="ds-error lg-error" role="alert">
                       {error}
                     </p>
                   )}
-
-                  {/* Purple primary CTA. Disabled여도 purple 색상 유지 —
-                      opacity만 낮춰서 "이 버튼이야, 아직 활성 안 됨" 신호.
-                      완전 다른 색(gray)은 오히려 "다른 버튼" 처럼 헷갈림. */}
-                  <PrimaryButton type="submit" block loading={loading} disabled={!email.trim()} className="mt-2">
-                    Send magic link
+                  <PrimaryButton type="submit" block loading={loading} disabled={!email.trim()}>
+                    Send me a link
                   </PrimaryButton>
                 </form>
-
-                {/* "or" divider */}
-                <div className="flex items-center gap-3 my-6">
-                  <div className="flex-1 h-px bg-ink/15" />
-                  <span className="t-meta text-ink/60">or</span>
-                  <div className="flex-1 h-px bg-ink/15" />
-                </div>
-
-                {/* Guest mode (SECONDARY) — 이메일 없이 바로 시작 */}
-                <SecondaryButton block onClick={continueAsGuest}>
-                  Continue as guest
-                </SecondaryButton>
-                <p className="ds-helper mt-2 text-center">Try Sísí first, and save your journey later.</p>
-                <p className="ds-helper mt-4 text-center">
-                  By continuing, you agree to our{" "}
-                  <Link
-                    href="/terms"
-                    className="underline underline-offset-2 hover:text-ink"
-                  >
-                    Terms
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href="/privacy"
-                    className="underline underline-offset-2 hover:text-ink"
-                  >
-                    Privacy policy
-                  </Link>
-                  .
+                <TextAction className="lg-quiet" onClick={continueAsGuest}>
+                  Begin as a guest instead
+                </TextAction>
+                <p className="lg-legal">
+                  By continuing, you agree to our <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy policy</Link>.
                 </p>
               </motion.div>
             ) : (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="text-center"
-              >
-                <div className="mb-6 flex justify-center"><StarGlyph size={32} /></div>
-                <p className="t-screen-title text-ink mb-3">Check your inbox.</p>
-                <p className="t-body text-ink/80">
-                  A link is on its way to <span className="italic">{email}</span>.
-                  <br />
-                  It will find you.
+              <motion.div key="sent" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+                <h1 className="lg-title">Check your email.</h1>
+                <p className="lg-say">
+                  A link is on its way to <em>{email}</em>. It will find you.
                 </p>
-                <p className="ds-helper mt-6">
-                  Open the link in the same browser you started in. If it opens inside your mail app, tap the compass icon to open it in Safari.
-                </p>
+                <p className="lg-helper">Open it in this same browser. If it opens inside your mail app, choose “Open in Safari”.</p>
                 <TextAction
-                  className="mt-6"
+                  className="lg-quiet"
                   onClick={() => {
                     setSubmitted(false);
                     setEmail("");
@@ -227,7 +165,31 @@ function LoginInner() {
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.section>
+
+      <style jsx global>{`
+        .lg { position: fixed; inset: 0; overflow: clip; background: #06101f; color: var(--sisi-paper); }
+        .lg-head { position: absolute; z-index: 6; top: 0; left: 0; padding: max(calc(var(--safe-top, 0px) + 12px), 44px) 0 0 max(8px, var(--safe-left)); }
+        /* the floating paper of the beginning: 16px above the bottom, or 12px above the keyboard */
+        .lg-wrap {
+          position: absolute; left: 0; right: 0; margin: 0 auto; z-index: 5;
+          width: min(calc(100% - 2 * max(16px, var(--safe-left), var(--safe-right))), 420px);
+          bottom: max(calc(16px + var(--safe-bottom)), calc(var(--ds-kb, 0px) + 12px));
+          transition: bottom 220ms var(--ease-sisi);
+        }
+        .lg-sisi { position: absolute; top: 0; right: 76px; width: 0; height: 0; z-index: 3; transform: scale(0.66); transform-origin: 0 0; pointer-events: none; }
+        .lg-paper { position: relative; z-index: 1; padding: var(--space-6) var(--space-5) var(--space-5); color: var(--sisi-ink); --paper-grain-layer: var(--grain-focus); filter: drop-shadow(0 10px 26px rgba(16, 45, 50, 0.42)); }
+        .lg-title { margin: 0 0 var(--space-3); font-family: var(--font-editorial); font-weight: 300; font-size: var(--text-paper-title); line-height: 1.2; letter-spacing: -0.01em; }
+        .lg-say { margin: 0 0 var(--space-5); font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); letter-spacing: var(--tracking-editorial); text-wrap: pretty; }
+        .lg-say em { font-style: italic; }
+        .lg-field { margin-bottom: var(--space-4); font-family: var(--font-editorial); font-size: 17px; }
+        .lg-error { margin: calc(-1 * var(--space-2)) 0 var(--space-3); }
+        .lg-quiet { display: block; margin: var(--space-2) auto 0; }
+        .lg-helper { margin: 0 0 var(--space-3); font-family: var(--font-ui); font-size: var(--text-meta); line-height: 1.5; color: var(--ink-60); }
+        .lg-legal { margin: var(--space-3) 0 0; text-align: center; font-family: var(--font-ui); font-size: 11.5px; color: var(--ink-60); }
+        .lg-legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+        html.kb-open .lg-legal { display: none; } /* keyboard up: only what's needed */
+      `}</style>
     </main>
   );
 }
@@ -235,7 +197,7 @@ function LoginInner() {
 export default function LoginPage() {
   // useSearchParams는 Suspense boundary 필수
   return (
-    <Suspense fallback={<main className="min-h-dvh w-full bg-paper" />}>
+    <Suspense fallback={<main style={{ minHeight: "100dvh", background: "#06101f" }} />}>
       <LoginInner />
     </Suspense>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { addSign } from "@/lib/myStars";
-import { awardStarlight, starlightMessage } from "@/lib/starlight";
+import { awardStarlight } from "@/lib/starlight";
 import { FocusPaper, PrimaryButton, TextAction } from "@/components/ds";
 
 /**
@@ -67,17 +67,17 @@ export function EveningReflection({
     const note = text.trim();
     if (!note || saving) return;
     setSaving(true);
-    let msg: string | null = null;
     if (star) {
       try {
         const sign = await addSign(star.id, note);
         // "What felt good today?" is Something good, saved to the Star
-        msg = starlightMessage(await awardStarlight({ source: "something_good_saved", sourceId: sign.id, starId: star.id }));
+        // Starlight shows itself (the shared "✦ +1")
+        await awardStarlight({ source: "something_good_saved", sourceId: sign.id, starId: star.id });
       } catch {
         // ignore — keep the evening gentle
       }
     }
-    setDone(msg ?? "");
+    setDone("");
     setTimeout(onClose, 2200);
   };
 

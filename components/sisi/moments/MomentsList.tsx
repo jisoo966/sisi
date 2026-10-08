@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { IconBubble, IconEye, IconLeaf, IconMoon, IconPaws, IconPencil, StarGlyph } from "@/components/ds";
+import { IconBubble, IconEye, IconMoon, IconPencil, StarGlyph } from "@/components/ds";
 import { isRealPhoto, monthLabel } from "@/lib/moments";
 import { TYPE_LABEL } from "@/lib/momentStore";
 import type { Placed } from "@/lib/momentsTimeline";
@@ -90,7 +90,6 @@ export function MomentsList({
               const it = p.item;
               // the month and the day are headings; the row keeps only its time
               const time = new Date(it.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-              const kind = it.type === "moment" ? TYPE_LABEL[it.mtype] : undefined;
               return (
                 <button key={p.key} type="button" className="ml-row" onClick={(e) => onPick(p.index, e.currentTarget)}>
                   {/* every row starts on the same square: the photo, or the kind of
@@ -104,10 +103,6 @@ export function MomentsList({
                         <IconMoon />
                       ) : it.mtype === "visualization" ? (
                         <IconEye />
-                      ) : it.mtype === "something_good" ? (
-                        <IconLeaf />
-                      ) : it.mtype === "small_step" ? (
-                        <IconPaws />
                       ) : it.mtype === "companion_note" ? (
                         <IconBubble />
                       ) : (
@@ -128,7 +123,6 @@ export function MomentsList({
                         it.text
                       )}
                     </span>
-                    {kind && <span className="ml-date">{kind}</span>}
                     {it.type === "moment" && it.starTitle && !hideStar && (
                       <span className="ml-star">
                         <StarGlyph size={12} />

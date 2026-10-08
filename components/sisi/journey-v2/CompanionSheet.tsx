@@ -142,6 +142,18 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, keep]);
+  // the paper shortens when the keyboard rises: the latest words stay in view
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!open || !el || typeof ResizeObserver === "undefined") return;
+    let h = el.clientHeight;
+    const ro = new ResizeObserver(() => {
+      if (el.clientHeight < h) el.scrollTop = el.scrollHeight;
+      h = el.clientHeight;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open, keep]);
 
   const hasTalked = messages.some((m) => m.from === "user");
 
@@ -433,7 +445,7 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
               <p className="ds-label" style={{ margin: "8px 0 0" }}>What kind of note is this?</p>
               <div className="ds-chip-row">
                 {([
-                  ["something_good", "Something good"],
+                  ["something_good", "A sign"],
                   ["small_step", "A small step"],
                 ] as const).map(([t, label]) => (
                   <FilterChip key={t} selected={keep.type === t} onClick={() => setKeep({ ...keep, type: t })}>
@@ -515,7 +527,16 @@ export function CompanionSheet({ open, onClose, onMeaningful, star = null, onSee
         .companion-sheet.ds-focus { max-height: min(78dvh, calc(100dvh - var(--safe-top) - 150px - var(--ds-kb, 0px))) !important; }
         .companion-sheet.ds-focus--tall { height: min(78dvh, calc(100dvh - var(--safe-top) - 150px - var(--ds-kb, 0px))); }
         .companion-sheet .ds-focus-head { min-height: 44px; padding-top: 4px; }
-        .companion-sheet .ds-focus-body { padding-top: 4px; }
+        /* keyboard up: Sísí needs less room above, so the talk keeps more */
+        html.kb-open .companion-sheet.ds-focus { max-height: min(78dvh, calc(100dvh - var(--safe-top) - 128px - var(--ds-kb, 0px))) !important; }
+        html.kb-open .companion-sheet.ds-focus--tall { height: min(78dvh, calc(100dvh - var(--safe-top) - 128px - var(--ds-kb, 0px))); }
+        /* the talk fades into the paper at its edges instead of being cut by a line */
+        .companion-sheet .ds-focus-body {
+          padding-top: 4px;
+          -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 22px), transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 22px), transparent 100%);
+        }
+        .companion-sheet .ds-focus-foot { border-top: 0; padding-top: var(--space-2); }
         .cs-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         .cs-thread { display: flex; flex-direction: column; gap: var(--space-3); }
         .cs-greet { text-align: center; padding: 0 0 4px; }

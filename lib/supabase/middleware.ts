@@ -87,18 +87,22 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Guest 모드 체크 — sisi_guest 쿠키 있으면 로그인 없이도 통과
-    const isGuest = request.cookies.get("sisi_guest")?.value === "1";
+    // Guest 모드 체크 — sisi_guest 쿠키 있으면 로그인 없이도 통과.
+    // 익명 계정(lib/cloudSave)은 게스트와 같다: 로그인한 사용자로 보지 않음
+    // (/onboarding 으로 보내지 않고, /login 에서 이메일을 연결할 수 있게).
+    const anonymous = !!user?.is_anonymous;
+    const isGuest = request.cookies.get("sisi_guest")?.value === "1" || anonymous;
+    const member = user && !anonymous ? user : null;
 
-    // 로그인 필수 라우트인데 로그인/게스트 둘 다 아니면 → /login
+    // 로그인도 게스트도 아니면 → "/" (그곳에서 게스트로 시작해 들판으로; 로그인 화면을 먼저 보이지 않음)
     if (!user && !isGuest && matchesRoute(pathname, AUTH_REQUIRED)) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = "/";
       return NextResponse.redirect(url);
     }
 
     // 이미 로그인했는데 /login 접근 → 홈(/journey)으로
-    if (user && pathname === "/login") {
+    if (member && pathname === "/login") {
       const url = request.nextUrl.clone();
       url.pathname = "/journey";
       return NextResponse.redirect(url);
@@ -107,7 +111,7 @@ export async function updateSession(request: NextRequest) {
     // 로그인은 됐는데 온보딩 안 됨 → /onboarding으로
     // (단, /onboarding 자체와 auth/api 라우트는 예외)
     if (
-      user &&
+      member &&
       !pathname.startsWith("/onboarding") &&
       !pathname.startsWith("/api") &&
       matchesRoute(pathname, AUTH_REQUIRED)
@@ -115,7 +119,7 @@ export async function updateSession(request: NextRequest) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarded")
-        .eq("id", user.id)
+        .eq("id", member.id)
         .maybeSingle();
 
       if (!profile?.onboarded) {

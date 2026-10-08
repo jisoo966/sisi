@@ -121,7 +121,7 @@ export function rangeLabel(first?: string, last?: string): string {
 
 /** The label an entry carries on its Star and in Moments. */
 export const ENTRY_LABEL: Record<EntryKind, string> = {
-  something_good: "Something good",
+  something_good: "A sign",
   small_step: "A step I took",
 };
 

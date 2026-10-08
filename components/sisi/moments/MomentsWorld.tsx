@@ -4,7 +4,6 @@ import { Fragment, forwardRef, useCallback, useEffect, useImperativeHandle, useL
 import type { TrailEntry, TimelineMotion, Placed } from "@/lib/momentsTimeline";
 import { layoutTimeline } from "@/lib/momentsTimeline";
 import { isRealPhoto, whenLabel } from "@/lib/moments";
-import { TYPE_LABEL } from "@/lib/momentStore";
 import { ArtFill, ART, Postcard } from "./shared";
 import { TrailFox, type TrailFoxHandle } from "./TrailFox";
 import { JOURNEY_FOX_X, clearJustSaved, lastMoment, rememberMoment, takeJustSaved } from "@/lib/worldHandoff";
@@ -183,14 +182,17 @@ export const MomentsWorld = forwardRef<
     onStar?: (starId: string) => void;
     /** the Moments have loaded (until then only the world is shown) */
     loaded: boolean;
+    /** first visit: Sísí says once what this place is (then onHelloDone) */
+    hello?: boolean;
+    onHelloDone?: () => void;
   }
->(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded, onGround, onStar }, ref) {
+>(function MomentsWorld({ entries, motion, active, onOpen, arrival, loaded, onGround, onStar, hello = false, onHelloDone }, ref) {
   const fromStars = arrival?.via === "stars";
   const rootRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const tod = useTimeOfDay();
   const foxRef = useRef<TrailFoxHandle>(null);
-  // Sísí's empty-trail note is a passing note: one tap anywhere puts it away
+  // Sísí's note is a passing note: one tap anywhere puts it away
   const [emptyNoteAway, setEmptyNoteAway] = useState(false);
   useEffect(() => {
     if (emptyNoteAway) return;
@@ -198,6 +200,19 @@ export const MomentsWorld = forwardRef<
     document.addEventListener("pointerdown", away, true);
     return () => document.removeEventListener("pointerdown", away, true);
   }, [emptyNoteAway]);
+  // her first-visit hello (with Moments already kept) is said once, then rests
+  const sayHello = hello && loaded && entries.length > 0;
+  const helloDone = useRef(onHelloDone);
+  helloDone.current = onHelloDone;
+  useEffect(() => {
+    if (!sayHello) return;
+    if (emptyNoteAway) return void helloDone.current?.();
+    const t = setTimeout(() => {
+      setEmptyNoteAway(true);
+      helloDone.current?.();
+    }, 7000);
+    return () => clearTimeout(t);
+  }, [sayHello, emptyNoteAway]);
   const foxRootRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef(new Map<string, HTMLDivElement>());
   const appliers = useRef(new Set<Apply>());
@@ -788,9 +803,14 @@ export const MomentsWorld = forwardRef<
           rootRef={foxRootRef}
           initialOffset={(pan.current ?? delta) - delta}
           // Sísí says it herself: a speech bubble above her head (follows her)
+          // (one voice: what this place is, she says herself — never a card as well)
           say={
-            loaded && entries.length === 0 && phase !== "arriving" && !emptyNoteAway ? (
-              <SisiSpeechBubble message="Your moments will gather here as you walk." tailPosition="bottom-right" align="center" />
+            loaded && phase !== "arriving" && !emptyNoteAway && (entries.length === 0 || sayHello) ? (
+              <SisiSpeechBubble
+                message={entries.length === 0 ? "Your moments will gather here, from your walks and from your Stars." : "Everything you’ve kept lives here."}
+                tailPosition="bottom-right"
+                align="left"
+              />
             ) : null
           }
         />
@@ -964,7 +984,6 @@ function Card({ p, onStar }: { p: Placed; onStar?: (starId: string) => void }) {
         <span>{it.starTitle}</span>
       </button>
     ) : null;
-  const typeLabel = TYPE_LABEL[it.mtype];
   if (it.image && isRealPhoto(it.image))
     return (
       <>
@@ -978,9 +997,8 @@ function Card({ p, onStar }: { p: Placed; onStar?: (starId: string) => void }) {
       {starLine}
       {it.mtype === "companion_note" && <span className="mw-note-kicker">A note from Sísí</span>}
       <span className="mw-note-text">{it.text}</span>
+      {/* the words first; then only when (the kind is not named — it's the moment that matters) */}
       <span className="mw-note-date">
-        {typeLabel && it.mtype !== "companion_note" ? `${typeLabel} · ` : ""}
-        {/* the date never splits across lines */}
         <span className="mw-nowrap">{shortDate(it.at)}</span>
       </span>
     </div>

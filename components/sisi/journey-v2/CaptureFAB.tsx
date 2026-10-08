@@ -2,11 +2,12 @@
 
 import { motion } from "framer-motion";
 
-import { IconCamera } from "@/components/ds";
+import { IconPencil } from "@/components/ds";
 
 /**
- * CaptureFAB — capturing a Moment, the main action, within the thumb's
- * reach: bottom right, just above the tabs.
+ * CaptureFAB — keeping a Moment, the main action, within the thumb's
+ * reach: bottom right, just above the tabs. A pencil, not a camera: it opens
+ * the writing page (the question first; a photo is optional inside).
  *
  *   paper  a small warm-paper disc with the crayon camera (default — it reads
  *          as the one thing to tap)
@@ -31,7 +32,7 @@ export function CaptureFAB({ onClick, look = "sketch" }: Props) {
       transition={{ type: "spring", stiffness: 320, damping: 22, delay: 0.28 }}
       whileTap={{ scale: 0.92 }}
     >
-      <IconCamera size={26} />
+      <IconPencil size={26} />
       <style jsx global>{`
         .capture-fab {
           position: absolute;

@@ -41,6 +41,9 @@
   /* Stage padding + safe top for header */
   --stage-padding: clamp(16px, 5vw, 24px);
   --header-top: max(calc(var(--safe-top) + 12px), 44px);
+  /* where a Star rests on its own screen (centre): the Star screen's layout,
+     shared with the moments it is born (New Star, the first Star) */
+  --focus-star-y: calc(var(--header-top) + 166px);
 
   /* Icon buttons — Apple HIG 44px tap target min */
   --icon-btn-size: clamp(36px, 10vw, 44px);
@@ -79,7 +82,8 @@
    * lib/useLookUpTimeline.ts (fox looks up → clouds → night sky → postcard). */
 
   /* Star position anchors */
-  --star-walking-top: 15%;
+  /* clear of the header tools (≥ ~28px between tap areas), on every phone */
+  --star-walking-top: max(19%, 140px);
   --star-walking-left: 78%;
   --star-view-top: 20%;
   --star-view-left: 50%;
@@ -231,7 +235,7 @@
   width: 100%;
   height: 100dvh;
   min-height: 100svh;
-  overflow: hidden;
+  overflow: clip; /* never scrolled by focus */
   /* Soft arrival — the world eases in rather than snapping into place. */
   animation: journey-arrive 700ms ease-out both;
 }
@@ -249,7 +253,9 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;   /* children opt-in with pointer-events: auto */
-  overflow: hidden;
+  /* clip, not hidden: a hidden box can still be scrolled (by focus, by
+     scrollIntoView) — and the whole sky would slide sideways */
+  overflow: clip;
 }
 
 /* ── UI layer — everything that stays put ── */
@@ -420,8 +426,9 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 }
 .stars-top.is-shown { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 600ms ease 200ms; }
 .stars-top-title {
-  margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-card-title);
-  line-height: var(--leading-title); color: var(--paper-90);
+  /* the same screen title as Moments (design system: --text-screen-title) */
+  margin: 0; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title);
+  line-height: var(--leading-title); letter-spacing: var(--tracking-editorial); color: var(--paper-90);
 }
 /* "+ New Star": the quiet tool language (as the top-right icons) — no
    outline or fill at rest, crayon plus + label in ivory; a press shows a
@@ -437,6 +444,8 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
   background: var(--sisi-paper); opacity: 0; pointer-events: none; transition: opacity 320ms ease;
 }
 .stars-new.ds-btn:active::before { opacity: 0.14; transition-duration: 60ms; }
+/* the plus sits on the label's capital line (its box centre is 1.4px low) */
+.stars-new.ds-btn svg { position: relative; top: -1.5px; }
 
 /* Star World stars: no square focus box on tap; a soft round ring only for
    keyboard focus. The painted aura is softened into a round glow (render-time
@@ -453,7 +462,8 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 
 /* "Walk with it": a quiet way to finish, just above the tabs
    (a shared SecondaryButton on the world; only its position lives here) */
-.walk-finish {
+/* (.ds-btn sets position: relative — the extra class keeps this one placed) */
+.ds-btn.walk-finish {
   position: absolute; z-index: 9; left: 50%; transform: translateX(-50%);
   bottom: calc(var(--nav-total) + 14px);
   min-height: 44px; white-space: nowrap;
@@ -511,3 +521,16 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 /* lib/haptics — the visual stand-in where vibration isn't available */
 .hx-press { animation: hx-press 240ms cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes hx-press { 0% { transform: scale(0.97); } 100% { transform: scale(1); } }
+
+/* ── The first time (onboarding, in the Journey) ── */
+/* one thing at a time: the tabs and tools step aside until the first Star is born */
+html.first-run .ds-nav, html.first-run .journey-header .right-col, html.first-run .journey-header .left-col { opacity: 0 !important; pointer-events: none !important; transition: opacity 320ms ease; }
+html.first-run .ds-nav-tab { pointer-events: none !important; }
+/* the first Star is born: Walk with it, at the bottom of the night */
+.first-walk {
+  position: fixed; z-index: var(--z-modal); left: 0; right: 0; margin: 0 auto;
+  width: min(calc(100% - 2 * max(16px, var(--safe-left), var(--safe-right))), 420px);
+  bottom: calc(24px + var(--safe-bottom));
+}
+/* writing your name (keyboard up): her question has been heard — the bubble steps back so nothing overlaps */
+html.first-run.kb-open .sisi-speech { opacity: 0 !important; transition: opacity 200ms ease; }

@@ -1,5 +1,6 @@
 "use client";
 
+import { careGlow } from "@/lib/starCare";
 import { haptic } from "@/lib/haptics";
 import { fxAnchorRef } from "@/lib/fxAnchors";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -41,8 +42,16 @@ type Props = {
   /** A new wish is being written: the path steps down one place so the
    *  seed-star can be born in the Current Star's spot. */
   reserveTop?: boolean;
+  /** A new wish is being written: the other stars step quietly out of sight
+   *  (nothing moves); they return, in their new places, when it is born. */
+  hushed?: boolean;
+  /** while hushed, this one stays in sight (the Star just born) */
+  keepId?: string | null;
   /** Brighten one star once, gently (e.g. an entry was just added). */
   pulse?: { id: string; n: number } | null;
+  /** time given to each Star (its Moments + days walked with it): the more,
+   *  the brighter and a little larger it shines in the sky */
+  care?: Record<string, number>;
   /** cumulative Starlight: the background sky grows with it (SkyDecor) */
   skyBalance?: number;
 };
@@ -53,7 +62,8 @@ export const CURRENT_STAR_POS = { x: 0.5, y: 0.22, scale: 1.7 };
 /** Where a focused star rests (fraction of screen height from the top). */
 const FOCUS_Y = 0.22;
 /** Vertical distance between consecutive stars on the path (screen heights). */
-const GAP = 0.3;
+// three Stars fit the night above the clouds (22% · 47% · 72%), evenly spaced
+const GAP = 0.25;
 const MAX_STARS = 40;
 
 /** Deterministic 0..1 from a string (stable layout per star). */
@@ -79,6 +89,9 @@ export function StarWorld({
   leavingId = null,
   recenter = 0,
   reserveTop = false,
+  hushed = false,
+  keepId = null,
+  care = {},
   pulse = null,
   skyBalance = 0,
 }: Props) {
@@ -98,6 +111,31 @@ export function StarWorld({
     return () => ro.disconnect();
   }, []);
 
+  // While hushed (a new wish is being written) the path makes room only once
+  // the stars have faded out, so nothing is seen to jump.
+  const [reserved, setReserved] = useState(reserveTop);
+  useEffect(() => {
+    if (!reserveTop || !hushed) {
+      setReserved(reserveTop);
+      return;
+    }
+    const t = setTimeout(() => setReserved(true), 480);
+    return () => clearTimeout(t);
+  }, [reserveTop, hushed]);
+
+  // …and when the new Star is born they come back one by one, from the top
+  const [returning, setReturning] = useState(false);
+  const wasHushed = useRef(hushed);
+  useEffect(() => {
+    if (wasHushed.current && !hushed) {
+      setReturning(true);
+      const t = setTimeout(() => setReturning(false), 2400);
+      wasHushed.current = hushed;
+      return () => clearTimeout(t);
+    }
+    wasHushed.current = hushed;
+  }, [hushed]);
+
   const placed: Placed[] = useMemo(() => {
     // Stars still walking first; fulfilled Stars rest together further
     // along the path (their own warm, quiet stretch of sky)
@@ -106,7 +144,7 @@ export function StarWorld({
     const list = [...walking, ...arrived].slice(0, MAX_STARS);
     const firstArrived = walking.length;
     const { w, h } = size;
-    const k = reserveTop ? 1 : 0;
+    const k = reserved ? 1 : 0;
     return list.map((star, i0) => {
       const i = i0 + k;
       // Loose walked path: a slow meander + a little per-star wander.
@@ -122,7 +160,7 @@ export function StarWorld({
         scale: i === 0 ? 1.7 : 0.95 + hash01(star.id, 3) * 0.35,
       };
     });
-  }, [stars, size, reserveTop]);
+  }, [stars, size, reserved]);
 
   /** Scroll offsets (px) that bring each star to the focus line. */
   const stops = useMemo(() => placed.map((p) => p.y - FOCUS_Y * size.h), [placed, size.h]);
@@ -150,14 +188,16 @@ export function StarWorld({
   const [reflowing, setReflowing] = useState(false);
   const prevCount = useRef(stars.length);
   // …and when the path steps down for (or back up after) a new wish.
-  const prevReserve = useRef(reserveTop);
+  const prevReserve = useRef(reserved);
   useEffect(() => {
-    if (prevReserve.current === reserveTop) return;
-    prevReserve.current = reserveTop;
+    if (prevReserve.current === reserved) return;
+    prevReserve.current = reserved;
+    if (hushed) return; // out of sight: take the new places at once
     setReflowing(true);
     const t = setTimeout(() => setReflowing(false), 1000);
     return () => clearTimeout(t);
-  }, [reserveTop]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reserved]);
   useEffect(() => {
     if (stars.length < prevCount.current) {
       setReflowing(true);
@@ -299,7 +339,7 @@ export function StarWorld({
   return (
     <div
       ref={rootRef}
-      className={`sw-root${hasSelection ? " has-selection" : ""}${revealed ? " is-revealed" : ""}${reflowing ? " is-reflowing" : ""}${leavingId ? " is-resting" : ""}`}
+      className={`sw-root${hasSelection ? " has-selection" : ""}${revealed ? " is-revealed" : ""}${reflowing ? " is-reflowing" : ""}${leavingId ? " is-resting" : ""}${hushed ? " is-hushed" : ""}${returning ? " is-returning" : ""}`}
       style={{ pointerEvents: active ? "auto" : "none" }}
       onPointerDown={onPointerDown}
       onWheel={onWheel}
@@ -331,8 +371,8 @@ export function StarWorld({
             <button
               key={p.star.id}
               type="button"
-              className={`sw-star${p.star.fulfilledAt ? " is-fulfilled" : ""}${isSel ? " is-selected" : ""}${pressedId === p.star.id ? " is-pressed" : ""}${leavingId === p.star.id ? " is-leaving" : ""}`}
-              style={{ left: p.x, top: p.y }}
+              className={`sw-star${p.star.fulfilledAt ? " is-fulfilled" : ""}${isSel ? " is-selected" : ""}${pressedId === p.star.id ? " is-pressed" : ""}${leavingId === p.star.id ? " is-leaving" : ""}${keepId === p.star.id ? " is-kept" : ""}`}
+              style={{ left: p.x, top: p.y, ["--i" as string]: i }}
               ref={(el) => {
                 fxAnchorRef(`star:${p.star.id}`, el);
                 fxAnchorRef("selectedStar", el, undefined, isSel);
@@ -353,7 +393,15 @@ export function StarWorld({
                 className={`sw-star-reveal${i === 0 ? " is-current" : ""}`}
                 style={{ transitionDelay: revealed && i > 0 ? `${1100 + i * 90}ms` : "0ms" }}
               >
-              <span className="sw-star-scale" style={{ transform: `scale(${p.scale})` }}>
+              <span className="sw-star-scale" style={{ transform: `scale(${(p.scale * (1 + careGlow(care[p.star.id] ?? 0) * 0.28)).toFixed(3)})` }}>
+                {/* its light widens with the time given to it (never dims) */}
+                {(care[p.star.id] ?? 0) > 0 && (
+                  <span
+                    className="sw-care"
+                    aria-hidden
+                    style={{ opacity: 0.25 + careGlow(care[p.star.id] ?? 0) * 0.6, transform: `scale(${(0.8 + careGlow(care[p.star.id] ?? 0) * 0.7).toFixed(3)})` }}
+                  />
+                )}
                 <span
                   key={pulse && pulse.id === p.star.id ? `pulse-${pulse.n}` : "still"}
                   className={`sw-star-pulse${pulse && pulse.id === p.star.id ? " is-brighten" : ""}`}
@@ -400,6 +448,20 @@ export function StarWorld({
           -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
           mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
         }
+        /* hushed: every star but the one in focus (and the path) steps out of sight */
+        .sw-care {
+          position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px;
+          border-radius: 50%; pointer-events: none;
+          background: radial-gradient(circle, rgba(255, 228, 165, 0.38), rgba(241, 196, 94, 0.12) 42%, rgba(241, 196, 94, 0) 70%);
+          transition: opacity 1.2s ease, transform 1.2s var(--ease-sisi);
+        }
+        .sw-root.is-hushed .sw-star:not(.is-selected):not(.is-kept),
+        .sw-root.is-hushed .sw-path,
+        .sw-root.is-hushed .sw-hint { opacity: 0 !important; transition: opacity 450ms ease; }
+        .sw-root.is-returning .sw-star { animation: sw-return 900ms ease both; animation-delay: calc(450ms + var(--i) * 160ms); }
+        .sw-root.is-returning .sw-path { animation: sw-return 1400ms ease both 300ms; }
+        @keyframes sw-return { from { opacity: 0; } to { opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) { .sw-root.is-returning .sw-star, .sw-root.is-returning .sw-path { animation: none; } }
         .sw-field {
           position: absolute;
           left: 0;
@@ -481,6 +543,8 @@ export function StarWorld({
         .sw-star.is-pressed {
           transform: scale(0.9);
         }
+        .sw-star-scale { position: relative; }
+        .sw-star-pulse { position: relative; z-index: 1; }
         .sw-star-scale,
         .sw-star-pulse {
           display: block;

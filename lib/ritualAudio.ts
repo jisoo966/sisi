@@ -65,10 +65,12 @@ const MUSIC_LEVEL = 0.16; // low
 const DUCK = 0.75; // −25% while Sísí speaks
 const VOICE_LEVEL = 0.9;
 
-/** Is sound on for the app? (the Ambient music setting in the Menu) */
+/** Is sound on for the app? (the Ambient music setting in the Menu)
+ *  Not chosen yet: on for people; off while building (npm run dev), so work is quiet. */
 export function appSoundOn(): boolean {
   try {
-    return localStorage.getItem("sisi-music-on") !== "off";
+    const saved = localStorage.getItem("sisi-music-on");
+    return saved ? saved !== "off" : process.env.NODE_ENV !== "development";
   } catch {
     return true;
   }

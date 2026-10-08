@@ -8,6 +8,8 @@ import "@/components/ds/ds.css";
 import ServiceWorkerRegister from "@/components/sisi/ServiceWorkerRegister";
 import { BackgroundMusic } from "@/components/sisi/BackgroundMusic";
 import { EffectsHost } from "@/components/sisi/effects/EffectsHost";
+import { DevKeyboard } from "@/components/sisi/DevKeyboard";
+import { CloudSave } from "@/components/sisi/CloudSave";
 
 // Inter — functional metadata only (dates, statuses, helpers, chips).
 const inter = Inter({
@@ -104,6 +106,9 @@ export default function RootLayout({
               transformed world container, inside the phone frame on desktop. */}
           <div id="sisi-overlay-root" />
           <EffectsHost />
+          {/* development only, on a computer: an iPhone-sized test keyboard */}
+          <DevKeyboard />
+          <CloudSave />
         </div>
         <style>{`
           @media (min-width: 500px) {

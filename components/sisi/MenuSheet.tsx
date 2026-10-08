@@ -1,5 +1,6 @@
 "use client";
 
+import { appSoundOn } from "@/lib/ritualAudio";
 import { haptic, hapticsEnabled, hapticsSupported, setHapticsEnabled } from "@/lib/haptics";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -44,7 +45,7 @@ export function MenuSheet({
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user || user.is_anonymous) return; // an anonymous account is still a guest
         setEmail(user.email ?? "");
         const { data: profile } = await supabase
           .from("profiles")
@@ -65,8 +66,7 @@ export function MenuSheet({
   // "sisi:music-state" broadcast correct it.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("sisi-music-on");
-    setMusicOn(saved !== "off");
+    setMusicOn(appSoundOn());
     function handler(e: Event) {
       const detail = (e as CustomEvent<{ on: boolean }>).detail;
       setMusicOn(detail.on);
@@ -137,9 +137,20 @@ export function MenuSheet({
           <IconChevronRight size={20} />
         </Link>
       </nav>
-      <div className="ds-actions">
-        <SecondaryButton block onClick={signOut}>Sign out</SecondaryButton>
-      </div>
+      {email ? (
+        <div className="ds-actions">
+          <SecondaryButton block onClick={signOut}>Sign out</SecondaryButton>
+        </div>
+      ) : (
+        // no account to sign out of: keeping the Stars safe on every device is the offer
+        <Link href="/login" onClick={onClose} className="menu-row menu-keep">
+          <span className="menu-row-label">
+            Keep your Stars safe
+            <span className="menu-row-sub">Add your email to find them on any phone.</span>
+          </span>
+          <IconChevronRight size={20} />
+        </Link>
+      )}
       <style jsx global>{`
         .menu-profile { padding: 4px 0 16px; border-bottom: 1px solid var(--ink-08); margin-bottom: 4px; }
         .menu-list { display: flex; flex-direction: column; }
@@ -153,6 +164,7 @@ export function MenuSheet({
         .menu-row-sub { display: block; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); }
         .menu-row:disabled { cursor: default; opacity: 0.7; }
         .menu-list + .ds-actions { margin-top: var(--space-6); }
+        .menu-keep { border-bottom: 0; margin-top: var(--space-2); }
         .menu-toggle { position: relative; flex: none; width: 44px; height: 26px; border-radius: 999px; background: var(--ink-14); transition: background var(--motion-instant) ease; }
         .menu-toggle.is-on { background: var(--sisi-blue); }
         .menu-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--sisi-paper); box-shadow: 0 1px 2px rgba(16, 45, 50, 0.2); transition: transform var(--motion-bubble) var(--ease-sisi); }

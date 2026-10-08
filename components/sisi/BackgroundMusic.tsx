@@ -1,5 +1,6 @@
 "use client";
 
+import { appSoundOn } from "@/lib/ritualAudio";
 import { useEffect, useRef } from "react";
 
 /**
@@ -37,8 +38,7 @@ export function BackgroundMusic({
   // usually blocked here (no user gesture yet) — that's expected.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("sisi-music-on");
-    const shouldPlay = saved !== "off"; // null or "on" → play
+    const shouldPlay = appSoundOn(); // not chosen yet: on (off while building)
     if (shouldPlay && audioRef.current) {
       audioRef.current.volume = 0;
       audioRef.current

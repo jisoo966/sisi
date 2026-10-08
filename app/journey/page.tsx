@@ -43,6 +43,10 @@ import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 import { StarTrail } from "@/components/sisi/journey-v2/StarTrail";
 import { JourneyHeader } from "@/components/sisi/journey-v2/JourneyHeader";
 import { CaptureFAB } from "@/components/sisi/journey-v2/CaptureFAB";
+import { WalkNote } from "@/components/sisi/journey-v2/WalkNote";
+import { FirstHello } from "@/components/sisi/journey-v2/FirstHello";
+import { VisitTime } from "@/components/sisi/journey-v2/VisitTime";
+import { allowVisits, declineVisits, visitsAsked } from "@/lib/sisiVisits";
 import { DailyPractice } from "@/components/sisi/journey-v2/DailyPractice";
 // SpendTimeCTA (the old home button) stays on disk, unused.
 import { SatchelDrawer } from "@/components/sisi/journey-v2/SatchelDrawer";
@@ -58,7 +62,7 @@ import { equipWorld } from "@/lib/worlds";
 import { JourneyReveal, type Reveal } from "@/components/sisi/magic/JourneyReveal";
 import { StarlightFeedback } from "@/components/sisi/magic/StarlightFeedback";
 import { AmbientMagic } from "@/components/sisi/effects/AmbientMagic";
-import { emitFx, glintPoint, softGlint } from "@/lib/fx";
+import { glintPoint, softGlint } from "@/lib/fx";
 import { anchorElement } from "@/lib/fxAnchors";
 import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
@@ -82,7 +86,9 @@ import { useJourneyPhase } from "@/lib/useJourneyPhase";
 import { useStarAscent } from "@/lib/useStarAscent";
 import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
-import { loadStars, type Star, restStar, walkingStars } from "@/lib/myStars";
+import { loadSigns, loadStars, type Star, restStar, walkingStars } from "@/lib/myStars";
+import { careByStar } from "@/lib/starCare";
+import { primeKeyboard } from "@/lib/keyboard";
 
 // LEGACY — Journey v1 (video world + path-following fox + BottomNav).
 // Preserved intentionally so the old world can be restored if v2 needs revert.
@@ -144,6 +150,9 @@ const ASCENT_LAYERS = {
  * the centre of the path exactly on --walking-baseline (where the paws are).
  * Band is ~5.7% of the stage tall: ±2.84% around the baseline.
  */
+/** walking with a wish: how much walking gathers before its quiet moment
+ *  (+1 Starlight once a day) — a first value to test; never shown */
+const WALK_MOMENT_MS = 30_000;
 const PATH_HEIGHT_PCT = 0.4;
 const PATH_BOTTOM = "calc(var(--walking-baseline) - 18.67%)";
 
@@ -254,6 +263,42 @@ export default function JourneyPage() {
 
   // Auth-derived name (Supabase profile or guest localStorage).
   const [name, setName] = useState<string>("");
+  // ── The first time (onboarding), in the world itself ──
+  //   hello  Sísí stops: "Hello. I'm Sísí. What should I call you?" (a small paper for your name)
+  //   walk   "Nice to meet you, …  Let's walk a little." — a few steps together
+  //   tap    she looks up: "Every wish becomes a Star up there. Tap it." (the star beckons)
+  //   sky    up in the Star World: the first wish, held to light (NewStarSky first)
+  // then "Walk with it" brings you back down to this meadow, carrying it.
+  const [first, setFirst] = useState<null | "hello" | "walk" | "tap" | "sky">(null);
+  const [firstBorn, setFirstBorn] = useState<Star | null>(null);
+  /** the name being written into the greeting (first time) */
+  const [draftName, setDraftName] = useState("");
+  /** arriving: Sísí greets you once per part of the day ("Good afternoon, jisoo.") */
+  const [helloLine, setHelloLine] = useState<string | null>(null);
+  const keepName = () => {
+    const n = draftName.trim();
+    if (!n) return;
+    (document.activeElement as HTMLElement | null)?.blur?.(); // the keyboard steps down; she walks on
+    localStorage.setItem("sisi:guest", "true");
+    localStorage.setItem("sisi:guest-name", n);
+    document.cookie = `sisi_guest=1; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+    setName(n);
+    setFirst("walk");
+  };
+  useEffect(() => {
+    if (localStorage.getItem("sisi:guest-onboarded") !== "true" && !localStorage.getItem("sisi:guest-name")) setFirst("hello");
+  }, []);
+  useEffect(() => {
+    if (first !== "walk") return;
+    const t = setTimeout(() => setFirst("tap"), 5200); // a few steps together, then she looks up
+    return () => clearTimeout(t);
+  }, [first]);
+  // the tabs step aside until the first Star is born (one thing at a time)
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("first-run", first !== null);
+    return () => el.classList.remove("first-run");
+  }, [first]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
@@ -278,15 +323,26 @@ export default function JourneyPage() {
    *  The satchel and the evening reflection are only ever shown in the
    *  meadow — when one is merely "pending" (e.g. the evening offer arrives
    *  while you're among the Stars) it must not hide the tabs. */
-  const panelOpen = practiceOpen || momentOpen || createOpen || ((satchelOpen || eveningOpen) && isWalking);
+  /** "Leave a small note" after a walk: the writing page, right here */
+  const [noteOpen, setNoteOpen] = useState(false);
+  /** after the first walk together, Sísí asks once if she may visit (Angel Messages) */
+  const [visitAsk, setVisitAsk] = useState<null | "ask" | "time">(null);
+  const panelOpen = practiceOpen || momentOpen || noteOpen || visitAsk === "time" || createOpen || ((satchelOpen || eveningOpen) && isWalking);
   // Meadow star tapped → view the Current Star once we arrive above.
   const [viewCurrentOnArrival, setViewCurrentOnArrival] = useState(false);
   // Little Light note shown in the meadow (e.g. after a meaningful talk).
   const [meadowToast, setMeadowToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!meadowToast) return;
+    const t = setTimeout(() => setMeadowToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [meadowToast]);
   // Stars load async; until then (or if none exist) show a waiting star.
   const [starsLoaded, setStarsLoaded] = useState(false);
   // "Walk with it": the wish Sísí is carrying stays visible in the sky.
   const [carried, setCarried] = useState<Star | null>(null);
+  /** the walk was finished: the carried Star brightens warmly once */
+  const [walkWarm, setWalkWarm] = useState(0);
   const skyStar: Star | null = carried ?? featuredStar ?? (starsLoaded ? PLACEHOLDER_STAR : null);
   const isPlaceholderStar = !featuredStar;
   /** Stars in the Star World, newest first (a waiting star if none yet). */
@@ -376,10 +432,21 @@ export default function JourneyPage() {
 
   // ── New Star (written inside the Star World) ──
   const [newStarOpen, setNewStarOpen] = useState(false);
+  /** a new Star is written, born and first visited alone: the other stars stay
+   *  out of sight until its Star screen is closed, then return one by one */
+  const [hushSky, setHushSky] = useState(false);
+  const newbornOpened = useRef(false);
+  /** born, its Star screen not yet open (keep the sky hushed meanwhile) */
+  const pendingBorn = useRef(false);
+  const [newbornId, setNewbornId] = useState<string | null>(null);
+  useEffect(() => {
+    if (newStarOpen) setHushSky(true);
+  }, [newStarOpen]);
   const newStarDirty = useRef(false);
   const pendingNewStar = useRef(false);
   /** From anywhere: rise to the Stars (if needed), then begin a new wish. */
   const startNewStar = () => {
+    primeKeyboard(); // the keyboard rises with the card (iOS: only inside the tap)
     if (isStarView) {
       if (busy) return;
       setOpenStar(null);
@@ -398,34 +465,52 @@ export default function JourneyPage() {
   useEffect(() => {
     if (!isStarView) setNewStarOpen(false);
   }, [isStarView]);
+  // the sky returns when the new Star's screen closes (or the wish is set aside)
+  useEffect(() => {
+    if (!hushSky) return;
+    if (openStar) newbornOpened.current = true;
+    else if (newbornOpened.current || (!newStarOpen && !pendingBorn.current)) {
+      newbornOpened.current = false;
+      setHushSky(false);
+      setNewbornId(null);
+    }
+  }, [hushSky, openStar, newStarOpen]);
   const starBorn = (s: Star) => {
+    pendingBorn.current = true;
+    setNewbornId(s.id);
     setAllStars((list) => [s, ...list.filter((x) => x.id !== s.id)]);
     setNewStarOpen(false);
     newStarDirty.current = false;
     const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
     const w = stage?.offsetWidth ?? window.innerWidth;
     const h = stage?.offsetHeight ?? window.innerHeight;
-    // the new Star sits where the seed was born (the top of the path):
-    // first a quiet "Your Star is here." — the practice invitation waits for a later visit
+    // the new Star sits where the seed was born (the top of the path); the
+    // birth already happened on the seed, so its own Star screen simply opens
+    // ("Your journey begins here.") — one ending, not three
     setStarMode(entryForVisit(s.id, "created"));
-    // a new Star: Star Birth exactly where the Star will remain (no Starlight
-    // for creating one); the real Star takes over in place, then its paper opens
-    // from that same point
-    emitFx({
-      kind: "birth",
-      anchor: `star:${s.id}`,
-      hideAnchor: true,
-      delay: 350, // the creation paper finishes leaving first
-      onDone: () => {
-        const a = anchorElement(`star:${s.id}`);
-        const sr = stage?.getBoundingClientRect();
-        const at = a && sr ? { x: a.rect.left + a.rect.width / 2 - sr.left, y: a.rect.top + a.rect.height / 2 - sr.top } : { x: w * 0.5, y: h * 0.22 };
-        setOpenStar({ star: s, at });
-      },
-    });
+    window.setTimeout(() => {
+      const a = anchorElement(`star:${s.id}`);
+      const sr = stage?.getBoundingClientRect();
+      const at = a && sr ? { x: a.rect.left + a.rect.width / 2 - sr.left, y: a.rect.top + a.rect.height / 2 - sr.top } : { x: w * 0.5, y: h * 0.22 };
+      pendingBorn.current = false;
+      setOpenStar({ star: s, at });
+    }, 380); // the seed's sky finishes fading first
   };
   // A Star brightens once when something is added to it.
   const [starPulse, setStarPulse] = useState<{ id: string; n: number } | null>(null);
+  // the time given to each Star: read again whenever something is added to one,
+  // or a Star's screen closes (a walk or a picture may have just finished)
+  const [starCare, setStarCare] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (openStar) return;
+    let live = true;
+    loadSigns()
+      .then((signs) => live && setStarCare(careByStar(signs)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [starPulse, openStar]);
   // Stars tab tapped again: close an open Star, or glide back to the Current Star.
   const [recenter, setRecenter] = useState(0);
   const reselectStars = () => {
@@ -501,6 +586,15 @@ export default function JourneyPage() {
   useEffect(() => {
     if (deepLink.current === null) {
       const q = new URLSearchParams(window.location.search);
+      // /journey?walk=ID (the end of onboarding): you arrive walking with your first Star
+      const walkId = q.get("walk");
+      if (walkId) {
+        loadStars().then((list) => {
+          const s = list.find((x) => x.id === walkId);
+          if (s) setCarried(s);
+        });
+        window.history.replaceState(null, "", "/journey");
+      }
       deepLink.current = q.get("to") === "stars" ? "stars" : q.has("create") ? "create" : "none";
       if (deepLink.current === "stars" && q.get("star")) {
         setArriveStarId(q.get("star"));
@@ -527,7 +621,8 @@ export default function JourneyPage() {
     setViewCurrentOnArrival(false);
     const first = worldStars[0];
     const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
-    if (first && stage) {
+    if (first?.id === PLACEHOLDER_STAR.id) setNewStarOpen(true);
+    else if (first && stage) {
       setStarMode(entryForVisit(first.id, "sky"));
       setOpenStar({ star: first, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
     }
@@ -542,7 +637,8 @@ export default function JourneyPage() {
     setArriveStarId(null);
     const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
     const target = star ?? worldStars[0];
-    if (target && stage) {
+    if (target?.id === PLACEHOLDER_STAR.id) setNewStarOpen(true);
+    else if (target && stage) {
       if (starMode !== "reflect") setStarMode(entryForVisit(target.id, "visit"));
       else entryForVisit(target.id, "visit");
       setOpenStar({ star: target, at: { x: stage.offsetWidth * 0.5, y: stage.offsetHeight * 0.22 } });
@@ -559,9 +655,14 @@ export default function JourneyPage() {
   // a focused moment and a particularly meaningful line. Writing slows the
   // world to ~12% while she rests; talking as you walk slows it to ~40%.
   const [speaking, setSpeaking] = useState(false);
-  const [walkLine, setWalkLine] = useState<null | "intro" | "finish-ask" | "done">(null);
-  const stillLine = walkLine === "done";
-  const writing = chatOpen || momentOpen || (eveningOpen && isWalking);
+  const [walkLine, setWalkLine] = useState<null | "intro" | "done">(null);
+  // (walking with a wish never stops the world: Sísí keeps walking as she speaks)
+  const stillLine = false;
+  const writing = chatOpen || momentOpen || noteOpen || (eveningOpen && isWalking);
+  // rising to the Stars puts an unopened capture away (it never waits to pop up later)
+  useEffect(() => {
+    if (isStarView) setMomentOpen(false);
+  }, [isStarView]);
 
   // ── Starlight: the shared world grows with attention given to Stars ──
   const starlight = useStarlightBalance();
@@ -646,16 +747,20 @@ export default function JourneyPage() {
 
   // Sísí pauses and notices a newly found place
   const worldPaused =
-    !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine) || discovering;
+    !isWalking || practiceOpen || createOpen || busy || leavingTo !== null || (speaking && stillLine) || discovering || first === "hello" || first === "tap";
 
-  // Offer the evening reflection once, a little after arriving at night.
+  // Offer the evening reflection once, a little after arriving at night —
+  // never in the middle of walking with a wish (that time is the wish's).
   useEffect(() => {
-    if (!featuredStar || !eveningDue()) return;
+    if (!featuredStar || carried || !eveningDue()) return;
     const t = setTimeout(() => {
       if (eveningDue()) setEveningOpen(true);
     }, 6000);
     return () => clearTimeout(t);
-  }, [featuredStar]);
+  }, [featuredStar, carried]);
+  useEffect(() => {
+    if (carried) setEveningOpen(false); // an offer not yet taken steps aside
+  }, [carried]);
 
   // Drive the shared world clock: ease in (0 → 32px/s over 1.2s); when the
   // camera is about to look up, decelerate over 450ms.
@@ -685,6 +790,41 @@ export default function JourneyPage() {
     }, 600);
     return () => clearTimeout(t);
   }, [carried, isStarView, busy, walkLine]);
+  // Walking with a wish: once ~30 seconds of walking have gathered (paused
+  // whenever she stops, a panel is open or the app is out of sight), the
+  // Star warms, Sísí says one line, and — once a day, whichever wish — a
+  // little Starlight. No buttons, no countdown; she simply keeps walking.
+  const walkedMs = useRef(0);
+  const walkMarked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!carried) {
+      walkedMs.current = 0;
+      return;
+    }
+    if (walkMarked.current === carried.id) return;
+    const t = window.setInterval(() => {
+      const walkingNow = isWalking && !busy && !panelOpen && !chatOpen && document.visibilityState === "visible";
+      if (!walkingNow) return;
+      walkedMs.current += 1000;
+      if (walkedMs.current < WALK_MOMENT_MS) return;
+      walkMarked.current = carried.id;
+      window.clearInterval(t);
+      setWalkWarm((n) => n + 1);
+      setWalkLine("done");
+      // once a day for walking, whichever wish (the shared "✦ +1" shows it)
+      awardStarlight({ source: "walk_with_it_completed", sourceId: `walk:${localDate()}`, starId: carried.id });
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, [carried, isWalking, busy, panelOpen, chatOpen]);
+  // the line rests a little while, then Sísí simply walks on
+  useEffect(() => {
+    if (walkLine !== "done") return;
+    const t = setTimeout(() => {
+      setWalkLine(null);
+      if (!visitsAsked()) setVisitAsk("ask"); // the first walk together: may she visit?
+    }, 9000);
+    return () => clearTimeout(t);
+  }, [walkLine]);
   useEffect(() => {
     if (walkLine !== "intro") return;
     const t = setTimeout(() => setWalkLine(null), 7500);
@@ -776,12 +916,27 @@ export default function JourneyPage() {
     setDateStr(formatDate());
   }, []);
 
+  // arriving: Sísí says hello herself, once per part of the day
+  useEffect(() => {
+    const g = tod?.greeting;
+    if (first !== null || !g || !name || !isWalking || busy) return;
+    const key = `${new Date().toDateString()} ${g}`;
+    if (localStorage.getItem("sisi:hello-last") === key) return;
+    localStorage.setItem("sisi:hello-last", key);
+    const t1 = setTimeout(() => setHelloLine(`${g}, ${name}.`), 900);
+    const t2 = setTimeout(() => setHelloLine(null), 6500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [first, name, tod?.greeting, isWalking, busy]);
   // Bell dot badge — reappears if the guest saw the nudge previously.
   useEffect(() => {
     (async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) return;
+      if (user && !user.is_anonymous) return; // an anonymous account is still a guest
       const seen = localStorage.getItem("sisi:guest-nudge-seen") === "true";
       setHasNudge(seen);
     })();
@@ -812,7 +967,7 @@ export default function JourneyPage() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (user) {
+        if (user && !user.is_anonymous) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("display_name")
@@ -846,15 +1001,20 @@ export default function JourneyPage() {
             active={isStarView && env === "night" && !busy}
             selectedId={openStar?.star.id ?? null}
             reserveTop={newStarOpen}
+            hushed={hushSky}
+            keepId={newbornId}
             pulse={starPulse}
             locked={openStar !== null || leavingId !== null || newStarOpen}
             onSelect={(star, at) => {
+              // a Star still waiting for its wish: tapping it is making the wish
+              if (star.id === PLACEHOLDER_STAR.id) return startNewStar();
               setStarMode(entryForVisit(star.id, "sky"));
               setOpenStar({ star, at });
             }}
             leavingId={leavingId}
             recenter={recenter}
             skyBalance={starlight}
+            care={starCare}
           />
         </div>
 
@@ -869,10 +1029,14 @@ export default function JourneyPage() {
           {skyStar && (
             <SkyStarV2
               star={skyStar}
+              carrying={!!carried && !isStarView}
+              warm={walkWarm}
               selected={isStarView}
-              disabled={busy || !isWalking}
+              disabled={busy || !isWalking || first === "hello"}
+              beckon={first === "tap"}
               onTap={() => {
-                if (busy || !isWalking) return;
+                if (busy || !isWalking || first === "hello") return;
+                if (first) setFirst("sky"); // the first rise: the first wish waits up there
                 setViewCurrentOnArrival(true);
                 goToStars();
               }}
@@ -1030,16 +1194,23 @@ export default function JourneyPage() {
             300ms (0.5–0.8s into the ascent), back in after the return lands. */}
         <div className={`journey-walk-ui jl-fade${isWalking && !busy && !panelOpen && !chatOpen ? "" : " is-hidden"}`}>
           <JourneyHeader
-            dateStr={dateStr}
-            greeting={tod?.greeting ?? greeting}
-            name={name}
             isDark={false}
             hasNudge={hasNudge}
             onMenuClick={() => setMenuOpen(true)}
             onSatchelClick={() => !busy && setSatchelOpen(true)}
           />
           {/* capturing — the main action — within the thumb's reach */}
-          <CaptureFAB onClick={() => setMomentOpen(true)} />
+          {/* only while walking: in the Stars it is out of sight, and must not
+              catch a tap meant for the Star's own choices above it */}
+          <div style={{ opacity: isWalking && !busy && !first ? 1 : 0, pointerEvents: isWalking && !busy && !first ? undefined : "none", transition: "opacity 300ms ease" }}>
+            <CaptureFAB
+              onClick={() => {
+                if (!isWalking || busy) return;
+                primeKeyboard(); // the writing page opens with the keyboard (iOS: only inside the tap)
+                setMomentOpen(true);
+              }}
+            />
+          </div>
           {/* The one primary action on the home screen. */}
           {/* "Spend time with your Star" removed from the Journey: guidance
               now comes from Sísí as speech bubbles (CompanionCues). */}
@@ -1130,7 +1301,6 @@ export default function JourneyPage() {
                 setStarMode("journey");
                 backToMeadow();
               }}
-              onSeeMoments={(s) => goToMoments(s.id)}
               onRest={letStarRest}
               onEdited={starEdited}
               onCreateStar={startNewStar}
@@ -1161,36 +1331,27 @@ export default function JourneyPage() {
         <NewStarSky
           open={newStarOpen && isStarView}
           existing={allStars}
+          first={first === "sky"}
+          bornLine={first === "sky" ? "Your journey begins here. Let’s carry it with us, down to the meadow." : undefined}
           onClose={() => {
             if (!okToLeaveStar()) return;
             setNewStarOpen(false);
           }}
-          onBorn={starBorn}
+          onBorn={
+            first === "sky"
+              ? (s) => {
+                  // the first Star stays in its moment: then you walk with it
+                  setAllStars((list) => [s, ...list.filter((x) => x.id !== s.id)]);
+                  setFirstBorn(s);
+                }
+              : starBorn
+          }
+
           onDirty={(d) => {
             newStarDirty.current = d;
           }}
         />
 
-        {/* walking with a wish: a quiet way to finish (no timers, no counts) */}
-        <AnimatePresence>
-          {carried && isWalking && !busy && !chatOpen && walkLine !== "finish-ask" && walkLine !== "done" && (
-            <motion.button
-              key="finish-walk"
-              type="button"
-              className="ds-btn ds-btn--secondary ds-on-dark walk-finish"
-              onClick={() => {
-                setWalkLine("finish-ask");
-                // "Walk with it" completed: once per Star per day
-                if (carried) awardStarlight({ source: "walk_with_it_completed", sourceId: `${carried.id}:${localDate()}`, starId: carried.id });
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { delay: 1.2, duration: 0.6 } }}
-              exit={{ opacity: 0, transition: { duration: 0.25 } }}
-            >
-              Finish when you’re ready
-            </motion.button>
-          )}
-        </AnimatePresence>
 
         {/* a newly found World / a fulfilled Star's flower, just ahead of Sísí */}
         {reveal && isWalking && <JourneyReveal key={reveal.kind === "world" ? reveal.world : reveal.id} reveal={reveal} leaving={revealLeaving} />}
@@ -1198,11 +1359,40 @@ export default function JourneyPage() {
 
         {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
         <CompanionCues
-          visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && env === "day" && !quiet}
+          // the first-time words are said whatever the hour
+          visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet}
           onTalk={(opening) => openChat(opening)}
           onSpeaking={setSpeaking}
           line={
-            discovering && reveal?.kind === "world"
+            first === "hello" || first === "walk" || first === "tap"
+              ? {
+                  key: `first-${first}`,
+                  text:
+                    first === "hello"
+                      ? "Hello. I’m Sísí. What should I call you?"
+                      : first === "walk"
+                        ? `Nice to meet you, ${name}. Let’s walk a little.`
+                        : "Every wish becomes a Star. Tap it to make yours.",
+                }
+              : helloLine && !carried
+              ? { key: "hello-arrive", text: helloLine }
+              : visitAsk === "ask"
+              ? {
+                  key: "visit-ask",
+                  text: "Can I visit you with a little note sometimes?",
+                  actions: [
+                    { label: "Yes, please", act: () => setVisitAsk("time") },
+                    {
+                      label: "Not now",
+                      quiet: true,
+                      act: () => {
+                        declineVisits();
+                        setVisitAsk(null);
+                      },
+                    },
+                  ],
+                }
+              : discovering && reveal?.kind === "world"
               ? {
                   key: `discover-${reveal.world}`,
                   text: "We found a new place.",
@@ -1226,41 +1416,71 @@ export default function JourneyPage() {
               : walkLine === "intro"
                 ? {
                     key: "walk-intro",
+                    // the wish, said once as you set out — as it is written, already
+                    // true (living in the end); then it simply rides along in the sky
                     text: (
                       <>
-                        You don’t need to solve everything today.
+                        “{carried.wish.trim().replace(/[.。]$/, "")}.”
                         <br />
-                        Let’s carry this wish with us.
+                        Let’s walk with it a little, today.
                       </>
                     ),
                   }
-                : walkLine === "finish-ask"
-                  ? {
-                      key: "walk-note",
-                      text: "Would you like to leave a small note for this Star?",
-                      actions: [
-                        { label: "Reflect on today", act: () => riseToStar(carried.id, "reflect") },
-                        { label: "Not now", act: () => setWalkLine("done"), quiet: true },
-                      ],
-                    }
-                  : {
-                      key: "walk-done",
-                      text: (
-                        <>
-                          That was enough for today.
-                          <br />
-                          Your Star is still here.
-                        </>
-                      ),
-                      actions: [
-                        { label: "Return to Journey", act: endCarry },
-                        { label: "Stay with my Star", act: () => riseToStar(carried.id, "quick"), quiet: true },
-                      ],
-                    }
+                : {
+                    // the walk is time given to the wish (not progress toward it)
+                    key: "walk-done",
+                    text: "You made space for this wish today.",
+                    // written right here, never a trip up to the Stars
+                    actions: [{ label: "Leave a small note", act: () => { primeKeyboard(); setNoteOpen(true); setWalkLine(null); }, quiet: true }],
+                  }
           }
         />
 
+        {/* the first time: your name, in the meadow */}
+        <FirstHello open={first === "hello" && isWalking && !busy} value={draftName} onChange={setDraftName} onSubmit={keepName} />
+        {/* the first Star is born: walk with it, down in the same meadow */}
+        <AnimatePresence>
+          {firstBorn && isStarView && (
+            <motion.div
+              key="first-walk"
+              className="first-walk"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { delay: 2.4, duration: 0.6 } }}
+              exit={{ opacity: 0 }}
+            >
+              <button
+                type="button"
+                className="ds-btn ds-btn--primary ds-on-dark ds-btn--block"
+                onClick={() => {
+                  const s = firstBorn;
+                  localStorage.setItem("sisi:guest-onboarded", "true");
+                  setFirstBorn(null);
+                  setFirst(null);
+                  setNewStarOpen(false);
+                  startWalkWith(s);
+                }}
+              >
+                Walk with it
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* when Sísí may visit: then (only then) the system asks about notifications */}
+        <VisitTime
+          open={visitAsk === "time" && isWalking}
+          onChoose={(t) => {
+            setVisitAsk(null);
+            allowVisits(t).then((ok) =>
+              setMeadowToast(ok ? `Sísí will visit ${t === "morning" ? "in the mornings" : "in the evenings"}.` : "Notifications are off. You can turn them on in Settings."),
+            );
+          }}
+          onSkip={() => {
+            declineVisits();
+            setVisitAsk(null);
+          }}
+        />
         <PaperToast message={isStarView ? toast : meadowToast} />
+        {carried && <WalkNote open={noteOpen && isWalking} star={carried} onClose={() => setNoteOpen(false)} onSaved={(e) => rememberSaved(`s-${e.id}`)} />}
 
         <DailyPractice
           open={practiceOpen && isWalking}

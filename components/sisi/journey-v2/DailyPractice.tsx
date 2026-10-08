@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { addSign } from "@/lib/myStars";
 import { recommendedPractice, type PracticeKind } from "@/lib/littleLights";
-import { awardStarlight, localDate, starlightMessage } from "@/lib/starlight";
+import { awardStarlight, localDate } from "@/lib/starlight";
 import { createPortal } from "react-dom";
 import { FocusPaper } from "@/components/ds";
 
@@ -57,7 +57,6 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
   const [step, setStep] = useState<Step>("suggest");
   const [kind, setKind] = useState<Kind>(today);
   const [text, setText] = useState("");
-  const [granted, setGranted] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Reset each time the panel opens.
@@ -66,7 +65,6 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
     setStep(placeholder || !star ? "no-star" : "suggest");
     setKind(today);
     setText("");
-    setGranted(null);
     setSaving(false);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,11 +96,11 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
       kind === "see"
         ? await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id })
         : kind === "walk"
-          ? await awardStarlight({ source: "walk_with_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id })
+          ? await awardStarlight({ source: "walk_with_it_completed", sourceId: `walk:${localDate()}`, starId: star.id })
           : signId
             ? await awardStarlight({ source: "something_good_saved", sourceId: signId, starId: star.id })
             : null;
-    setGranted(r ? starlightMessage(r) : null);
+    // Starlight shows itself (the shared "✦ +1"); the paper keeps to the moment
     if (r && r.awarded > 0) onLight?.(kind);
     setSaving(false);
     setStep("reward");
@@ -189,7 +187,6 @@ export function DailyPractice({ open, star, placeholder, onClose, onTalk, onLigh
                 {step === "reward" && (
                   <Pane key="reward" delay={0.2}>
                     <p className="t-card-title dp-title">Kept with your Star.</p>
-                    {granted && <p className="t-body dp-sub">{granted}</p>}
                     <button type="button" className="ds-btn ds-btn--primary ds-btn--block" onClick={onClose}>
                       Continue
                     </button>

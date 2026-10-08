@@ -22,9 +22,16 @@ type Props = {
   selected: boolean;
   disabled?: boolean;
   onTap: () => void;
+  /** walking with this wish: the Star rests in the sky ahead of Sísí (it does
+   *  not grow or come closer — the walk is time with the wish, not progress) */
+  carrying?: boolean;
+  /** increment once when the walk is finished: a brief, warm brightening */
+  warm?: number;
+  /** the first time (onboarding): a soft ring of light asks to be tapped */
+  beckon?: boolean;
 };
 
-export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
+export function SkyStarV2({ star, selected, disabled = false, onTap, carrying = false, warm = 0, beckon = false }: Props) {
   const [pressed, setPressed] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -49,7 +56,7 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
   return (
     <button
       type="button"
-      className={`sky-star-btn${pressed ? " is-pressed" : ""}`}
+      className={`sky-star-btn${pressed ? " is-pressed" : ""}${carrying ? " is-carrying" : ""}${beckon ? " is-beckon" : ""}`}
       ref={(el) => fxAnchorRef("selectedStar", el)}
       aria-label="Look toward your star"
       aria-disabled={disabled}
@@ -73,7 +80,10 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
           <span className="sparkle sparkle-4" aria-hidden />
         </>
       )}
+      {warm > 0 && <span key={warm} className="sky-warm" aria-hidden />}
       <StarLayers selected={selected} alt="Current Star" />
+      {/* the wish being carried, quietly under its Star */}
+      {carrying && star.wish && <span className="sky-wish">{star.wish}</span>}
 
       <style jsx>{`
         .sky-star-btn {
@@ -91,8 +101,33 @@ export function SkyStarV2({ star, selected, disabled = false, onTap }: Props) {
           -webkit-tap-highlight-color: transparent;
           z-index: 6;
           transform: scale(1);
-          transition: transform 90ms ease-out;
+          transition: transform 90ms ease-out, top 1.4s var(--ease-sisi), left 1.4s var(--ease-sisi);
         }
+        /* ahead of Sísí, above the path, clear of the header — and it stays there */
+        .sky-star-btn.is-carrying { top: 24%; left: 74%; }
+        /* tap me (first time): a soft ring of light breathes around the Star */
+        .sky-star-btn.is-beckon::after {
+          content: ""; position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%;
+          border: 2px solid rgba(255, 236, 180, 0.9); box-shadow: 0 0 14px rgba(255, 236, 180, 0.55); pointer-events: none;
+          animation: skyBeckon 2.2s ease-in-out infinite;
+        }
+        @keyframes skyBeckon { 0%, 100% { transform: scale(0.92); opacity: 0.55; } 50% { transform: scale(1.06); opacity: 1; } }
+        .sky-wish {
+          position: absolute; left: 50%; top: calc(100% + 6px); width: max-content; max-width: 150px; translate: -50% 0;
+          font-family: var(--font-editorial); font-style: italic; font-size: 13px; line-height: 1.3; text-align: center;
+          color: var(--on-sky); opacity: 0.85; pointer-events: none;
+          animation: skyWishIn 1.2s ease 1s both;
+        }
+        @keyframes skyWishIn { from { opacity: 0; } to { opacity: 0.85; } }
+        /* finished: a brief warm light, then calm again */
+        .sky-warm {
+          position: absolute; left: 50%; top: 50%; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%;
+          pointer-events: none; z-index: 0;
+          background: radial-gradient(circle, rgba(255, 226, 160, 0.75), rgba(241, 168, 94, 0.28) 40%, rgba(241, 168, 94, 0) 70%);
+          animation: skyWarm 2.2s ease-out both;
+        }
+        @keyframes skyWarm { 0% { opacity: 0; transform: scale(0.5); } 30% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.25); } }
+        @media (prefers-reduced-motion: reduce) { .sky-warm { animation-duration: 1.2s; } .sky-star-btn { transition: none; } }
         /* Immediate tactile press (80–100ms). */
         .sky-star-btn.is-pressed {
           transform: scale(0.9);

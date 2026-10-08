@@ -76,8 +76,10 @@ export function useKeyboardInset(active: boolean) {
     const vv = window.visualViewport;
     const root = document.documentElement.style;
     const update = () => {
-      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      // (in development on a computer, the test keyboard reports its own height)
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop, Number(document.documentElement.dataset.devKb || 0));
       root.setProperty("--ds-kb", `${Math.round(kb)}px`);
+      document.documentElement.classList.toggle("kb-open", kb > 40);
     };
     update();
     vv.addEventListener("resize", update);
@@ -85,7 +87,10 @@ export function useKeyboardInset(active: boolean) {
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
-      root.removeProperty("--ds-kb");
+      if (!document.documentElement.dataset.devKb) {
+        root.removeProperty("--ds-kb");
+        document.documentElement.classList.remove("kb-open");
+      }
     };
   }, [active]);
 }

@@ -400,6 +400,20 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
   box-shadow: 0 -6px 30px rgba(16, 45, 50, 0.16);
   animation: ds-paper-in var(--motion-paper) var(--ease-sisi) both;
 }
+/* keyboard up: the sheet rests on it, and its paper carries on down behind
+   the keyboard — so the keyboard's rounded corners and its translucency show
+   paper, never the world behind (as it will on the phone) */
+.ds-focus::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: var(--ds-kb, 0px);
+  background: inherit;
+  background-blend-mode: inherit; /* the grain multiplies, as on the sheet */
+  pointer-events: none;
+}
 .ds-focus--tall { height: min(78dvh, calc(100dvh - var(--safe-top) - 24px)); }
 .ds-focus-head {
   flex: none;
@@ -428,6 +442,8 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
   padding: var(--space-3) var(--focus-pad) calc(var(--space-4) + var(--safe-bottom));
   border-top: 1px solid var(--ink-08);
 }
+/* keyboard up: it already covers the home indicator, so no safe-area gap below the field */
+html.kb-open .ds-focus-foot { padding-bottom: var(--space-3); }
 .ds-focus-grip { position: absolute; top: 10px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--ink-14); }
 
 @media (min-width: 500px) {
@@ -477,6 +493,8 @@ button.ds-memory:focus-visible { outline-offset: 4px; }
 
 /* navigation and world beneath an open overlay: dim, inert */
 html.ds-overlay-open .ds-nav { opacity: 0.25 !important; pointer-events: none !important; }
+/* the tabs opt back in to taps (pointer-events: auto): a hidden nav must let them go too */
+html.ds-overlay-open .ds-nav-tab, html.ns-open .ds-nav-tab, html.sms-focus .ds-nav-tab { pointer-events: none !important; }
 html.ds-scroll-locked, html.ds-scroll-locked body { overflow: hidden; }
 
 /* ── StickerNavigation — Moments / Journey / Stars ──────────────────── */

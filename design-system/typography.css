@@ -37,10 +37,18 @@
   --font-caveat: var(--font-editorial);
 
   --text-display: clamp(30px, 8vw, 38px);
-  --text-screen-title: clamp(24px, 6.4vw, 30px);
+  /* the one title at the top of a screen (My Stars · Moments · …): quiet,
+     so the world under it stays the subject */
+  --text-screen-title: clamp(19px, 5.1vw, 22px);
   --text-card-title: clamp(18px, 4.8vw, 21px);
+  /* a wish, shown under its Star (Star screen · born · hold to light): one
+     step above the titles (screen 22 · paper question 23), never louder */
+  --text-wish: clamp(22px, 6vw, 26px);
+  /* the question on a paper you write on ("What are you wishing for?"):
+     light, one line on every phone */
+  --text-paper-title: clamp(20px, 5.6vw, 23px);
   --text-dialogue: clamp(15px, 4vw, 17px);
-  --text-speech: clamp(13.5px, 3.6vw, 15px); /* Sísí's speech bubbles */
+  --text-speech: clamp(13.5px, 3.6vw, 15px); /* Sísí's voice, wherever she speaks (bubbles, the night) */
   --text-body: clamp(14px, 3.7vw, 16px);
   --text-button: 15px;
   --text-meta: 12px;
@@ -64,6 +72,11 @@ body {
   overflow-wrap: break-word;
   font-synthesis: none; /* never fake a bold or an italic */
 }
+
+/* Line breaks: no word is ever left alone on the last line. Paragraphs wrap
+   "pretty"; headings and anything centred share their words evenly. */
+p, li, blockquote { text-wrap: pretty; }
+h1, h2, h3, h4, h5, h6, [style*="text-align: center"], .t-center { text-wrap: balance; }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-editorial);

@@ -1,29 +1,21 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { loadStars, walkingStars } from "@/lib/myStars";
-import { createMoment, updateMoment } from "@/lib/momentStore";
-import { hintDone, markHint } from "@/lib/hints";
-import { FocusPaper, StarGlyph } from "@/components/ds";
+import { createMoment } from "@/lib/momentStore";
+import { markHint } from "@/lib/hints";
+import { WritingPage, type WritingPhoto } from "@/components/sisi/WritingPage";
+import { PaperToast } from "@/components/sisi/journey-v2/PaperToast";
 
 /**
  * MomentCapture — Journey Capture: keep something from the life you are
- * walking through (a photo, a few words, or both).
- *
- *   options   Capture a moment — Add a photo (the phone offers camera,
- *             library or file) · Write a note. The first time, one line explains what it's for.
- *   capture   the photo + optional words, or a short note → Save moment
- *   saved     "Kept." — it is in Moments now. Optionally, and only if the
- *             user wants: Connect to a Star (the SAME record gets a star_id;
- *             nothing is copied). Never automatic: life needn't be a wish.
+ * walking through (a few words, a photo, or both), on the writing page:
+ * the question is the page, the photo and Save ride on the keyboard, and the
+ * wish it belongs to (optional — life needn't be a wish) sits at the top.
  *
  * Saved as one Moment: source journey_capture · type general.
  */
-
-type Step = "options" | "capture" | "saved" | "connect";
-
 export function MomentCapture({
   open,
   onClose,
@@ -33,44 +25,40 @@ export function MomentCapture({
   star?: Star | null;
   onClose: () => void;
 }) {
-  const [step, setStep] = useState<Step>("options");
-  const [photo, setPhoto] = useState<{ dataURL: string; width: number; height: number } | null>(null);
+  const [photo, setPhoto] = useState<WritingPhoto | null>(null);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [savedId, setSavedId] = useState<string | null>(null);
   const [stars, setStars] = useState<Star[]>([]);
-  const [connectedTo, setConnectedTo] = useState<Star | null>(null);
-  const [firstTime, setFirstTime] = useState(false);
-  const photoRef = useRef<HTMLInputElement>(null);
+  const [wish, setWish] = useState<Star | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setStep("options");
     setPhoto(null);
     setText("");
     setSaving(false);
     setError("");
-    setSavedId(null);
-    setConnectedTo(null);
-    setFirstTime(!hintDone("capture"));
+    setWish(null);
     loadStars().then((s) => setStars(walkingStars(s)));
   }, [open]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2400);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const close = () => {
     markHint("capture");
     onClose();
   };
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  const onPhoto = (file: File) => {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
         setPhoto(await compress(reader.result as string, 1200, 0.85));
-        setStep("capture");
+        setError("");
       } catch {
         setError("That photo couldn’t be opened. Try another?");
       }
@@ -84,136 +72,51 @@ export function MomentCapture({
     setSaving(true);
     setError("");
     try {
-      const m = await createMoment({
+      await createMoment({
         source: "journey_capture",
         type: "general",
         text: text.trim() || null,
         image: photo?.dataURL ?? null,
         imageWidth: photo?.width,
         imageHeight: photo?.height,
-        starId: null, // saved without a Star; connecting is optional
+        starId: wish?.id ?? null, // only if the person chose one
       });
       markHint("capture");
       markHint("moments"); // their first Moment — Moments needn't explain itself now
-      setSavedId(m.id);
-      setStep("saved");
+      onClose();
+      setToast(wish ? `Kept. It’s part of “${wish.wish}” now.` : "Kept. It’s in your Moments.");
     } catch {
       setError("It didn’t save just now. Try once more?");
     }
     setSaving(false);
   };
 
-  const connect = async (s: Star) => {
-    if (!savedId) return;
-    await updateMoment(savedId, { starId: s.id });
-    setConnectedTo(s);
-    setStep("saved");
-  };
-
   return (
     <>
-      <FocusPaper
+      <WritingPage
         open={open}
         onClose={close}
-        // one title per step, beside the ✕ (no kicker above a second title)
-        title={
-          step === "options"
-            ? "Capture a moment"
-            : step === "capture"
-              ? photo
-                ? "A few words, if you like"
-                : "Write a note"
-              : step === "saved"
-                ? "Kept."
-                : "Connect to a Star"
-        }
-        titleId="mc-title-h"
-        className="mc-focus"
-      >
-              <AnimatePresence mode="wait" initial={false}>
-                {step === "options" && (
-                  <motion.div key="o" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    {firstTime && <p className="t-body mc-sub">Save something from the life you’re walking through.</p>}
-                    {/* one photo button: phones offer their own choice — take a
-                        photo, the photo library, or a file */}
-                    <button type="button" className="ds-btn ds-btn--secondary ds-btn--block mc-option" onClick={() => photoRef.current?.click()}>
-                      Add a photo
-                    </button>
-                    <button type="button" className="ds-btn ds-btn--secondary ds-btn--block mc-option" onClick={() => setStep("capture")}>
-                      Write a note
-                    </button>
-                    {error && <p className="ds-error mc-error" role="alert">{error}</p>}
-                  </motion.div>
-                )}
-                {step === "capture" && (
-                  <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    {photo && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img className="mc-photo" src={photo.dataURL} alt="Your moment" />
-                    )}
-                    <textarea
-                      className="ds-field mc-input"
-                      rows={photo ? 2 : 3}
-                      maxLength={240}
-                      placeholder={photo ? "What was happening?" : "What do you want to remember?"}
-                      value={text}
-                      autoFocus={!photo}
-                      onChange={(e) => setText(e.target.value)}
-                    />
-                    {error && <p className="ds-error mc-error" role="alert">{error}</p>}
-                    <button type="button" className="ds-btn ds-btn--primary ds-btn--block" disabled={!canSave || saving} onClick={save}>
-                      Save moment
-                    </button>
-                  </motion.div>
-                )}
-                {step === "saved" && (
-                  <motion.div key="s" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <p className="t-body mc-sub">
-                      {connectedTo ? `It’s part of “${connectedTo.wish}” now, and in your Moments.` : "It’s in your Moments."}
-                    </p>
-                    <button type="button" className="ds-btn ds-btn--primary ds-btn--block" onClick={close}>
-                      Done
-                    </button>
-                    {!connectedTo && stars.length > 0 && (
-                      <button type="button" className="ds-text-action mc-quiet" onClick={() => setStep("connect")}>
-                        Connect to a Star
-                      </button>
-                    )}
-                  </motion.div>
-                )}
-                {step === "connect" && (
-                  <motion.div key="k" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <p className="t-body mc-sub">Only if it feels part of that wish.</p>
-                    <div className="mc-stars">
-                      {stars.map((s) => (
-                        <button key={s.id} type="button" className="ds-star-row mc-star" onClick={() => connect(s)}>
-                          <StarGlyph size={18} className="ds-star-row-glyph" />
-                          <span className="ds-star-row-main"><span className="ds-star-row-title">{s.wish}</span></span>
-                        </button>
-                      ))}
-                    </div>
-                    <button type="button" className="ds-text-action mc-quiet" onClick={() => setStep("saved")}>
-                      Not now
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-      </FocusPaper>
-      <input ref={photoRef} type="file" accept="image/*" hidden onChange={onFile} />
-      <style jsx global>{`
-        .mc-sub { margin: 0 0 16px; color: var(--ink-80); }
-        .mc-option { margin-bottom: 10px; }
-        .mc-quiet { display: flex; margin: 4px auto 0; }
-        .mc-photo { display: block; width: 100%; max-height: 34dvh; object-fit: cover; border-radius: 4px; margin-bottom: 12px; }
-        .mc-input { margin-bottom: 16px; }
-        .mc-error { margin: -6px 0 12px; }
-        .mc-stars { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
-      `}</style>
+        label="Capture a moment"
+        question="What did you notice today?"
+        text={text}
+        onText={setText}
+        photo={photo}
+        onPhoto={onPhoto}
+        onRemovePhoto={() => setPhoto(null)}
+        wish={wish}
+        wishes={stars}
+        onWish={setWish}
+        saving={saving}
+        canSave={canSave}
+        onSave={save}
+        error={error}
+      />
+      <PaperToast message={toast} />
     </>
   );
 }
 
-function compress(dataURL: string, maxDim: number, quality: number): Promise<{ dataURL: string; width: number; height: number }> {
+function compress(dataURL: string, maxDim: number, quality: number): Promise<WritingPhoto> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.onload = () => {

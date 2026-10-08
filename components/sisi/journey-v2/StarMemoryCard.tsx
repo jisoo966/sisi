@@ -2,7 +2,7 @@
 
 import { fxAnchorRef } from "@/lib/fxAnchors";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { addSign, fulfillStar, loadSignsForStar, updateStar, type EntryKind } from "@/lib/myStars";
 import { addFulfilledFlower } from "@/lib/pathGifts";
@@ -10,16 +10,16 @@ import { emitFx, glintPoint, softGlint } from "@/lib/fx";
 import { RitualAudio, VOICE_LINES, appSoundOn, type VoiceId } from "@/lib/ritualAudio";
 import { haptic } from "@/lib/haptics";
 import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
-import { awardStarlight, localDate, starlightMessage, starlightRows } from "@/lib/starlight";
+import { awardStarlight, localDate } from "@/lib/starlight";
+import { careFor, careGlow, daysTogether, marksFor } from "@/lib/starCare";
+import { primeKeyboard, takeKeyboard } from "@/lib/keyboard";
 import {
   ConfirmationDialog,
   FilterChip,
   IconBack,
   IconButton,
-  IconChevronRight,
   IconClose,
   IconEye,
-  IconLeaf,
   IconMoon,
   IconPaws,
   IconSound,
@@ -27,6 +27,7 @@ import {
   IconPencil,
   OverflowMenu,
   PrimaryButton,
+  useKeyboardInset,
   SecondaryButton,
   StarGlyph,
   StatusChip,
@@ -35,6 +36,8 @@ import {
 import { SisiChatCharacter, type SisiChatExpression } from "@/components/sisi/journey-v2/SisiChatCharacter";
 import { StarLayers } from "@/components/sisi/journey-v2/StarLayers";
 import { PictureItAtmosphere } from "@/components/sisi/journey-v2/PictureItAtmosphere";
+import { WritingPage } from "@/components/sisi/WritingPage";
+import { StarJournal, type JournalKind } from "@/components/sisi/stars/StarJournal";
 
 /**
  * StarMemoryCard — spending a moment with one Star, on torn ivory paper
@@ -95,8 +98,6 @@ type Props = {
   onWalkWith?: (star: Star) => void;
   /** "Return to Journey" */
   onReturnToJourney?: () => void;
-  /** "See its moments": this Star's history lives in Moments */
-  onSeeMoments?: (star: Star) => void;
 };
 
 export type StarEntry = "journey" | "quick" | "reflect" | "celebrate";
@@ -108,20 +109,20 @@ const SOFT = [0.45, 0, 0.25, 1] as const; // soft ease-in-out
 
 /** Journal kinds (the same Star-entry record as before). */
 const KIND: Record<EntryKind, { chip: string; label: string; ph: string }> = {
-  something_good: { chip: "Something good", label: "Something good", ph: "My friend encouraged me to keep going." },
-  small_step: { chip: "A small step", label: "A step I took", ph: "I reviewed my plan and took one small action." },
+  something_good: { chip: "A sign", label: "A sign", ph: "What showed up for this wish today?" },
+  small_step: { chip: "A small step", label: "A step I took", ph: "What small step did you take?" },
 };
 const PRACTICES = [
   { id: "picture", title: "Picture it", desc: "Imagine this wish as part of your life." },
-  { id: "walk", title: "Walk with it", desc: "Let Sísí carry this wish with you." },
-  { id: "reflect", title: "Reflect on today", desc: "Remember something good or a small step." },
+  { id: "walk", title: "Walk with it", desc: "Carry this wish into your Journey." },
+  { id: "reflect", title: "Reflect on today", desc: "Notice a sign, or a small step you took." },
 ] as const;
 
 /** What Sísí says (and how she looks) in each moment. */
 const SAY: Partial<Record<Mode, { text: React.ReactNode; face: SisiChatExpression }>> = {
   invite: { text: <>Your Star is still here.<br />Shall we spend a quiet moment with it?</>, face: "listening" },
   practice: { text: "How would you like to be with your Star today?", face: "listening" },
-  "picture-anchor": { text: "What stayed with you?", face: "listening" },
+  "picture-anchor": { text: "Write it as if it’s already yours.", face: "listening" },
   "note-ask": { text: "Would you like to leave a small note for this Star?", face: "listening" },
   reflect: { text: "What would you like your Star to remember about today?", face: "listening" },
   saved: { text: <>Kept.<br />Your Star is a little brighter.</>, face: "comfort" },
@@ -219,11 +220,12 @@ export function StarMemoryCard({
   initialMode = "journey",
   onWalkWith,
   onReturnToJourney,
-  onSeeMoments,
 }: Props) {
   const [mode, setMode] = useState<Mode>(
-    placeholder ? "invite" : initialMode === "reflect" ? "reflect" : initialMode === "celebrate" ? "celebrate" : initialMode === "quick" ? "invite" : "journey",
+    placeholder ? "invite" : initialMode === "reflect" ? "reflect" : initialMode === "celebrate" ? "journey" : initialMode === "quick" ? "invite" : "journey",
   );
+  /** just born: its Star screen opens with "Your journey begins here." */
+  const [fresh] = useState(initialMode === "celebrate");
   const [reflectBack, setReflectBack] = useState<Mode>(initialMode === "reflect" ? "journey" : "practice");
   /** where "back" from the activity choice returns (the timeline, or the invitation) */
   const [practiceBack, setPracticeBack] = useState<Mode>("journey");
@@ -241,15 +243,23 @@ export function StarMemoryCard({
   const [signs, setSigns] = useState<Sign[] | null>(null);
   /** every time spent with this wish: its Moments, and the days walked with it.
    *  Only ever grows (no streaks): resting never dims a Star. */
-  const walks = useMemo(
-    () => (placeholder ? 0 : starlightRows().filter((r) => r.star_id === star.id && r.source_type === "walk_with_it_completed").length),
+  const care = useMemo(
+    () => (placeholder || !signs ? 0 : careFor(star.id, signs)),
     // re-read after each completed step (mode changes back to the Star)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [star.id, placeholder, mode],
+    [star.id, placeholder, signs, mode],
   );
-  const care = (signs?.length ?? 0) + walks;
-  /** 0 → 1: how much brighter the Star has grown (a gentle curve, full by ~12) */
-  const glow = Math.min(1, Math.sqrt(care / 12));
+  /** what has been done for this wish, by kind (its three marks), and the days together */
+  const days = useMemo(
+    () => (placeholder ? [] : daysTogether(star.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [star.id, placeholder, signs, mode],
+  );
+  const marks = useMemo(() => marksFor(star.id, signs ?? []), [star.id, signs, days]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** the journal of this wish (null: closed), opened on one kind */
+  const [journal, setJournal] = useState<JournalKind | null>(null);
+  /** 0 → 1: how much brighter the Star has grown (the same as in the sky) */
+  const glow = careGlow(care);
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardTop, setCardTop] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -386,7 +396,6 @@ export function StarMemoryCard({
   const audio = useRef<RitualAudio | null>(null);
   const [wishTouch, setWishTouch] = useState(false);
   const [canContinue, setCanContinue] = useState(false);
-  const [picLight, setPicLight] = useState<string | null>(null);
   const [picBright, setPicBright] = useState(false);
   const [picNote, setPicNote] = useState("");
   const [picSaving, setPicSaving] = useState(false);
@@ -422,7 +431,6 @@ export function StarMemoryCard({
     setWishTouch(false);
     setCanContinue(false);
     setCaption("");
-    setPicLight(null);
     setPicNote("");
     setMode("picture");
   };
@@ -436,8 +444,8 @@ export function StarMemoryCard({
   /** the whole ritual was lived through → Starlight (once per Star per day) */
   const completeRitual = async () => {
     if (placeholder) return;
-    const res = await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id, silent: true });
-    setPicLight(starlightMessage(res));
+    // the shared "✦ +1" shows it (no words added to the paper)
+    await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id });
   };
   const enter = (ph: Phase) => {
     setPhase(ph);
@@ -523,6 +531,7 @@ export function StarMemoryCard({
     });
   };
   const toAnchor = () => {
+    primeKeyboard(); // "What stayed with you?" — the keyboard rises with the card
     soundRun.current++;
     clearTimers();
     stopAudio();
@@ -574,6 +583,7 @@ export function StarMemoryCard({
   const [picked, setPicked] = useState<string | null>(null);
   const pick = (id: (typeof PRACTICES)[number]["id"]) => {
     if (picked) return;
+    if (id === "reflect") primeKeyboard(); // writing: the keyboard rises with the card
     setPicked(id);
     setTimeout(() => {
       choosePractice(id);
@@ -589,7 +599,15 @@ export function StarMemoryCard({
   const completion = mode === "saved" || mode === "done" || mode === "celebrate" || mode === "fulfilled";
   // A focused choice: the paper is a bottom sheet, the Star and Sísí's words
   // share the rest of the screen, and the global tabs step aside.
-  const focus = mode === "practice";
+  // One rule for the paper: whatever you do here (choose, write, keep, begin)
+  // rises from the bottom as a sheet — the Star and Sísí's words stay above.
+  // Only the Star screen itself (journey) and the ritual's open night have no paper.
+  const focus = !hasHeader && mode !== "picture";
+  /** a writing card's field takes the keyboard over once, when it appears */
+  const takeKeyboardOnMount = useCallback((el: HTMLTextAreaElement | null) => takeKeyboard(el), []);
+  /** a card you type in: it rides on top of the keyboard */
+  const writingCard = mode === "picture-anchor"; // reflect writes on the writing page
+  useKeyboardInset(writingCard);
   /** the global tabs step aside during the choice and the completion moments */
   /** the ritual (settle → breathe → picture → anchor): the tabs are disabled throughout */
   const picturing = mode === "picture-intro" || mode === "picture" || mode === "picture-anchor";
@@ -611,8 +629,7 @@ export function StarMemoryCard({
     completion ||
     mode === "picture-intro" ||
     mode === "picture-anchor" ||
-    (mode === "picture" && canContinue) ||
-    mode === "reflect";
+    (mode === "picture" && canContinue);
   /** the step's actions sit inside the card whenever the card is showing
    *  (one ✕ in the corner; nothing floats over the card's edge) */
   const paperControls = hasControls && !hasHeader && mode !== "picture";
@@ -665,10 +682,6 @@ export function StarMemoryCard({
           Done without writing
         </TextAction>
       </div>
-    ) : mode === "reflect" ? (
-      <button type="button" className={primary} disabled={!text.trim() || saving} onClick={save}>
-        Save to my Star
-      </button>
     ) : null;
   };
   // each step starts with its Star in view (not wherever the last one scrolled)
@@ -709,7 +722,7 @@ export function StarMemoryCard({
         {onScreen && (
           <motion.div
             key="sms"
-            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-anchor" || mode === "picture-intro" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}${picturing ? " is-ritual" : ""}${mode === "journey" ? " is-journey" : ""}`}
+            className={`sms-screen${focus ? " is-focus" : ""}${hideNav ? " no-nav" : ""}${completion || mode === "picture-anchor" || mode === "picture-intro" ? " is-completion" : ""}${mode === "picture" ? " is-picturing" : ""}${picturing ? " is-ritual" : ""}${mode === "journey" ? " is-journey" : ""}${writingCard ? " is-writing" : ""}${journal ? " is-away" : ""}`}
             style={{ ["--star-top" as string]: `${Math.max(8, anchor.y - 44)}px` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -791,10 +804,10 @@ export function StarMemoryCard({
               }}
             >
               <div className={`sms-path${shine ? ` is-${shine}` : ""}`}>
-                {mode !== "picture" && mode !== "journey" && mode !== "ceremony" && <span className="sms-thread" aria-hidden />}
                 <div ref={(el) => fxAnchorRef("selectedStar", el)} style={mode === "journey" ? { ["--care" as string]: String(1 + glow * 0.35) } : undefined} className={`sms-star${star.fulfilledAt || shine === "warm" ? " is-fulfilled" : ""}${shine === "bright" || shine === "warm" || picBright ? " is-shining" : ""}${mode === "picture" ? ` is-breathing ph-${phase}` : ""}${wishTouch ? " is-wished" : ""}`} aria-hidden>
-                  {/* the more time spent with this wish, the wider its light */}
-                  {mode === "journey" && <span className="smj-glow" aria-hidden style={{ opacity: 0.35 + glow * 0.65, transform: `translate(-50%, -50%) scale(${0.8 + glow * 0.6})` }} />}
+                  {/* the more time spent with this wish, the wider its light (never past
+                      the top of the scroll, where it would show a straight edge) */}
+                  {mode === "journey" && <span className="smj-glow" aria-hidden style={{ opacity: 0.35 + glow * 0.65, transform: `translate(-50%, -50%) scale(${0.95 + glow * 0.2})` }} />}
                   <span className="sms-star-inner">
                     <StarLayers staged revealed focused />
                   </span>
@@ -852,7 +865,7 @@ export function StarMemoryCard({
                       </div>
                     )}
                     {/* Sísí and her paper step away during the ritual and come back up for the Anchor */}
-                    {mode !== "picture" && (
+                    {mode !== "picture" && mode !== "reflect" && (
                     <motion.div
                       className="sms-paper-wrap"
                       layout
@@ -862,12 +875,22 @@ export function StarMemoryCard({
                       role="dialog"
                       aria-label={placeholder ? "Your waiting star" : `Star: ${star.wish}`}
                     >
-                      {!placeholder && (
+                      {/* Sísí sits on the paper when she is the one speaking (choices,
+                          completions); where you write, the page is yours — she steps away */}
+                      {!placeholder && !writingCard && (
                         <div className="smc-sisi" aria-hidden>
                           <SisiChatCharacter expression={face} />
                         </div>
                       )}
                       <motion.div layout className="sms-paper ds-paper ds-deckle">
+                        {/* the sheet's own ✕, top right (the choices have it in their ‹ · ✕ row) */}
+                        {mode !== "practice" && !picturing && (
+                          <span className="smc-sheet-close">
+                            <IconButton label="Back to My Stars" onClick={onClose}>
+                              <IconClose />
+                            </IconButton>
+                          </span>
+                        )}
                         <AnimatePresence mode="wait" initial={false}>
                 {mode === "invite" && (
                   <motion.div key="invite" className="smc-content" {...fade}>
@@ -918,7 +941,7 @@ export function StarMemoryCard({
                           onClick={() => pick(p.id)}
                         >
                           <span className="smc-choice-icon" aria-hidden>
-                            {p.id === "picture" ? <EyeIcon /> : p.id === "walk" ? <PathIcon /> : <LeafIcon />}
+                            {p.id === "picture" ? <EyeIcon /> : p.id === "walk" ? <PathIcon /> : <WriteIcon />}
                           </span>
                           <span className="smc-choice-text">
                             <span className="smc-choice-title">{p.title}</span>
@@ -959,11 +982,11 @@ export function StarMemoryCard({
                       rows={3}
                       maxLength={240}
                       value={picNote}
-                      placeholder="I saw myself…"
-                      aria-label="What stayed with you?"
+                      placeholder="I am…"
+                      ref={takeKeyboardOnMount}
+                      aria-label="Write it as if it’s already yours"
                       onChange={(e) => setPicNote(e.target.value)}
                     />
-                    {picLight && <p className="t-meta smp-light">{picLight}</p>}
                   </motion.div>
                 )}
 
@@ -997,28 +1020,6 @@ export function StarMemoryCard({
                   </motion.div>
                 )}
 
-                {mode === "reflect" && (
-                  <motion.div key="reflect" className="smc-content" {...fade}>
-                    <NavRow onBack={() => setMode(reflectBack)} />
-                    <div className="ds-chip-row smc-chips" role="group" aria-label="What kind of note">
-                      {(Object.keys(KIND) as EntryKind[]).map((k) => (
-                        <FilterChip key={k} selected={kind === k} onClick={() => setKind(k)}>
-                          {KIND[k].chip}
-                        </FilterChip>
-                      ))}
-                    </div>
-                    <textarea
-                      className="ds-field smc-entry"
-                      rows={3}
-                      maxLength={240}
-                      autoFocus
-                      value={text}
-                      placeholder={KIND[kind].ph}
-                      aria-label="What would you like your Star to remember about today?"
-                      onChange={(e) => setText(e.target.value)}
-                    />
-                  </motion.div>
-                )}
 
                         </AnimatePresence>
                         {paperControls && <div className="smc-paper-actions">{controls(true)}</div>}
@@ -1053,26 +1054,34 @@ export function StarMemoryCard({
                       <StarGlyph size={12} />
                       {star.fulfilledAt ? "Fulfilled" : "Still walking"}
                     </p>
-                    {/* the achievement is the light itself; Sísí only names it */}
-                    {signs !== null && (
-                      <p className="smj-say">
-                        {care === 0 ? (
-                          <>Your Star is here whenever you are.</>
-                        ) : (
-                          <>
-                            You’ve come back to this wish {care === 1 ? "once" : `${care} times`}.
-                            {care > 1 && <><br />It’s getting brighter.</>}
-                          </>
-                        )}
-                      </p>
-                    )}
-                    {/* its history lives in Moments, in one place */}
-                    {!!signs?.length && onSeeMoments && (
-                      <TextAction surface="dark" className="smj-moments" onClick={() => onSeeMoments(star)}>
-                        See its {signs.length === 1 ? "moment" : `${signs.length} moments`}
-                        <IconChevronRight size={16} />
-                      </TextAction>
-                    )}
+                    {/* here you face the wish. With steps on it, its latest one rests
+                        quietly below (a small step if there is one); the whole way so far
+                        is one tap away. Without any yet, only a gentle line. */}
+                    {/* what has been done for this wish, one mark per activity (the same
+                        icon as its card: eye · paws · pencil); each opens
+                        its journal on that kind. Before anything, one gentle line. */}
+                    {signs !== null && care > 0 ? (
+                      <div className="smj-marks" role="group" aria-label="Your way with this wish">
+                        {(
+                          [
+                            { id: "pictured", n: marks.pictured, one: "pictured", many: "pictured", icon: <IconEye /> },
+                            { id: "walked", n: marks.walked, one: "day walked", many: "days walked", icon: <IconPaws /> },
+                            { id: "reflected", n: marks.reflected, one: "reflection", many: "reflections", icon: <IconPencil /> },
+                          ] as const
+                        ).map((m) => (
+                          <button key={m.id} type="button" className={`smj-mark${m.n === 0 ? " is-zero" : ""}`} onClick={() => setJournal(m.id)}>
+                            <span className="smj-mark-icon" aria-hidden>
+                              {m.icon}
+                            </span>
+                            <span className="smj-mark-label">
+                              <b>{m.n}</b> {m.n === 1 ? m.one : m.many}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : signs !== null ? (
+                      <p className="smj-say">{fresh ? <>Your journey begins here.</> : <>A quiet moment is a good place to begin.</>}</p>
+                    ) : null}
                   </motion.div>
                 )}
 
@@ -1083,14 +1092,6 @@ export function StarMemoryCard({
             {picturing && (
               <div className="smp-close">
                 <IconButton surface="dark" label="Leave and return to my Star" onClick={leaveRitual}>
-                  <IconClose />
-                </IconButton>
-              </div>
-            )}
-            {/* a quiet way out of a floating card (tapping the sky works too) */}
-            {!picturing && !hasHeader && !focus && (
-              <div className="smp-close">
-                <IconButton quiet surface="dark" label="Back to My Stars" onClick={onClose}>
                   <IconClose />
                 </IconButton>
               </div>
@@ -1136,11 +1137,15 @@ export function StarMemoryCard({
           pointer-events: none;
         }
         .sms-screen > * { pointer-events: auto; }
+        /* the journal is open over the night: the Star screen steps back */
+        .sms-screen.is-away .sms-header, .sms-screen.is-away .sms-scroll, .sms-screen.is-away .sms-controls { opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
         .sms-header {
           flex: none; position: relative; z-index: 3;
           display: flex; align-items: flex-start; gap: 6px;
           padding: var(--header-top) max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
-          background: linear-gradient(to bottom, rgba(16, 45, 50, 0.72) 60%, rgba(16, 45, 50, 0));
+          /* no band behind it: nothing scrolls under the header any more, and
+             the night stays one sky */
+          background: none;
         }
         .sms-scroll {
           flex: 1; min-height: 0; position: relative; z-index: 1;
@@ -1150,22 +1155,7 @@ export function StarMemoryCard({
         }
         .sms-scroll::-webkit-scrollbar { display: none; }
         .sms-path { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-        /* the thread runs from the Star down through every note (Star Gold family) */
-        /* the Star's light, painted down to the paper: a soft warm wash with
-           glints of gold drifting slowly down it (never a ruled line) */
-        .sms-thread {
-          /* the Star's light, sprayed in gouache: grains and dabs of ivory and
-             gold drifting slowly down (public/assets/ui/star-trail.webp, seamless) */
-          position: absolute; z-index: 0; left: 50%; top: 44px; bottom: 28px; width: 48px; margin-left: -24px;
-          background: url("/assets/ui/star-trail.webp") 50% 0 / 48px 384px repeat-y;
-          -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 45%, rgba(0, 0, 0, 0.35) 100%);
-          mask-image: linear-gradient(to bottom, #000 0%, #000 45%, rgba(0, 0, 0, 0.35) 100%);
-          filter: drop-shadow(0 0 3px rgba(241, 196, 94, 0.45));
-          animation: sms-glints 16s linear infinite;
-        }
-        /* one tile per loop, so the drift is seamless */
-        @keyframes sms-glints { to { background-position: 50% 384px; } }
-        @media (prefers-reduced-motion: reduce) { .sms-thread { animation: none; } }
+        /* just the Star: no light falls from it (its words and paper carry the moment) */
         .sms-star { position: relative; z-index: 1; width: 88px; height: 88px; display: flex; align-items: center; justify-content: center; }
         .sms-star-inner { display: block; width: 48px; height: 48px; transform: scale(1.7); }
         .sms-card { position: relative; z-index: 2; width: min(76vw, 300px); margin: 0; color: var(--sisi-ink); }
@@ -1195,7 +1185,7 @@ export function StarMemoryCard({
         .sms-say--card { position: relative; z-index: 1; width: 100%; justify-content: center; margin: 2px 0 92px; min-height: 1px; }
         .sms-words {
           position: relative; margin: 0; max-width: min(84vw, 320px); padding: 14px 18px;
-          text-align: center; color: var(--sisi-paper);
+          text-align: center; color: var(--sisi-paper); text-wrap: balance;
           font-family: var(--font-editorial); font-size: clamp(18px, 5vw, 21px); line-height: 1.35; letter-spacing: var(--tracking-editorial);
           text-shadow: 0 1px 10px rgba(5, 12, 24, 0.75);
         }
@@ -1264,7 +1254,6 @@ export function StarMemoryCard({
         /* the Star keeps its place in the sky, but never pushes the sheet off screen */
         .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 12dvh); flex: none; }
         /* the light starts at the Star (never above it) */
-        .sms-screen.is-focus .sms-thread { top: calc(min(var(--star-top), 12dvh) + 44px); }
         .sms-screen.is-focus .sms-stage {
           flex: 1 1 auto; min-height: 150px; width: 100%; justify-content: flex-end;
         }
@@ -1276,21 +1265,35 @@ export function StarMemoryCard({
         }
         /* Sísí a little smaller here, so the choice keeps the room */
         .sms-screen.is-focus .smc-sisi { transform: scale(0.6); }
-        .sms-screen.is-focus .sms-paper-wrap { flex: 0 0 auto; }
+        /* In the Stars every paper is the same floating card (as New Star):
+           torn on all sides, 16px from the edges, resting just above the bottom
+           — always in the same place, never hanging from the Star. */
+        .sms-screen.is-focus .sms-paper-wrap {
+          flex: 0 0 auto; width: min(calc(100% - 2 * max(16px, var(--safe-left), var(--safe-right))), 420px);
+          margin: 0 auto calc(16px + var(--safe-bottom));
+        }
 
+        .sms-screen.is-focus.is-writing .sms-paper-wrap {
+          margin-bottom: max(calc(16px + var(--safe-bottom)), calc(var(--ds-kb, 0px) + 12px));
+          transition: margin-bottom 220ms var(--ease-sisi);
+        }
         .sms-screen.is-focus .sms-paper {
           display: flex; flex-direction: column;
-          max-height: calc(100dvh - var(--safe-top) - 170px);
-          /* the same 24px gutter as every other sheet */
-          padding: var(--space-2) var(--space-6) calc(var(--space-5) + var(--safe-bottom));
-          /* a bottom sheet: only the top edge is torn */
-          --paper-mask: var(--deckle-mask-top);
-          filter: drop-shadow(0 -6px 18px rgba(16, 45, 50, 0.26));
+          max-height: calc(100dvh - var(--safe-top) - 186px);
+          padding: var(--space-2) var(--space-5) var(--space-5);
+          filter: drop-shadow(0 10px 26px rgba(16, 45, 50, 0.42));
         }
-        .sms-screen.is-focus .sms-paper::before { border-radius: 20px 18px 0 0; }
         .sms-screen.is-focus .sms-paper > * { min-height: 0; display: flex; flex-direction: column; }
         .sms-screen.is-focus .smc-content { min-height: 0; flex: 1 1 auto; }
         /* ‹ and ✕: their 44px targets overhang 12px so the marks sit on the gutter */
+        .smc-sheet-close { position: absolute; z-index: 3; top: 6px; right: 12px; }
+        /* a sheet with its ✕: the words begin level with it, never beneath it */
+        .sms-screen.is-focus .smc-sheet-close ~ .smc-content { padding-top: 18px; }
+        .sms-screen.is-focus .smc-sheet-close ~ .smc-content > :first-child { margin-right: 44px; }
+        /* the ritual's sheets: the Star stays where the ritual keeps it */
+        .sms-screen.is-focus.is-ritual .sms-scroll { padding-top: 0; }
+        .sms-screen.is-focus.is-ritual .smc-content { padding-top: 14px; }
+        .sms-screen.is-focus.is-ritual .sms-star { margin-top: max(calc(var(--safe-top) + 32px), calc(21dvh - 44px)); }
         .sms-screen.is-focus .smc-navrow { flex: none; height: 44px; margin: 0 -12px 6px; align-items: center; }
         .smc-choice-list {
           display: flex; flex-direction: column; gap: 8px; min-height: 0;
@@ -1320,7 +1323,7 @@ export function StarMemoryCard({
         @media (max-height: 640px) {
           .sms-screen.is-focus .sms-star { margin-top: min(var(--star-top), 6dvh); transform: scale(0.82); }
           .sms-screen.is-focus .sms-stage { min-height: 120px; }
-          .sms-screen.is-focus .sms-paper { padding: var(--space-1) var(--space-5) calc(var(--space-3) + var(--safe-bottom)); }
+          .sms-screen.is-focus .sms-paper { padding: var(--space-1) var(--space-5) var(--space-4); }
           .sms-screen.is-focus .smc-choice { min-height: 64px; max-height: 68px; padding: 10px 16px; }
           .sms-screen.is-focus .smc-choice-desc { font-size: 12px; }
         }
@@ -1334,13 +1337,6 @@ export function StarMemoryCard({
         .sms-path .sms-card { transition: opacity 500ms ease 100ms; }
         .sms-path:is(.is-fold, .is-climb, .is-bright, .is-warm) .sms-card > .ds-memory-sheet { transform: translateY(18px) scaleY(0.4); opacity: 0; }
         .sms-path:is(.is-fold, .is-climb, .is-bright, .is-warm) .sms-card { opacity: 0 !important; }
-        .sms-thread::after {
-          content: ""; position: absolute; left: 7px; right: 7px; bottom: 0; height: 0; opacity: 0;
-          background: linear-gradient(to top, rgba(241, 196, 94, 0), rgba(241, 196, 94, 0.9) 70%, rgba(245, 239, 221, 0.95));
-          border-radius: 2px;
-        }
-        .sms-path.is-climb .sms-thread::after { animation: sms-climb 900ms cubic-bezier(0.45, 0, 0.25, 1) both; }
-        @keyframes sms-climb { 0% { height: 0; opacity: 0; } 20% { opacity: 1; } 100% { height: 100%; opacity: 0.2; } }
         .sms-star.is-shining .sms-star-inner { animation: sms-shine 1.5s ease-in-out both; }
         @keyframes sms-shine {
           0% { filter: brightness(1); }
@@ -1349,7 +1345,6 @@ export function StarMemoryCard({
         }
         @media (prefers-reduced-motion: reduce) {
           .sms-path .sms-card > .ds-memory-sheet { transition: opacity 300ms linear; transform: none !important; }
-          .sms-path.is-climb .sms-thread::after { animation: none; }
           .sms-star.is-shining .sms-star-inner { animation: none; filter: brightness(1.2); }
         }
 
@@ -1393,7 +1388,7 @@ export function StarMemoryCard({
           height: 40dvh; padding: 0 28px; margin: 0; box-sizing: border-box;
         }
         .smp-prompt-text {
-          margin: 0; padding: 18px 26px; max-width: 320px; text-align: center;
+          margin: 0; padding: 18px 26px; max-width: 320px; text-align: center; text-wrap: balance;
           color: var(--sisi-paper); /* strong ivory on navy */
           background: radial-gradient(closest-side, rgba(16, 45, 50, 0.95) 60%, rgba(16, 45, 50, 0));
           font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue);
@@ -1480,24 +1475,46 @@ export function StarMemoryCard({
         .sms-screen.is-journey .sms-star-inner { transform: scale(calc(1.75 * var(--care, 1))); transition: transform 1.2s var(--ease-sisi); }
         .smj-glow {
           position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; border-radius: 50%; pointer-events: none;
-          background: radial-gradient(circle, rgba(255, 228, 165, 0.42), rgba(241, 196, 94, 0.14) 42%, rgba(241, 196, 94, 0) 70%);
+          /* closest-side: the light has fully faded inside its own circle (never cut by an edge) */
+          background: radial-gradient(circle closest-side, rgba(255, 228, 165, 0.42), rgba(241, 196, 94, 0.14) 42%, rgba(241, 196, 94, 0) 76%);
           transition: opacity 1.2s ease, transform 1.2s var(--ease-sisi);
         }
-        .smj-hero { position: relative; z-index: 2; width: min(100%, 340px); display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 18px; }
+        .smj-hero { position: relative; z-index: 2; width: min(100%, 380px); display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 18px; }
         .smj-wish {
-          margin: 0; font-family: var(--font-editorial); font-weight: 300; font-size: clamp(26px, 7.4vw, 30px);
+          margin: 0; font-family: var(--font-editorial); font-weight: 300; font-size: var(--text-wish);
           line-height: 1.18; letter-spacing: -0.01em; color: var(--sisi-paper); overflow-wrap: anywhere;
+          /* two lines share the words evenly (never one word left alone) */
+          text-wrap: balance;
         }
         .smj-hero .smj-status { margin-top: 10px; }
         .smj-say {
-          margin: 36px 0 0; font-family: var(--font-editorial); font-style: italic; font-size: 17px; line-height: 1.45; color: var(--paper-80);
+          /* Sísí's own words stand upright, as everywhere she speaks
+             (italic is kept for quiet states and for quoting your words) */
+          margin: 36px 0 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); letter-spacing: var(--tracking-editorial); color: var(--paper-80); text-wrap: balance;
         }
-        .smj-moments { margin-top: 20px; font-family: var(--font-ui) !important; font-size: 14px !important; font-weight: 600 !important; letter-spacing: 0.01em; }
+        /* the three marks: the system's mark square, round, on the night */
+        .smj-marks { display: flex; justify-content: center; gap: 6px; width: 100%; margin-top: 40px; }
+        .smj-mark {
+          flex: 1 1 0; max-width: 116px; min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+          padding: 6px 2px; border: 0; background: none; color: var(--sisi-paper); cursor: pointer; border-radius: 14px;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .smj-mark-icon {
+          width: 56px; height: 56px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+          background: rgba(245, 239, 230, 0.1); box-shadow: inset 0 0 0 1px rgba(245, 239, 230, 0.16);
+          transition: transform 160ms var(--ease-sisi), background 160ms ease;
+        }
+        .smj-mark-icon svg { width: 24px; height: 24px; }
+        .smj-mark:active .smj-mark-icon { transform: scale(0.94); background: rgba(245, 239, 230, 0.18); }
+        .smj-mark-label { font-family: var(--font-editorial); font-size: 15px; line-height: 1.3; color: var(--paper-80); text-align: center; text-wrap: balance; }
+        .smj-mark-label b { font-weight: 500; font-size: 17px; color: var(--sisi-paper); }
+        /* nothing of this kind yet: still there, quieter */
+        .smj-mark.is-zero { opacity: 0.5; }
         .smj-hero .smj-edit { width: 100%; text-align: left; }
         .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 32px); }
         .smj-status {
           display: inline-flex; align-items: center; gap: 6px; margin: 0;
-          font-family: var(--font-editorial); font-style: italic; font-size: 15px; color: var(--paper-80);
+          font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0.02em; color: var(--paper-60);
         }
 
         /* ── full journey header ── */
@@ -1512,6 +1529,44 @@ export function StarMemoryCard({
         .smc-edit-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 8px 0 0; }
         .smc-edit-actions .ds-btn { min-height: 44px; }
       `}</style>
+
+      {/* the journal of this wish: what was done for it, by kind */}
+      {!placeholder && (
+        <StarJournal
+          open={journal !== null}
+          star={star}
+          signs={signs ?? []}
+          days={days}
+          marks={marks}
+          kind={journal ?? "all"}
+          onKind={setJournal}
+          onClose={() => setJournal(null)}
+        />
+      )}
+
+      {/* Reflect on today: written on the writing page — the wish is this Star's */}
+      <WritingPage
+        open={mode === "reflect"}
+        onClose={() => setMode(reflectBack)}
+        label="Reflect on today"
+        question={KIND[kind].ph}
+        text={text}
+        onText={setText}
+        wish={star}
+        extra={
+          // choosing the kind keeps the keyboard up
+          <div className="ds-chip-row" role="group" aria-label="What kind of note" onMouseDown={(e) => e.preventDefault()}>
+            {(Object.keys(KIND) as EntryKind[]).map((k) => (
+              <FilterChip key={k} selected={kind === k} onClick={() => setKind(k)}>
+                {KIND[k].chip}
+              </FilterChip>
+            ))}
+          </div>
+        }
+        saving={saving}
+        canSave={!!text.trim()}
+        onSave={save}
+      />
     </MotionConfig>
   );
 }
@@ -1563,7 +1618,7 @@ function NavRow({ onBack, onClose }: { onBack: () => void; onClose?: () => void 
 /** Picture it · Walk with it · Reflect on today · Let it rest — the shared crayon marks */
 const EyeIcon = () => <IconEye />;
 const PathIcon = () => <IconPaws />; // walking with Sísí
-const LeafIcon = () => <IconLeaf />;
+const WriteIcon = () => <IconPencil />; // reflecting is writing
 const MoonIcon = () => <IconMoon size={20} />;
 
 function formatDate(iso: string): string {

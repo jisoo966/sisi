@@ -9,7 +9,7 @@
  *
  * Earning (only after the activity is completed AND saved):
  *   picture_it_completed    +1   (once per Star per local day)
- *   walk_with_it_completed  +1   (once per Star per local day)
+ *   walk_with_it_completed  +1   (once per local day, whichever wish — ~30s of walking with it)
  *   something_good_saved    +1   (once per saved Moment)
  *   small_step_saved        +2   (once per saved Moment)
  * At most 3 per local calendar day (a larger award is trimmed to what's left).
@@ -308,12 +308,4 @@ export function markDiscoveryShown(id: WorldId) {
   } catch {
     // ignore
   }
-}
-
-/* ── the day's message ───────────────────────────────────────────────── */
-
-export function starlightMessage(r: AwardResult): string | null {
-  if (r.awarded > 0) return `A little light for the path. +${r.awarded}`;
-  if (r.capped) return "Your Star is carrying today’s light with you.";
-  return null;
 }

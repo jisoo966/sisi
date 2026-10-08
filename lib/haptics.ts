@@ -9,6 +9,7 @@
  *   footprint  a Star Path footprint is added         two subtle taps
  *   wish       the wish shimmer reaches the Star      medium
  *   fulfilled  a wish marked fulfilled                medium · pause · light
+ *   starlight  a little Starlight gathers ("✦ +1")    very light · pause · light
  *   error      something could not be saved           two short taps
  *
  * Never for scrolling, typing, ordinary navigation taps or continuous
@@ -20,7 +21,7 @@
  * back to a 0.97 → 1 press on the control that was used — nothing else.
  */
 
-export type HapticKind = "select" | "breath" | "footprint" | "wish" | "fulfilled" | "error";
+export type HapticKind = "select" | "breath" | "footprint" | "wish" | "fulfilled" | "starlight" | "error";
 
 const PATTERN: Record<HapticKind, number | number[]> = {
   select: 10,
@@ -28,6 +29,7 @@ const PATTERN: Record<HapticKind, number | number[]> = {
   footprint: [8, 80, 8],
   wish: 22,
   fulfilled: [22, 160, 10],
+  starlight: [6, 70, 12],
   error: [14, 60, 14],
 };
 

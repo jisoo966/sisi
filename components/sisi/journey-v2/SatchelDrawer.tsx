@@ -63,6 +63,9 @@ export function SatchelDrawer({
     return onStarlight((r) => setBalance(r.balance));
   }, [open]);
 
+  // only the very next World shows how far away it is; the rest simply wait
+  const nextWorld = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => w.threshold > (balance ?? 0));
+  const [howOpen, setHowOpen] = useState(false);
   const cards: Card[] =
     tab === "world"
       ? WORLDS.map((w) => {
@@ -78,10 +81,12 @@ export function SatchelDrawer({
               "Walking here"
             ) : unlocked ? (
               "Tap to walk here"
-            ) : (
+            ) : w.id === nextWorld?.id ? (
               <>
-                <StarGlyph size={12} /> {need} more
+                <StarGlyph size={12} /> {need} more to unlock
               </>
+            ) : (
+              "Still to discover"
             ),
             onPick: unlocked && !equipped ? (el) => { equipWorld(w.id); softGlint(el); haptic("select", el); } : undefined,
           };
@@ -164,6 +169,7 @@ export function SatchelDrawer({
         <span className="sd-balance" ref={(el) => fxAnchorRef("starlightCounter", el)} aria-label={`${balance ?? 0} Starlight`}>
           <StarGlyph size={16} />
           <span className="sd-balance-n">{balance ?? "·"}</span>
+          <span className="sd-balance-word">Starlight</span>
         </span>
       }
       className="sd-focus"
@@ -193,12 +199,24 @@ export function SatchelDrawer({
           </li>
         ))}
       </ul>
+      {/* how it grows (and the gentle daily limit) lives here, quietly — never as a goal */}
+      <div className="sd-how">
+        <button type="button" className="ds-text-action sd-how-toggle" aria-expanded={howOpen} onClick={() => setHowOpen((o) => !o)}>
+          How Starlight grows
+        </button>
+        {howOpen && (
+          <p className="sd-how-text">
+            Starlight gathers from time with Sísí: picturing a wish, walking with it, a good thing or a small step — up to 3 a day.
+            It is never spent. It opens new worlds, and whatever opens stays yours.
+          </p>
+        )}
+      </div>
       <style jsx global>{`
         /* the world rises while the sheet is up (see the lift effect) */
         .journey-stage-v2 .jw-group { transition: translate 460ms var(--ease-sisi); }
         html.sd-lifting .journey-stage-v2 .jw-group { translate: 0 calc(-1 * var(--sd-lift, 0px)); }
         /* a low sheet: Sísí and the world stay in view above it */
-        .sd-focus { max-height: min(46dvh, 380px) !important; }
+        .sd-focus { max-height: min(54dvh, 440px) !important; }
         .sd-focus .ds-focus-head { padding-top: 22px; }
         .sd-focus .ds-focus-body { padding: 14px 0 calc(var(--space-5) + var(--safe-bottom)); }
         .sd-tabs { display: flex; gap: 6px; }
@@ -214,6 +232,10 @@ export function SatchelDrawer({
         .sd-tab:focus-visible { outline: 2px solid var(--sisi-ink); outline-offset: 2px; }
         .sd-balance { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 6px; color: var(--sisi-ink); }
         .sd-balance-n { font-family: var(--font-editorial); font-size: 17px; }
+        .sd-balance-word { font-family: var(--font-ui); font-size: 13px; color: var(--ink-60); letter-spacing: 0.01em; }
+        .sd-how { padding: 6px var(--focus-pad) 0; }
+        .sd-how-toggle { padding-left: 0 !important; min-height: 40px; font-size: 14px !important; color: var(--ink-60) !important; }
+        .sd-how-text { margin: 0 0 6px; font-family: var(--font-editorial); font-size: 14px; line-height: 1.45; color: var(--ink-80); max-width: 36ch; }
 
         /* one row of big cards that bleeds to the sheet's edges */
         .sd-row {

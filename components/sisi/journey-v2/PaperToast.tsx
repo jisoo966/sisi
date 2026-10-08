@@ -24,7 +24,8 @@ export function PaperToast({ message }: { message: string | null }) {
             .paper-toast {
               position: absolute;
               left: 50%;
-              bottom: calc(var(--nav-total) + 18px);
+              /* above the capture button (never over it) */
+              bottom: calc(var(--fab-bottom, var(--nav-total)) + var(--fab-size, 56px) + 14px);
               margin-left: calc(min(80vw, 320px) / -2);
               width: min(80vw, 320px);
               padding: 14px 18px;

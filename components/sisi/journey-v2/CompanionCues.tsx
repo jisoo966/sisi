@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createMoment } from "@/lib/momentStore";
 import { hintDone, markHint } from "@/lib/hints";
-import { SisiSpeechBubble, aimTail } from "@/components/sisi/SisiSpeechBubble";
+import { bySentence, SisiSpeechBubble, aimTail } from "@/components/sisi/SisiSpeechBubble";
 import { finishTodaysThought, isKept, markKept, thoughtForToday, type Thought } from "@/lib/sisiThoughts";
 
 /**
@@ -190,7 +190,7 @@ export function CompanionCues({
           <SisiSpeechBubble
             key="talk"
             tailPosition="bottom-right"
-            align="center"
+            align="left"
             delay={1.4}
             ariaLabel="Tap Sísí whenever you want to talk."
             // the hint itself is a way in: tapping it starts the talk
@@ -227,8 +227,8 @@ export function CompanionCues({
           <SisiSpeechBubble
             key={shown.key}
             tailPosition={shown.placement === "sky" ? "no-tail" : "bottom-right"}
-            align={shown.placement === "sky" ? "center" : "left"}
-            className="cc-thought"
+            align="left"
+            className={`cc-thought${shown.key.startsWith("thought-") || shown.onDismiss ? " has-x" : ""}${shown.actions?.length || shown.key.startsWith("thought-") ? " has-actions" : ""}`}
             corner={
               shown.key.startsWith("thought-") || shown.onDismiss ? (
                 <IconButton
@@ -242,7 +242,7 @@ export function CompanionCues({
             }
           >
             {shown.kicker && <p className="cc-kicker">{shown.kicker}</p>}
-            <p className="cc-thought-text">{shown.text}</p>
+            <p className="cc-thought-text">{bySentence(shown.text)}</p>
             {shown.key.startsWith("thought-") && thought ? (
               <div className="cc-actions">
                 <button
@@ -309,8 +309,13 @@ export function CompanionCues({
           left: 50%; right: auto; bottom: auto; top: max(calc(var(--safe-top) + 72px), 31%); /* below a Cloud Garden cloud (16–28%), above Sísí */
           transform: translateX(-50%); width: min(84%, 320px); max-width: none; align-items: center;
         }
-        .cc-thought.sisi-speech { padding: 14px 40px 8px 18px; }
-        .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); }
+        /* the same optically centred paper as every bubble (15 · 16 · 11 · 16);
+           room on the right only when there is a × to tap, and a shorter
+           bottom when text buttons (with their own air) close the bubble */
+        .cc-thought.sisi-speech { padding: 14px 16px 12px; } /* her lines are dialogue size (17px): one px less above */
+        .cc-thought.sisi-speech.has-x { padding-right: 40px; }
+        .cc-thought.sisi-speech.has-actions { padding-bottom: 6px; }
+        .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); } /* Sísí's voice: one size everywhere */
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .cc-actions { display: flex; gap: 4px 14px; margin: 4px 0 0 -12px; }
         .cc-thought .cc-actions--wrap { flex-wrap: wrap; }

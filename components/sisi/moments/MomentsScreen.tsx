@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Sign, Star } from "@/lib/myStars";
 import { isRealPhoto, loadTrail, type MomentItem, type RestItem } from "@/lib/moments";
 import { layoutTimeline, TimelineMotion, type TrailEntry } from "@/lib/momentsTimeline";
-import { FilterChip, IconButton, SegmentedSwitch, StarGlyph, IconClose, IconLandscape, IconList, IconSearch, MemoryPaper, StickerNavigation, TextAction } from "@/components/ds";
+import { FilterChip, IconButton, IconFilter, SegmentedSwitch, StarGlyph, IconClose, IconLandscape, IconList, IconSearch, StickerNavigation, TextAction } from "@/components/ds";
 import { MomentDetail, MomentsSharedStyles, originOf, RestDetail, type Origin } from "./shared";
 import { MomentsWorld, type MomentsWorldHandle } from "./MomentsWorld";
 import { clearHandoff, handOff, readHandoff } from "@/lib/worldHandoff";
@@ -15,13 +15,7 @@ import { onMomentsChanged } from "@/lib/momentStore";
 import { hintDone, markHint } from "@/lib/hints";
 import { walkingStars } from "@/lib/myStars";
 
-/** Keep the first version simple: everything · connected to a Star · photos. */
-type Filter = "all" | "stars" | "photos";
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "stars", label: "Stars" },
-  { key: "photos", label: "Photos" },
-];
+import { KINDS, MomentsFilter, kindOf, type MomentsFilterValue } from "./MomentsFilter";
 
 /**
  * MomentsScreen — the Moments tab.
@@ -101,14 +95,17 @@ export function MomentsScreen() {
   // Edited / deleted / connected anywhere → every view shows the same record.
   useEffect(() => onMomentsChanged(reload), [reload]);
 
-  const [filter, setFilter] = useState<Filter>("all");
-  /** one Star's history (from its Star screen: "See its moments") */
-  const [starFilter, setStarFilter] = useState<string | null>(null);
+  // Opening Moments shows every Moment. Finding (by wish, by kind) is only
+  // in the filter sheet; while one is on, a chip says what is shown.
+  const [find, setFind] = useState<MomentsFilterValue>({ wish: null, kind: null });
+  const [findOpen, setFindOpen] = useState(false);
+  const starFilter = find.wish;
   useEffect(() => {
+    // from a Star's screen ("See your steps"): that wish's Moments, as a list
     const id = new URLSearchParams(window.location.search).get("star");
     if (!id) return;
-    setStarFilter(id);
-    setView("list"); // a Star's history reads best as a list
+    setFind({ wish: id, kind: null });
+    setView("list");
   }, []);
   // Search opens only when asked for (browsing by date comes first).
   const [searchOpen, setSearchOpen] = useState(false);
@@ -124,21 +121,21 @@ export function MomentsScreen() {
     setQuery("");
     setSearchOpen(false);
   };
-  const shown = useMemo(() => {
-    if (entries && starFilter) return entries.filter((e) => e.type === "moment" && e.starId === starFilter);
-    if (!entries || filter === "all") return entries;
-    return entries.filter((e) =>
-      filter === "stars" ? (e.type === "moment" ? !!e.starId : true) : e.type === "moment" && isRealPhoto(e.image),
-    );
-  }, [entries, filter, starFilter]);
-  const pickFilter = (f: Filter) => {
-    if (starFilter) {
-      // leaving one Star's history for the wider Moments
-      setStarFilter(null);
-      router.replace("/gallery", { scroll: false });
-    } else if (f === filter) return;
+  const matches = useCallback(
+    (v: MomentsFilterValue) =>
+      (entries ?? []).filter(
+        (e) => (!v.wish && !v.kind) || (e.type === "moment" && (!v.wish || e.starId === v.wish) && (!v.kind || kindOf(e) === v.kind)),
+      ),
+    [entries],
+  );
+  const shown = useMemo(() => (entries ? matches(find) : entries), [entries, find, matches]);
+  const applyFind = (v: MomentsFilterValue) => {
+    setFindOpen(false);
+    if (v.wish === find.wish && v.kind === find.kind) return;
     motion.jumpTo(0); // a different set of Moments: start again at Today
-    setFilter(f);
+    setFind(v);
+    // leaving one Star's history: the address no longer names it
+    if (!v.wish && window.location.search.includes("star=")) router.replace("/gallery", { scroll: false });
   };
 
   // First visit: one quiet explanation (never again once dismissed, or once
@@ -179,15 +176,31 @@ export function MomentsScreen() {
           }}
           active={view === "trail" && !open && !openRest && !leaving}
           onOpen={openEntry}
+          // first visit: Sísí says what Moments is (her bubble — no card)
+          hello={explain && view === "trail"}
+          onHelloDone={() => {
+            markHint("moments");
+            setExplain(false);
+          }}
         />
       )}
 
       <header className={`mm-header${headerIn && !turned ? "" : " is-out"}`}>
         <h1 className="ds-screen-title mm-title">Moments</h1>
-        {/* how to see them: the trail or a list (what to see is the chips below) */}
+      </header>
+
+      {/* filters */}
+      {/* on the trail the row rests on the sky; in the list it sits at the top
+          of the paper, with the list it filters (search takes its place) */}
+      <div
+        className={`mm-filters ds-chip-row${headerIn && !turned ? "" : " is-out"}${view === "list" ? " is-on-paper" : ""}${view === "list" && searchOpen ? " is-searching" : ""}`}
+        role="group"
+        aria-label="Find"
+      >
+        {/* how to see them (left) · what to see (right): one row of tools under the title */}
         <SegmentedSwitch
           label="See your Moments as"
-          surface="sky"
+          surface={view === "list" ? "paper" : "sky"}
           className="mm-view"
           value={view}
           onChange={(v) => {
@@ -200,29 +213,27 @@ export function MomentsScreen() {
             { value: "list", label: "List", icon: <IconList /> },
           ]}
         />
-      </header>
-
-      {/* filters */}
-      {/* on the trail the row rests on the sky; in the list it sits at the top
-          of the paper, with the list it filters (search takes its place) */}
-      <div
-        className={`mm-filters ds-chip-row${headerIn && !turned ? "" : " is-out"}${view === "list" ? " is-on-paper" : ""}${view === "list" && searchOpen ? " is-searching" : ""}`}
-        role="group"
-        aria-label="Show"
-      >
-        {FILTERS.map((f) => (
-          <FilterChip key={f.key} surface={view === "list" ? "paper" : "sky"} selected={!starFilter && filter === f.key} onClick={() => pickFilter(f.key)}>
-            {f.label}
-          </FilterChip>
-        ))}
-        {/* one Star's history: its own chip, selected; any other chip widens again */}
-        {starFilter && (
-          <FilterChip surface={view === "list" ? "paper" : "sky"} selected className="mm-star-chip" onClick={() => undefined}>
+        {/* what is shown, only while a filter is on (× returns to everything) */}
+        {find.wish && (
+          <FilterChip
+            surface={view === "list" ? "paper" : "sky"}
+            selected
+            className="mm-star-chip"
+            onClick={() => applyFind({ ...find, wish: null })}
+          >
             <StarGlyph size={12} />
-            <span className="mm-star-chip-label">{starById.get(starFilter)?.wish ?? "This Star"}</span>
+            <span className="mm-star-chip-label">{starById.get(find.wish)?.wish ?? "This Star"}</span>
+            <IconClose size={14} />
+            <span className="sr-only">Show all wishes</span>
           </FilterChip>
         )}
-        {/* find sits with the filters; how to see them is in the header */}
+        {find.kind && (
+          <FilterChip surface={view === "list" ? "paper" : "sky"} selected className="mm-star-chip" onClick={() => applyFind({ ...find, kind: null })}>
+            <span className="mm-star-chip-label">{KINDS.find((k) => k.key === find.kind)?.label}</span>
+            <IconClose size={14} />
+            <span className="sr-only">Show every kind</span>
+          </FilterChip>
+        )}
         <span className="mm-tools">
         <IconButton
             quiet
@@ -233,6 +244,16 @@ export function MomentsScreen() {
             onClick={() => (searchOpen ? searchRef.current?.focus() : openSearch())}
           >
             <IconSearch />
+          </IconButton>
+          <IconButton
+            quiet
+            surface={view === "list" ? "paper" : "dark"}
+            className="mm-toggle"
+            label="Find moments by wish or kind"
+            aria-expanded={findOpen}
+            onClick={() => !leaving && setFindOpen(true)}
+          >
+            <IconFilter />
           </IconButton>
         </span>
       </div>
@@ -274,32 +295,6 @@ export function MomentsScreen() {
         )}
       </AnimatePresence>
 
-      {/* first visit: what Moments is */}
-      <AnimatePresence>
-        {explain && headerIn && !turned && view === "trail" && (
-          <fm.div
-            key="explain"
-            className="mm-explain"
-            role="note"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
-            exit={{ opacity: 0, transition: { duration: 0.22 } }}
-          >
-            <MemoryPaper compact title="Your life along the way" text="Moments you capture and reflections you add to your Stars live here.">
-              <IconButton
-                className="mm-explain-x"
-                label="Got it"
-                onClick={() => {
-                  markHint("moments");
-                  setExplain(false);
-                }}
-              >
-                <IconClose size={20} />
-              </IconButton>
-            </MemoryPaper>
-          </fm.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {view === "list" && entries && (
@@ -312,7 +307,7 @@ export function MomentsScreen() {
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             <MomentsList
-              hideStar={!!starFilter}
+              hideStar={!!find.wish}
               query={searchOpen ? query : ""}
               placed={listPlaced}
               // a row opens its Moment right here (the list stays underneath)
@@ -324,6 +319,16 @@ export function MomentsScreen() {
           </fm.div>
         )}
       </AnimatePresence>
+
+      {/* finding: by wish, by kind (only the wishes that have Moments) */}
+      <MomentsFilter
+        open={findOpen}
+        value={find}
+        stars={stars.filter((st) => (entries ?? []).some((e) => e.type === "moment" && e.starId === st.id))}
+        count={(v) => matches(v).length}
+        onApply={applyFind}
+        onClose={() => setFindOpen(false)}
+      />
 
       <AnimatePresence>
         {open && (
@@ -380,6 +385,10 @@ export function MomentsScreen() {
         @media (min-width: 500px) {
           .mm-root { max-width: 430px; margin: 0 auto; }
         }
+        /* one rhythm (design-system spacing): title · 12 · tools row; the list's
+           paper starts 12px under the title, its row 16px into the paper (the
+           same as the writing page's top row: paper edge · 16 · 44px row) */
+        .mm-root { --mm-title-h: calc(var(--text-screen-title) * 1.2); --mm-paper-top: calc(var(--header-top) + var(--mm-title-h) + var(--space-3)); }
         .mm-header {
           position: absolute; z-index: 10; left: 0; right: 0; top: 0;
           display: flex; align-items: center; justify-content: space-between;
@@ -388,16 +397,10 @@ export function MomentsScreen() {
         }
         .mm-header.is-out { opacity: 0; }
         .mm-filters {
-          position: absolute; z-index: 10; left: var(--stage-padding); right: var(--stage-padding); top: calc(var(--header-top) + 56px);
+          position: absolute; z-index: 10; left: var(--stage-padding); right: var(--stage-padding); top: calc(var(--header-top) + var(--mm-title-h) + var(--space-3)); /* 12px under the title */
           transition: opacity 420ms ease;
         }
         .mm-filters.is-out { opacity: 0; pointer-events: none; }
-        .mm-explain {
-          position: absolute; z-index: 10; left: var(--stage-padding); right: var(--stage-padding);
-          top: calc(var(--header-top) + 104px);
-        }
-        .mm-explain .ds-memory-sheet { padding-right: 52px; }
-        .mm-explain-x { position: absolute; right: 4px; top: 6px; }
         .mm-nav { transition: opacity 360ms ease; }
         /* arriving from the Stars: the dock stays faintly visible (and
            locked) under the clouds, then clears as the ground appears */
@@ -409,21 +412,23 @@ export function MomentsScreen() {
         /* list view: the paper rises to just under the title; the filters,
            tools and search sit at its top, with the list */
         .mm-filters { transition: top var(--motion-paper) var(--ease-sisi), opacity 300ms ease; }
-        .mm-filters.is-on-paper { z-index: 21; top: calc(var(--header-top) + 70px); }
+        .mm-filters.is-on-paper { z-index: 21; top: calc(var(--mm-paper-top) + var(--space-4)); } /* 16px into the paper: as the writing page's top row */
         .mm-filters.is-on-paper .mm-tools .ds-icon-btn { color: var(--sisi-ink); }
         .mm-filters.is-searching { opacity: 0; pointer-events: none; }
-        .mm-list-wrap { --ml-top: calc(var(--header-top) + 52px); }
-        .mm-list-wrap .ml-scroll { padding-top: 78px; }
+        .mm-list-wrap { --ml-top: var(--mm-paper-top); }
+        /* the list begins 16px under the tools row (16 + 44 + 16) */
+        .mm-list-wrap .ml-scroll { padding-top: calc(var(--space-4) + 44px + var(--space-4)); }
+        .mm-list-wrap .ml-scroll > :first-child { margin-top: 0; } /* the row above is the only space */
         .mm-filters { display: flex; align-items: center; flex-wrap: nowrap; }
         /* tools at the row's end; their 44px targets overhang so the marks sit on the gutter */
         .mm-tools { margin-left: auto; margin-right: -10px; display: inline-flex; align-items: center; gap: 1px; flex: none; }
         .mm-header .mm-title { flex: 1; min-width: 0; }
         .mm-star-chip { min-width: 0; flex: 0 1 auto; display: inline-flex; align-items: center; gap: 5px; }
         .mm-star-chip-label { min-width: 0; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .mm-view { pointer-events: auto; flex: none; margin-top: 3px; } /* centred on the title's lowercase letters, not its line box */
+        .mm-view { pointer-events: auto; flex: none; }
         .mm-search {
           position: absolute; z-index: 22; left: var(--stage-padding); right: calc(var(--stage-padding) - 8px);
-          top: calc(var(--header-top) + 64px); /* in the filters' place, on the paper */
+          top: calc(var(--mm-paper-top) + var(--space-4)); /* exactly the tools row's line, on the paper */
           display: flex; align-items: center; gap: 2px;
         }
         .mm-search-field {

@@ -339,8 +339,8 @@ export async function detachStar(starId: string): Promise<void> {
 
 /** Labels shown on cards and notes. */
 export const TYPE_LABEL: Partial<Record<MomentType, string>> = {
-  something_good: "Something good",
+  something_good: "A sign",
   small_step: "A step I took",
   companion_note: "A note from Sísí",
-  visualization: "Visualization",
+  visualization: "Pictured it",
 };

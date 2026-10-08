@@ -7,7 +7,8 @@ import { useLayoutEffect, useRef, useState } from "react";
  * SisiSpeechBubble — Sísí's speech, built in CSS (no stretched bubble image).
  *
  *   - sizes to its words: fit-content, 150px … min(72vw, 290px); short lines
- *     stay compact, longer ones widen, then wrap and grow downward
+ *     stay compact, longer ones widen, then wrap and grow downward — and a
+ *     wrapped bubble narrows to its longest line (equal margins left/right)
  *   - warm ivory paper with a repeating grain overlay and soft deckled
  *     edges (the design system's .ds-deckle recipe on ::before), a very soft
  *     shadow that follows the edge, and a tail drawn with ::after so it
@@ -15,7 +16,7 @@ import { useLayoutEffect, useRef, useState } from "react";
  *   - enters softly (opacity, 6px rise, 0.98 → 1 over 320ms); when the words
  *     change, the height eases to the new size — the text itself never scales
  *
- *   <SisiSpeechBubble message="Tap Sísí whenever you want to talk." tailPosition="bottom-right" align="center" />
+ *   <SisiSpeechBubble message="Tap Sísí whenever you want to talk." tailPosition="bottom-right" align="left" />
  *
  * `children` may replace or follow the message (e.g. small actions).
  */
@@ -45,6 +46,32 @@ type Props = {
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 /**
+ * Sísí speaks a sentence to a line: "Nice to meet you, jisoo. / Let's walk a
+ * little." Plain strings of two or three short sentences are set one sentence
+ * per line (a longer sentence still wraps on its own); anything else is left
+ * as it is.
+ */
+export function bySentence(text: React.ReactNode): React.ReactNode {
+  if (typeof text !== "string") return text;
+  const raw = text.match(/[^.!?…]+[.!?…]+["”’)]*\s*|[^.!?…]+$/g)?.map((p) => p.trim()).filter(Boolean) ?? [text];
+  // a very short sentence keeps the next one company ("Hello. I'm Sísí.")
+  const parts: string[] = [];
+  for (const p of raw) {
+    const prev = parts[parts.length - 1];
+    if (prev !== undefined && prev.length < 10) parts[parts.length - 1] = `${prev} ${p}`;
+    else parts.push(p);
+  }
+  // …and a very short last one stays with the sentence before ("… up there. Tap it.")
+  if (parts.length > 1 && parts[parts.length - 1].length < 10) parts.splice(-2, 2, `${parts[parts.length - 2]} ${parts[parts.length - 1]}`);
+  if (parts.length < 2 || parts.length > 3) return text;
+  return parts.map((p, i) => (
+    <span key={i} className="sisi-line">
+      {p}
+    </span>
+  ));
+}
+
+/**
  * Aim a bubble's tail at a point on screen (e.g. Sísí's head) — the bubble
  * itself can sit wherever it reads best (centred). The tip slides along the
  * bottom edge, kept clear of the rounded corners.
@@ -59,7 +86,7 @@ export function SisiSpeechBubble({
   message,
   children,
   tailPosition = "bottom-right",
-  align = "center",
+  align = "left",
   className = "",
   onClick,
   ariaLabel,
@@ -67,7 +94,44 @@ export function SisiSpeechBubble({
   corner,
 }: Props) {
   const innerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
   const [h, setH] = useState<number | "auto">("auto");
+
+  // Wrapped words leave the box at its widest (CSS can't shrink a box to its
+  // longest line), and a box sized before the font arrived keeps its old
+  // width — either way the right side looked emptier than the left. Measure
+  // the lines as they fall and fit the paper to the longest one: the same
+  // margin on both sides, one line or many.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const inner = innerRef.current;
+    if (!root || !inner) return;
+    const fit = () => {
+      root.style.width = ""; // let the words fall at the natural width first
+      // only the words themselves (element boxes would report their full width)
+      const rects: DOMRect[] = [];
+      const walk = document.createTreeWalker(inner, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        if (!n.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        for (const r of Array.from(range.getClientRects())) if (r.width > 0) rects.push(r);
+      }
+      if (!rects.length) return;
+      const left = Math.min(...rects.map((r) => r.left));
+      const right = Math.max(...rects.map((r) => r.right));
+      // measured on screen, while the bubble may still be scaling in (0.98):
+      // undo that scale, or the words would wrap one word early
+      const scale = root.getBoundingClientRect().width / (root.offsetWidth || 1) || 1;
+      const cs = getComputedStyle(root);
+      const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      root.style.width = `${Math.ceil((right - left) / scale + pad + 2)}px`;
+    };
+    fit();
+    document.fonts?.ready.then(fit);
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [message, children]);
   const first = useRef(true);
 
   // follow the content's height (words changed / wrapped) — smoothly
@@ -86,6 +150,9 @@ export function SisiSpeechBubble({
   const tail = TAIL_ALIAS[tailPosition] ?? tailPosition;
   return (
     <Tag
+      ref={(el: HTMLElement | null) => {
+        rootRef.current = el;
+      }}
       type={onClick ? "button" : undefined}
       onClick={onClick}
       aria-label={ariaLabel}
@@ -103,7 +170,7 @@ export function SisiSpeechBubble({
         transition={{ duration: 0.28, ease: EASE }}
       >
         <div ref={innerRef} className="sisi-speech-inner">
-          {message !== undefined && <span className="sisi-speech-text">{message}</span>}
+          {message !== undefined && <span className="sisi-speech-text">{bySentence(message)}</span>}
           {children}
         </div>
       </motion.div>
@@ -117,7 +184,10 @@ export function SisiSpeechBubble({
           min-width: 150px;
           max-width: min(72vw, 290px);
           margin: 0;
-          padding: 12px 16px 14px;
+          /* optically centred: the type's own space sits below the baseline,
+             so a little more room above than below (measured: cap-to-baseline
+             centre = the paper's centre) */
+          padding: 15px 16px 11px;
           box-sizing: border-box;
           border: 0;
           color: var(--sisi-ink);
@@ -131,7 +201,9 @@ export function SisiSpeechBubble({
           font-size: var(--text-speech, clamp(13.5px, 3.6vw, 15px));
           line-height: var(--leading-dialogue);
           letter-spacing: var(--tracking-editorial);
-          text-align: center;
+          /* Sísí writes like everything on our paper: left-aligned */
+          text-align: left;
+          text-wrap: pretty; /* no word left alone on the last line */
           overflow-wrap: break-word;
           white-space: normal;
           transform-origin: 70% 100%;
@@ -140,10 +212,12 @@ export function SisiSpeechBubble({
         button.sisi-speech { cursor: pointer; font: inherit; font-family: var(--font-editorial); font-size: var(--text-speech, clamp(13.5px, 3.6vw, 15px)); line-height: var(--leading-dialogue); color: var(--sisi-ink); }
         button.sisi-speech:focus-visible { outline: 2px solid var(--ink-60); outline-offset: 3px; }
         .sisi-speech--left { text-align: left; }
+        .sisi-speech--center { text-align: center; text-wrap: balance; }
         .sisi-speech--right { text-align: right; }
         .sisi-speech-clip { position: relative; overflow: hidden; }
         .sisi-speech-inner { display: block; }
         .sisi-speech-text { display: block; }
+        .sisi-line { display: block; } /* a sentence to a line */
         .sisi-speech-text em { font-style: italic; }
 
         .sisi-speech::before {

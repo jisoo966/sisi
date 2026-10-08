@@ -543,10 +543,27 @@ function Ambient({ id, g }: { id: number; g: AmbientGeo }) {
       </>
     );
   if (g.variant === "petal")
+    // a little flurry the wind carries past (never one petal alone in the sky)
     return (
       <>
-        <Sprite src={FX.ambient.petals[v % 2]} at={g.start} w={16} className="fx-am" style={{ animation: `am-petal-${id} ${life}ms linear both` }} />
-        {move("am-petal", `0% { opacity: 0; transform: translate(0,0) rotate(-10deg); } 10% { opacity: .9; } 40% { transform: translate(${dx * 0.35}px, ${dy * 0.4}px) rotate(40deg); } 70% { transform: translate(${dx * 0.7}px, ${dy * 0.65}px) rotate(-5deg); } 90% { opacity: .85; } 100% { opacity: 0; transform: translate(${dx}px, ${dy}px) rotate(50deg); }`)}
+        {[
+          { ox: 0, oy: 0, w: 16, d: 0 },
+          { ox: 34, oy: -22, w: 12, d: 520 },
+          { ox: -26, oy: 30, w: 14, d: 980 },
+          { ox: 58, oy: 18, w: 10, d: 1450 },
+          { ox: 12, oy: 52, w: 12, d: 1900 },
+        ].map((p, i) => (
+          <Sprite
+            key={i}
+            src={FX.ambient.petals[(v + i) % 2]}
+            at={{ x: g.start.x + p.ox, y: g.start.y + p.oy }}
+            w={p.w}
+            className="fx-am"
+            style={{ animation: `am-petal-${id}-${i % 2} ${life - 1200}ms linear ${p.d}ms both` }}
+          />
+        ))}
+        <style>{`@keyframes am-petal-${id}-0 { 0% { opacity: 0; transform: translate(0,0) rotate(-10deg); } 10% { opacity: .85; } 40% { transform: translate(${dx * 0.35}px, ${dy * 0.4}px) rotate(40deg); } 70% { transform: translate(${dx * 0.7}px, ${dy * 0.65}px) rotate(-5deg); } 90% { opacity: .8; } 100% { opacity: 0; transform: translate(${dx}px, ${dy}px) rotate(50deg); } }
+@keyframes am-petal-${id}-1 { 0% { opacity: 0; transform: translate(0,0) rotate(15deg); } 12% { opacity: .75; } 45% { transform: translate(${dx * 0.4}px, ${dy * 0.3}px) rotate(-30deg); } 75% { transform: translate(${dx * 0.75}px, ${dy * 0.7}px) rotate(20deg); } 90% { opacity: .7; } 100% { opacity: 0; transform: translate(${dx * 1.05}px, ${dy * 1.1}px) rotate(-40deg); } }`}</style>
       </>
     );
   if (g.variant === "grass")
