@@ -271,11 +271,18 @@ export function CompanionCues({
               </div>
             ) : shown.actions?.length ? (
               <div className="cc-actions cc-actions--wrap">
-                {shown.actions.map((a) => (
-                  <button key={a.label} type="button" className={`ds-text-action cc-link${a.quiet ? " cc-link--quiet" : ""}`} onClick={(e) => a.act(e)}>
-                    {a.label}
-                  </button>
-                ))}
+                {/* her answer to choose is a reply chip (as in a talk with her); a quiet one stays text */}
+                {shown.actions.map((a) =>
+                  a.quiet ? (
+                    <button key={a.label} type="button" className="ds-text-action cc-link cc-link--quiet" onClick={(e) => a.act(e)}>
+                      {a.label}
+                    </button>
+                  ) : (
+                    <button key={a.label} type="button" className="ds-reply-chip cc-chip" onClick={(e) => a.act(e)}>
+                      {a.label}
+                    </button>
+                  ),
+                )}
               </div>
             ) : null}
           </SisiSpeechBubble>
@@ -314,11 +321,13 @@ export function CompanionCues({
            bottom when text buttons (with their own air) close the bubble */
         .cc-thought.sisi-speech { padding: 14px 16px 12px; } /* her lines are dialogue size (17px): one px less above */
         .cc-thought.sisi-speech.has-x { padding-right: 40px; }
-        .cc-thought.sisi-speech.has-actions { padding-bottom: 6px; }
+        .cc-thought.sisi-speech.has-actions { padding-bottom: 12px; } /* a chip carries its own edge */
         .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); } /* Sísí's voice: one size everywhere */
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         /* her choices sit on one row under her words (Yes, please · Not now) */
-        .cc-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 2px 0 0 -12px; }
+        .cc-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 10px 0 2px -12px; }
+        .cc-actions--wrap { margin-left: 0; } /* a chip starts on the words' line */
+        .cc-chip { white-space: nowrap; }
         .cc-actions .cc-link { min-height: 40px; white-space: nowrap; }
         .cc-thought .cc-actions--wrap { flex-wrap: wrap; }
         .cc-link { color: var(--sisi-ink); font-weight: 500; }
