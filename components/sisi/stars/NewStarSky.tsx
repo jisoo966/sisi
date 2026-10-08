@@ -286,6 +286,12 @@ export function NewStarSky({
           exit={{ opacity: 0, transition: { duration: 0.4 } }}
           transition={{ duration: 0.35 }}
         >
+          {/* tap the night around the card: put it away (the page asks first if
+              words would be lost). Never for the first Star, never once it's lit */}
+          {phase === "write" && !first && (
+            <button type="button" className="ns-away" aria-label="Not now" tabIndex={-1} onClick={onClose} />
+          )}
+
           {/* the seed-star, in the Current Star's place on the path */}
           <motion.div
             className="ns-star"
@@ -464,6 +470,7 @@ export function NewStarSky({
             html.ns-open .ds-nav { opacity: 0 !important; pointer-events: none !important; transition: opacity 320ms var(--ease-sisi) !important; }
             .ns-root > * { pointer-events: none; }
             .ns-root .ns-paper-wrap { pointer-events: auto; }
+            .ns-root .ns-away { position: absolute; inset: 0; pointer-events: auto; border: 0; padding: 0; background: none; cursor: default; -webkit-tap-highlight-color: transparent; }
             .ns-breathe { position: absolute; inset: 0; display: block; }
             .ns-breathe.is-on { animation: ns-breathe 3.6s ease-in-out infinite; }
             @keyframes ns-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }

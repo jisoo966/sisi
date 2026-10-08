@@ -10,10 +10,13 @@ import type { VisitTime as Time } from "@/lib/sisiVisits";
  * One small floating paper (the same as everywhere), two choices; the system
  * permission comes after "That's good".
  */
-export function VisitTime({ open, onChoose, onSkip }: { open: boolean; onChoose: (t: Time) => void; onSkip: () => void }) {
+export function VisitTime({ open, onChoose, onSkip, onAway }: { open: boolean; onChoose: (t: Time) => void; onSkip: () => void; onAway?: () => void }) {
   const [time, setTime] = useState<Time>("morning");
   return (
     <AnimatePresence>
+      {open && (
+        <motion.button key="away" type="button" className="vt-away" aria-label="Close" tabIndex={-1} onClick={onAway ?? onSkip} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+      )}
       {open && (
         <motion.section
           key="visit"
@@ -46,6 +49,7 @@ export function VisitTime({ open, onChoose, onSkip }: { open: boolean; onChoose:
               width: min(calc(100% - 2 * max(16px, var(--safe-left), var(--safe-right))), 420px);
               bottom: calc(16px + var(--safe-bottom));
             }
+            .vt-away { position: fixed; inset: 0; z-index: var(--z-modal); border: 0; padding: 0; background: none; cursor: default; -webkit-tap-highlight-color: transparent; }
             .vt-paper { padding: var(--space-5); color: var(--sisi-ink); --paper-grain-layer: var(--grain-focus); filter: drop-shadow(0 10px 24px rgba(16, 45, 50, 0.32)); }
             .vt-title { margin: 0 0 var(--space-4); font-family: var(--font-editorial); font-weight: 300; font-size: var(--text-paper-title); line-height: 1.2; letter-spacing: -0.01em; }
             .vt-chips { margin-bottom: var(--space-5); }

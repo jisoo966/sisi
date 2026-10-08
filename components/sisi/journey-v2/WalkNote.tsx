@@ -27,9 +27,9 @@ export function WalkNote({ open, star, onClose, onSaved }: { open: boolean; star
   const [error, setError] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
+  // put away keeps the words; saving clears them
   useEffect(() => {
     if (!open) return;
-    setText("");
     setError("");
     setSaving(false);
   }, [open]);
@@ -48,6 +48,7 @@ export function WalkNote({ open, star, onClose, onSaved }: { open: boolean; star
       const sign = await addSign(star.id, t, "manual", kind);
       awardStarlight({ source: kind === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: sign.id, starId: star.id });
       onSaved?.(sign);
+      setText("");
       onClose();
       setToast(`Kept. It’s part of “${star.wish}” now.`);
     } catch {

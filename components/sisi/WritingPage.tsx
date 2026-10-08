@@ -108,6 +108,8 @@ export function WritingPage({
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.25 } }}
         >
+          {/* tap the world above the paper: put it away (what you wrote waits) */}
+          <button type="button" className="wp-away" aria-label="Close" tabIndex={-1} onClick={onClose} />
           <motion.div
             className="wp-lift"
             initial={{ y: "100%" }}
@@ -225,6 +227,7 @@ export function WritingPage({
           <style jsx global>{`
             .wp-root { position: fixed; inset: 0; z-index: var(--z-modal); pointer-events: none; }
             .wp-root > * { pointer-events: auto; }
+            .wp-away { position: absolute; inset: 0; border: 0; padding: 0; background: none; cursor: default; -webkit-tap-highlight-color: transparent; }
             /* the sheet rests on the world: a soft shadow along its torn top edge */
             .wp-lift {
               position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--safe-top) + 64px);

@@ -104,6 +104,8 @@ export function StarJournal({
           exit={{ opacity: 0, transition: { duration: 0.25, delay: 0.1 } }}
           transition={{ duration: 0.3 }}
         >
+          {/* tap the night above the paper: back to the Star */}
+          <button type="button" className="sj-away" aria-label="Back to my Star" tabIndex={-1} onClick={onClose} />
           <header className="sj-head">
             <IconButton surface="dark" label="Back to my Star" onClick={onClose}>
               <IconBack />
@@ -162,7 +164,10 @@ export function StarJournal({
               /* the night stays: the Star screen steps back behind it */
               background: linear-gradient(rgba(4, 12, 24, 0.55), rgba(4, 12, 24, 0.2) 40%, rgba(4, 12, 24, 0));
             }
-            .sj-head { position: absolute; top: 0; left: 0; right: 0; padding: var(--header-top) max(8px, var(--safe-right)) 0 max(8px, var(--safe-left)); }
+            .sj-away { position: absolute; inset: 0; border: 0; padding: 0; background: none; cursor: default; -webkit-tap-highlight-color: transparent; }
+            .sj-title { pointer-events: none; }
+            .sj-head > * { pointer-events: auto; }
+            .sj-head { z-index: 1; pointer-events: none; position: absolute; top: 0; left: 0; right: 0; padding: var(--header-top) max(8px, var(--safe-right)) 0 max(8px, var(--safe-left)); }
             .sj-title { position: absolute; left: var(--space-6); right: var(--space-6); top: calc(var(--header-top) + 40px); text-align: center; }
             .sj-wish {
               margin: 0; font-family: var(--font-editorial); font-weight: 300; font-size: var(--text-card-title); line-height: var(--leading-title);

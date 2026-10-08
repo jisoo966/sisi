@@ -1478,6 +1478,7 @@ export default function JourneyPage() {
             declineVisits();
             setVisitAsk(null);
           }}
+          onAway={() => setVisitAsk(null)}
         />
         <PaperToast message={isStarView ? toast : meadowToast} />
         {carried && <WalkNote open={noteOpen && isWalking} star={carried} onClose={() => setNoteOpen(false)} onSaved={(e) => rememberSaved(`s-${e.id}`)} />}

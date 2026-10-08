@@ -33,13 +33,11 @@ export function MomentCapture({
   const [wish, setWish] = useState<Star | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  // put away (✕ or a tap outside) keeps what was written; saving clears it
   useEffect(() => {
     if (!open) return;
-    setPhoto(null);
-    setText("");
     setSaving(false);
     setError("");
-    setWish(null);
     loadStars().then((s) => setStars(walkingStars(s)));
   }, [open]);
   useEffect(() => {
@@ -83,6 +81,9 @@ export function MomentCapture({
       });
       markHint("capture");
       markHint("moments"); // their first Moment — Moments needn't explain itself now
+      setPhoto(null);
+      setText("");
+      setWish(null);
       onClose();
       setToast(wish ? `Kept. It’s part of “${wish.wish}” now.` : "Kept. It’s in your Moments.");
     } catch {
