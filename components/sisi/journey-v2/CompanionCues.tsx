@@ -321,13 +321,16 @@ export function CompanionCues({
            bottom when text buttons (with their own air) close the bubble */
         .cc-thought.sisi-speech { padding: 14px 16px 12px; } /* her lines are dialogue size (17px): one px less above */
         .cc-thought.sisi-speech.has-x { padding-right: 40px; }
-        .cc-thought.sisi-speech.has-actions { padding-bottom: 12px; } /* a chip carries its own edge */
+        .cc-thought.sisi-speech.has-actions { padding-bottom: 13px; } /* a chip carries its own edge */
         .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); } /* Sísí's voice: one size everywhere */
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         /* her choices sit on one row under her words (Yes, please · Not now) */
-        .cc-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 10px 0 2px -12px; }
+        .cc-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 8px 0 0 -12px; }
         .cc-actions--wrap { margin-left: 0; } /* a chip starts on the words' line */
-        .cc-chip { white-space: nowrap; }
+        /* a chip a step smaller than her words (a reply, not a headline);
+           the tap target stays 44px */
+        .cc-chip.ds-reply-chip { white-space: nowrap; min-height: 28px; padding: 0 11px; font-size: 13.5px; border-image-width: 20px; }
+        .cc-chip.ds-reply-chip::before { inset: -8px -4px; }
         .cc-actions .cc-link { min-height: 40px; white-space: nowrap; }
         .cc-thought .cc-actions--wrap { flex-wrap: wrap; }
         .cc-link { color: var(--sisi-ink); font-weight: 500; }
