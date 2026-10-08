@@ -20,8 +20,25 @@ const KIND: Record<EntryKind, { chip: string; ph: string }> = {
   small_step: { chip: "A small step", ph: "What small step did you take?" },
 };
 
-export function WalkNote({ open, star, onClose, onSaved }: { open: boolean; star: Star; onClose: () => void; onSaved?: (s: Sign) => void }) {
-  const [kind, setKind] = useState<EntryKind>("something_good");
+export function WalkNote({
+  open,
+  star,
+  onClose,
+  onSaved,
+  question,
+  plain = false,
+}: {
+  open: boolean;
+  star: Star;
+  onClose: () => void;
+  onSaved?: (s: Sign) => void;
+  /** her question (else: what happened along the way, or the kind's own) */
+  question?: string;
+  /** only the words (no kinds, no toast: the caller shows where it went) */
+  plain?: boolean;
+}) {
+  // the kind is optional: a moment is enough; a sign or a small step if you like
+  const [kind, setKind] = useState<EntryKind | null>(null);
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -45,12 +62,12 @@ export function WalkNote({ open, star, onClose, onSaved }: { open: boolean; star
     setSaving(true);
     setError("");
     try {
-      const sign = await addSign(star.id, t, "manual", kind);
+      const sign = await addSign(star.id, t, "manual", kind ?? undefined);
       awardStarlight({ source: kind === "small_step" ? "small_step_saved" : "something_good_saved", sourceId: sign.id, starId: star.id });
       onSaved?.(sign);
       setText("");
       onClose();
-      setToast(`Kept. It’s part of “${star.wish}” now.`);
+      if (!plain) setToast(`Kept. It’s part of “${star.wish}” now.`);
     } catch {
       haptic("error");
       setError("It didn’t save just now. Try once more?");
@@ -64,19 +81,21 @@ export function WalkNote({ open, star, onClose, onSaved }: { open: boolean; star
         open={open}
         onClose={onClose}
         label="Leave a small note"
-        question={KIND[kind].ph}
+        question={question ?? (kind ? KIND[kind].ph : "What happened along the way?")}
         text={text}
         onText={setText}
         wish={star}
         extra={
-          // choosing the kind keeps the keyboard up
-          <div className="ds-chip-row" role="group" aria-label="What kind of note" onMouseDown={(e) => e.preventDefault()}>
+          plain ? undefined : (
+          // optional, and tapping again lets it go (choosing keeps the keyboard up)
+          <div className="ds-chip-row" role="group" aria-label="What kind of moment (optional)" onMouseDown={(e) => e.preventDefault()}>
             {(Object.keys(KIND) as EntryKind[]).map((k) => (
-              <FilterChip key={k} selected={kind === k} onClick={() => setKind(k)}>
+              <FilterChip key={k} selected={kind === k} onClick={() => setKind((c) => (c === k ? null : k))}>
                 {KIND[k].chip}
               </FilterChip>
             ))}
           </div>
+          )
         }
         saving={saving}
         canSave={!!text.trim()}

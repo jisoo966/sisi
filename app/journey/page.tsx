@@ -72,7 +72,7 @@ import type { TimeOfDay } from "@/lib/timeOfDay";
 import { entryForVisit } from "@/lib/starVisits";
 import { ascentOptions } from "@/lib/useStarAscent";
 import type { StarEntry } from "@/components/sisi/journey-v2/StarMemoryCard";
-import { IconPlus, SecondaryButton } from "@/components/ds";
+import { IconPlus, SecondaryButton, StarGlyph } from "@/components/ds";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
 
@@ -274,11 +274,13 @@ export default function JourneyPage() {
   const [firstBorn, setFirstBorn] = useState<Star | null>(null);
   // ── After the first wish: Sísí shows the three places, one at a time, as you
   //    walk (the pencil · Moments · Stars), each lit softly where it lives ──
-  // 1 · ask: "Was there a small moment today…?" (the first record, written now)
-  // 2 · where it went: on the Star, and in Moments   3 · the pencil, always here
+  // the first experience, after the first wish:
+  //   1 · ask: "What makes this wish matter to you?" (answered now, or maybe later)
+  //   2 · what it became: your Star with its first moment, side by side
+  //   3 · "That's enough for today." — the Journey is just to be in
   const [tour, setTour] = useState<0 | 1 | 2 | 3>(0);
-  /** the first record was kept during the tour (step 2 says where it went) */
-  const [tourKept, setTourKept] = useState(false);
+  /** the first moment, kept during the tour (step 2 shows it on its Star) */
+  const [tourKept, setTourKept] = useState<string | null>(null);
   const tourPending = useRef(false);
   const tourRef = useRef(tour);
   tourRef.current = tour;
@@ -286,7 +288,8 @@ export default function JourneyPage() {
   // your return to the meadow (and is never shown again once finished)
   useEffect(() => {
     const saved = Number(localStorage.getItem("sisi:tour") ?? 0);
-    if (saved >= 1 && saved <= 3) setTour(saved as 1 | 2 | 3);
+    // (the result card can't come back after a reload: go on to her last line)
+    if (saved >= 1 && saved <= 3) setTour(saved === 2 ? 3 : (saved as 1 | 3));
   }, []);
   useEffect(() => {
     if (tour > 0) localStorage.setItem("sisi:tour", String(tour));
@@ -294,8 +297,7 @@ export default function JourneyPage() {
   }, [tour]);
   useEffect(() => {
     const el = document.documentElement;
-    el.classList.toggle("tour-moments", tour === 2);
-    el.classList.toggle("tour-pencil", tour === 3);
+    el.classList.toggle("tour-moments", tour === 2 && !!tourKept);
     return () => el.classList.remove("tour-pencil", "tour-moments", "tour-stars", "tour-starlight");
   }, [tour]);
   /** the name being written into the greeting (first time) */
@@ -1439,7 +1441,7 @@ export default function JourneyPage() {
         {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
         <CompanionCues
           // the first-time words are said whatever the hour
-          visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet}
+          visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2}
           onTalk={(opening) => openChat(opening)}
           onSpeaking={setSpeaking}
           line={
@@ -1448,33 +1450,28 @@ export default function JourneyPage() {
                   key: `first-${first}`,
                   text:
                     first === "hello"
-                      ? "Hello. I’m Sísí. I keep your wishes, and the small moments that bring them closer. What should I call you?"
+                      ? "Hello. I’m Sísí. This is a little place for your wishes, and the moments along the way. What should I call you?"
                       : first === "walk"
                         ? `Nice to meet you, ${name}. Let’s walk a little.`
                         : "Every wish becomes a Star. Tap it to make yours.",
                 }
               : tour === 1 && isWalking && carried
               ? {
-                  // the first record, now: one line for this wish (it lands on the Star)
+                  // the first moment, now — something answerable at once
                   key: "tour-ask",
-                  text: "Was there a small moment today that brought this wish closer?",
+                  text: "What makes this wish matter to you?",
                   actions: [
                     { label: "Write it", act: () => { primeKeyboard(); setNoteOpen(true); } },
-                    { label: "Not today", quiet: true, act: () => setTour(2) },
+                    { label: "Maybe later", quiet: true, act: () => setTour(3) },
                   ],
                 }
-              : tour > 1 && isWalking
+              : tour === 3 && isWalking
               ? {
-                  key: `tour-${tour}`,
-                  text:
-                    tour === 2
-                      ? tourKept
-                        ? `Kept on your Star, and in Moments.`
-                        : "Everything you keep for your wishes gathers in Moments."
-                      : "Whenever something catches your eye, the pencil is here.",
-                  actions: [{ label: tour < 3 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 3 ? 3 : 0)) }],
+                  key: "tour-rest",
+                  text: "That’s enough for today. Come back whenever you like.",
+                  actions: [{ label: "Let’s walk", act: () => setTour(0) }],
                 }
-              : firstLightLine && !walkLine
+              : firstLightLine && !walkLine && tour === 0 // one voice: after her first walk with you
               ? { key: "first-light", text: FIRST_STARLIGHT_LINE }
               : helloLine && !carried
               ? { key: "hello-arrive", text: helloLine }
@@ -1538,6 +1535,30 @@ export default function JourneyPage() {
           }
         />
 
+        {/* what it became: your Star, and the first moment on it (in Moments too) */}
+        <AnimatePresence>
+          {tour === 2 && tourKept && carried && isWalking && (
+            <motion.section
+              key="first-kept"
+              className="first-kept"
+              aria-label="Your first moment"
+              initial={{ y: "130%" }}
+              animate={{ y: 0, transition: { duration: 0.55, delay: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+              exit={{ y: "130%", transition: { duration: 0.35 } }}
+            >
+              <div className="first-kept-paper ds-paper ds-deckle">
+                <p className="first-kept-wish">
+                  <StarGlyph size={14} /> {carried.wish}
+                </p>
+                <p className="first-kept-text">“{tourKept}”</p>
+                <p className="first-kept-meta">1 moment along the way · also in Moments</p>
+                <button type="button" className="ds-btn ds-btn--primary ds-btn--block" onClick={() => setTour(3)}>
+                  Keep walking
+                </button>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
         {/* the first time: your name, in the meadow */}
         <FirstHello open={first === "hello" && isWalking && !busy} value={draftName} onChange={setDraftName} onSubmit={keepName} />
         {/* the first Star is born: walk with it, down in the same meadow */}
@@ -1589,11 +1610,13 @@ export default function JourneyPage() {
             open={noteOpen && isWalking}
             star={carried}
             onClose={() => setNoteOpen(false)}
+            question={tour === 1 ? "What makes this wish matter to you?" : undefined}
+            plain={tour === 1}
             onSaved={(e) => {
               rememberSaved(`s-${e.id}`);
               if (tourRef.current === 1) {
-                setTourKept(true);
-                setTour(2); // then she says where it went
+                setTourKept(e.text);
+                setTour(2); // then what it became: the Star with its first moment
               }
             }}
           />

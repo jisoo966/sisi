@@ -262,7 +262,11 @@ export function NewStarSky({
     cancelAnimationFrame(holdRaf.current);
     holdRaf.current = requestAnimationFrame(holdStep(performance.now()));
   };
+  // let go early (a tap, or a short press): the light finishes gathering by
+  // itself — holding is the gesture, never a test
   const holdEnd = () => {
+    if (!holding.current) return;
+    if (heldRef.current < 0.35) return; // a tap: keep gathering on its own
     holding.current = false;
   };
   useEffect(() => () => cancelAnimationFrame(holdRaf.current), []);
@@ -361,7 +365,7 @@ export function NewStarSky({
                   </svg>
                 </button>
                 <p className="ns-hold-wish">{wish.trim()}</p>
-                <p className="ns-hold-say">Hold to light your Star</p>
+                <p className="ns-hold-say">Hold (or tap) to light your Star</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -400,7 +404,7 @@ export function NewStarSky({
                     </IconButton>
                   )}
                   <h2 className="ns-title">What are you wishing for?</h2>
-                  <p className="ns-sub">A few words are enough.</p>
+                  <p className="ns-sub">A few words are enough. It can be something small.</p>
                   <textarea
                     key={`field-${flash}`}
                     className={`ds-field ns-input${flash ? " is-rephrased" : ""}`}
@@ -577,8 +581,8 @@ export function NewStarSky({
               -webkit-tap-highlight-color: transparent;
             }
             .ns-hold-btn svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
-            .ns-hold-track { fill: none; stroke: rgba(245, 239, 230, 0.16); stroke-width: 2; }
-            .ns-hold-fill { fill: none; stroke: var(--sisi-gold, #f1c45e); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 339.3; filter: drop-shadow(0 0 6px rgba(241, 196, 94, 0.7)); }
+            .ns-hold-track { fill: none; stroke: rgba(245, 239, 230, 0.28); stroke-width: 3; }
+            .ns-hold-fill { fill: none; stroke: var(--sisi-gold, #f1c45e); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 339.3; filter: drop-shadow(0 0 6px rgba(241, 196, 94, 0.7)); }
             .ns-hold-wish, .ns-hold-say { position: absolute; left: 0; width: min(calc(100vw - 48px), 340px); translate: -50% 0; margin: 0; text-align: center; }
             .ns-hold-wish { top: 100px; font-family: var(--font-editorial); font-weight: 300; font-size: var(--text-wish); line-height: 1.2; color: var(--sisi-paper); text-wrap: balance; }
             .ns-hold-say { top: 172px; font-family: var(--font-editorial); font-style: italic; font-size: 15px; color: var(--paper-60); animation: nsHoldSay 2.6s ease-in-out infinite; }

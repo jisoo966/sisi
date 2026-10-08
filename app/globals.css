@@ -550,3 +550,14 @@ input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; -web
 @keyframes tourGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 236, 180, 0.0), 0 0 0 2px rgba(255, 236, 180, 0.55); } 50% { box-shadow: 0 0 18px 6px rgba(255, 236, 180, 0.45), 0 0 0 2px rgba(255, 236, 180, 0.95); } }
 html.tour-pencil .capture-fab { border-radius: 50%; animation: tourGlow 2s ease-in-out infinite; }
 html.tour-moments .ds-nav-tab--moments { border-radius: 16px; animation: tourGlow 2s ease-in-out infinite; opacity: 1 !important; }
+
+/* after the first moment: the Star and what was kept on it, together */
+.first-kept {
+  position: fixed; z-index: var(--z-modal); left: 0; right: 0; margin: 0 auto;
+  width: min(calc(100% - 2 * max(16px, var(--safe-left), var(--safe-right))), 420px);
+  bottom: calc(16px + var(--safe-bottom));
+}
+.first-kept-paper { padding: var(--space-5); color: var(--sisi-ink); --paper-grain-layer: var(--grain-memory); filter: drop-shadow(0 10px 24px rgba(16, 45, 50, 0.32)); }
+.first-kept-wish { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--font-ui); font-size: var(--text-meta); letter-spacing: 0.02em; color: var(--ink-60); }
+.first-kept-text { margin: var(--space-3) 0 var(--space-2); font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); text-wrap: pretty; }
+.first-kept-meta { margin: 0 0 var(--space-5); font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); }
