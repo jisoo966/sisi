@@ -317,7 +317,9 @@ export function CompanionCues({
         .cc-thought.sisi-speech.has-actions { padding-bottom: 6px; }
         .cc-thought-text { margin: 0; font-family: var(--font-editorial); font-size: var(--text-speech); line-height: var(--leading-dialogue); } /* Sísí's voice: one size everywhere */
         .cc-kicker { margin: 0 0 4px; font-family: var(--font-ui); font-weight: 500; font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
-        .cc-actions { display: flex; gap: 4px 14px; margin: 4px 0 0 -12px; }
+        /* her choices sit on one row under her words (Yes, please · Not now) */
+        .cc-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin: 2px 0 0 -12px; }
+        .cc-actions .cc-link { min-height: 40px; white-space: nowrap; }
         .cc-thought .cc-actions--wrap { flex-wrap: wrap; }
         .cc-link { color: var(--sisi-ink); font-weight: 500; }
         .cc-link--quiet { color: var(--ink-60) !important; font-weight: 400; }

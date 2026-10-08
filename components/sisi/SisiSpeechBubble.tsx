@@ -117,6 +117,8 @@ export function SisiSpeechBubble({
         range.selectNodeContents(n);
         for (const r of Array.from(range.getClientRects())) if (r.width > 0) rects.push(r);
       }
+      // buttons inside count whole (their padding is part of the row)
+      inner.querySelectorAll("button, a").forEach((b) => rects.push(b.getBoundingClientRect()));
       if (!rects.length) return;
       const left = Math.min(...rects.map((r) => r.left));
       const right = Math.max(...rects.map((r) => r.right));
