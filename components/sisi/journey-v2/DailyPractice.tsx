@@ -247,7 +247,7 @@ function SeeIt({ wish, onDone }: { wish: string; onDone: () => void }) {
       <p className="t-body dp-sub">{wish ? `“${wish}”` : "Your Star"} — breathe slowly and picture the day it’s real.</p>
       <div className="dp-breath" aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/sisi-star-mark-painted-512.png" alt="" />
+        <img src="/assets/sisi-star-mark-painted-512.webp" alt="" />
       </div>
       <button type="button" className="ds-btn ds-btn--primary ds-btn--block" disabled={left > 45} onClick={onDone}>
         {left > 0 ? `Finish · ${left}s` : "Finish"}

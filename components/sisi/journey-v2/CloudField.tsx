@@ -23,7 +23,7 @@ import { keepLayer, layerRng, lowPower, restoreLayer, type Rng, envCoord } from 
 
 type Kind = "far" | "mid" | "accent";
 type Art = { id: string; kind: Kind; iw: number; ih: number; box: [number, number, number, number] };
-const T = (f: string) => `/V2/time-of-day/${f}.png`;
+const T = (f: string) => `/V2/time-of-day/${f}.webp`;
 const POOL: Art[] = [
   { id: "cloud-01-far-wisp", kind: "far", iw: 459, ih: 307, box: [65, 129, 381, 202] },
   { id: "cloud-02-far-fragments", kind: "far", iw: 503, ih: 320, box: [82, 108, 416, 236] },

@@ -20,9 +20,9 @@ import type { SkyPhase } from "@/lib/timeOfDay";
 
 export const STRIP: Record<SkyPhase, { src: string; ih: number; bottom: number }> = {
   // ih: image height; bottom: lowest painted row (measured)
-  morning: { src: "/V2/time-of-day/meadow-strip-morning.png", ih: 232, bottom: 226 },
-  afternoon: { src: "/V2/time-of-day/meadow-strip-afternoon.png", ih: 242, bottom: 214 },
-  evening: { src: "/V2/time-of-day/meadow-strip-evening.png", ih: 241, bottom: 200 },
+  morning: { src: "/V2/time-of-day/meadow-strip-morning.webp", ih: 232, bottom: 226 },
+  afternoon: { src: "/V2/time-of-day/meadow-strip-afternoon.webp", ih: 242, bottom: 214 },
+  evening: { src: "/V2/time-of-day/meadow-strip-evening.webp", ih: 241, bottom: 200 },
 };
 /** strip height (for a 242px image) as a fraction of the stage height */
 export const BASE_H = 0.12;

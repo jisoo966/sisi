@@ -18,7 +18,7 @@
 
   /* World anchors — shared across every environment (meadow, night, sunset...)
    * IMPORTANT: --walking-baseline must match the y% (from bottom) where the
-   * Walking Ground asset's grass line sits. Current asset (journey-walking-ground.png):
+   * Walking Ground asset's grass line sits. Current asset (journey-walking-ground.webp):
    * the ground layer is shifted (not scaled) so its dense grass line lands
    * exactly on this baseline; the rest of the asset sits below the viewport.
    * 26% keeps the visible meadow at ~29–30% of the screen (70%+ open sky). */

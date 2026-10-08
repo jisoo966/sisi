@@ -22,7 +22,7 @@ import { worldClock } from "@/lib/worldMotion";
  */
 
 const SPRITE = "/V2/fox-walk/fox-walk-sprite30-full.webp";
-const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.png";
+const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.webp";
 /** Optional pose for the star moment (falls back to idle until the PNG exists). */
 const LOOK_UP_SRC = "/V2/fox-walk/fox-look-up.png";
 /** Optional pose after returning from the Star World. */

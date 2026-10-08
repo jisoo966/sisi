@@ -53,8 +53,8 @@ export const WEATHER = {
 
 /** Existing art used until the new pieces arrive. */
 export const FALLBACK = {
-  glint: "/assets/sisi-star-mark-painted-512.png",
-  fulfilledFlower: "/V2/time-of-day/grass-06-coral.png",
+  glint: "/assets/sisi-star-mark-painted-512.webp",
+  fulfilledFlower: "/V2/time-of-day/grass-06-coral.webp",
 } as const;
 
 const known = new Map<string, boolean>();

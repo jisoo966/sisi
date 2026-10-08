@@ -47,15 +47,15 @@ export function StarLayers({
     <div className={cls}>
       <span className="sisi-star__slot sisi-star__slot--aura">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="sisi-star__aura" src="/assets/sisi-star-aura-painted-512.png" alt="" draggable={false} />
+        <img className="sisi-star__aura" src="/assets/sisi-star-aura-painted-512.webp" alt="" draggable={false} />
       </span>
       <span className="sisi-star__slot sisi-star__slot--glow">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="sisi-star__glow" src="/assets/sisi-star-glow-painted-512.png" alt="" draggable={false} />
+        <img className="sisi-star__glow" src="/assets/sisi-star-glow-painted-512.webp" alt="" draggable={false} />
       </span>
       <span className="sisi-star__slot sisi-star__slot--mark">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="sisi-star__mark" src="/assets/sisi-star-mark-painted-512.png" alt={alt} draggable={false} />
+        <img className="sisi-star__mark" src="/assets/sisi-star-mark-painted-512.webp" alt={alt} draggable={false} />
       </span>
 
       <style jsx global>{`

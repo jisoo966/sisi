@@ -219,7 +219,7 @@ export function CompanionCues({
             exit={{ opacity: 0 }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden />
+            <img src="/assets/sisi-star-mark-painted-512.webp" alt="" aria-hidden />
           </motion.button>
         )}
 

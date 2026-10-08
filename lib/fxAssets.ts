@@ -62,10 +62,10 @@ export const HEADED = {
 
 /** Other art already in the app, used by World discovery objects. */
 export const FX_STANDIN = {
-  starAura: "/assets/sisi-star-aura-painted-512.png",
-  starMark: "/assets/sisi-star-mark-painted-512.png",
-  warmFlower: "/V2/time-of-day/grass-06-coral.png",
-  cloud: "/V2/time-of-day/cloud-04-mid-rounded.png",
+  starAura: "/assets/sisi-star-aura-painted-512.webp",
+  starMark: "/assets/sisi-star-mark-painted-512.webp",
+  warmFlower: "/V2/time-of-day/grass-06-coral.webp",
+  cloud: "/V2/time-of-day/cloud-04-mid-rounded.webp",
 } as const;
 
 export const FX_BLOOM_ALL: string[] = [FX.bloom.halo, ...FX.bloom.petals, FX.bloom.ripple, ...FX.bloom.grains];

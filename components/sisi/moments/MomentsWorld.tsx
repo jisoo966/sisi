@@ -79,15 +79,15 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
     ratio: 0.06,
     period: 2.4,
     items: [
-      { src: "/V2/parallax/clouds/cloud-2.png", x: 0.08, top: "17%", w: 0.38 },
-      { src: "/V2/parallax/clouds/cloud-5.png", x: 0.95, top: "27%", w: 0.2 },
-      { src: "/V2/parallax/clouds/cloud-4.png", x: 1.55, top: "13%", w: 0.3 },
+      { src: "/V2/parallax/clouds/cloud-2.webp", x: 0.08, top: "17%", w: 0.38 },
+      { src: "/V2/parallax/clouds/cloud-5.webp", x: 0.95, top: "27%", w: 0.2 },
+      { src: "/V2/parallax/clouds/cloud-4.webp", x: 1.55, top: "13%", w: 0.3 },
     ],
   },
   {
     kind: "band",
     key: "midground",
-    src: "/V2/parallax/journey-midground-vegetation.png",
+    src: "/V2/parallax/journey-midground-vegetation.webp",
     ratio: 13.5 / 32,
     heightPct: 0.18,
     bottom: "calc(var(--walking-baseline) - 1.5%)",
@@ -98,7 +98,7 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
   {
     kind: "band",
     key: "ground",
-    src: "/V2/parallax/journey-walking-ground.png",
+    src: "/V2/parallax/journey-walking-ground.webp",
     ratio: 1,
     heightPct: 1,
     bottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
@@ -106,11 +106,11 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
     seam: 2,
   },
   {
-    // the same walking path as the Journey (journey-walking-path.png), with
+    // the same walking path as the Journey (journey-walking-path.webp), with
     // the Journey's exact height and baseline so the two worlds match
     kind: "band",
     key: "path",
-    src: "/V2/parallax/journey-walking-path.png",
+    src: "/V2/parallax/journey-walking-path.webp",
     ratio: 1,
     heightPct: 0.4,
     bottom: "calc(var(--walking-baseline) - 18.67%)",
@@ -140,9 +140,9 @@ const TRAIL_DROP = 0;
 
 /** Memory lights: rendered size of the painted core, and its anchor (image px). */
 const LIGHTS = {
-  idle: { src: "/V2/moments/trail-v2/memory-light-idle.png", iw: 408, ih: 361, cx: 276.1, cy: 128.3, scale: 12 / 156 },
-  linked: { src: "/V2/moments/trail-v2/memory-light-linked.png", iw: 490, ih: 568, cx: 256.4, cy: 429.8, scale: 0.13 },
-  selected: { src: "/V2/moments/trail-v2/memory-light-selected.png", iw: 703, ih: 519, cx: 334.0, cy: 313.0, scale: 30 / 291 },
+  idle: { src: "/V2/moments/trail-v2/memory-light-idle.webp", iw: 408, ih: 361, cx: 276.1, cy: 128.3, scale: 12 / 156 },
+  linked: { src: "/V2/moments/trail-v2/memory-light-linked.webp", iw: 490, ih: 568, cx: 256.4, cy: 429.8, scale: 0.13 },
+  selected: { src: "/V2/moments/trail-v2/memory-light-selected.webp", iw: 703, ih: 519, cx: 334.0, cy: 313.0, scale: 30 / 291 },
 } as const;
 
 type LightKey = keyof typeof LIGHTS;
@@ -669,7 +669,7 @@ export const MomentsWorld = forwardRef<
       {!gateDone && (
         <div ref={rearRef} className="mw-gate mw-gate--rear" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/V2/ascent/cloud-bank-rear-v3.png" alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--rear" />
+          <img src="/V2/ascent/cloud-bank-rear-v3.webp" alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--rear" />
         </div>
       )}
 
@@ -751,7 +751,7 @@ export const MomentsWorld = forwardRef<
                       }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden draggable={false} />
+                      <img src="/assets/sisi-star-mark-painted-512.webp" alt="" aria-hidden draggable={false} />
                     </button>
                   )}
                 </div>
@@ -820,7 +820,7 @@ export const MomentsWorld = forwardRef<
       {!gateDone && (
         <div ref={frontRef} className="mw-gate mw-gate--front" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/V2/ascent/cloud-bank-front-v3.png" alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--front" />
+          <img src="/V2/ascent/cloud-bank-front-v3.webp" alt="" draggable={false} className="jw-cloud-bank jw-cloud-bank--front" />
         </div>
       )}
 
@@ -980,7 +980,7 @@ function Card({ p, onStar }: { p: Placed; onStar?: (starId: string) => void }) {
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden />
+        <img src="/assets/sisi-star-mark-painted-512.webp" alt="" aria-hidden />
         <span>{it.starTitle}</span>
       </button>
     ) : null;

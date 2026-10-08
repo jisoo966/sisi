@@ -32,7 +32,7 @@ import { MomentDetail, MomentsSharedStyles, RestDetail } from "./shared";
  * Artwork: /public/V2/moments/* (the SiSi Moments asset pack). Every PNG is
  * used as supplied — transparent, unrecoloured, native aspect for the path.
  * Copy, dates, photos and controls are live layers on top.
- * (photo-postcard-tapes.png is the pack's own tape pixels, lifted into a
+ * (photo-postcard-tapes.webp is the pack's own tape pixels, lifted into a
  * separate layer so the tapes can sit above a photo.)
  */
 
@@ -41,16 +41,16 @@ import { MomentDetail, MomentsSharedStyles, RestDetail } from "./shared";
 type Art = { src: string; iw: number; ih: number; box: [number, number, number, number] };
 const A = (f: string) => `/V2/moments/${f}`;
 const ART = {
-  slip: { src: A("note-slip.png"), iw: 528, ih: 496, box: [12, 157, 528, 337] },
-  postcard: { src: A("photo-postcard.png"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
-  tapes: { src: A("photo-postcard-tapes.png"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
-  paper: { src: A("detail-paper.png"), iw: 578, ih: 832, box: [0, 27, 534, 805] },
-  stamp: { src: A("coral-star-stamp.png"), iw: 445, ih: 437, box: [131, 129, 322, 302] },
-  sparkle: { src: A("memory-sparkle.png"), iw: 497, ih: 487, box: [109, 113, 436, 468] },
-  paws: { src: A("paw-prints.png"), iw: 509, ih: 491, box: [143, 184, 410, 450] },
-  grass: { src: A("grass-accent.png"), iw: 495, ih: 488, box: [49, 183, 469, 395] },
-  sign: { src: A("date-signpost.png"), iw: 512, ih: 473, box: [99, 69, 477, 473] },
-  rest: { src: A("star-at-rest.png"), iw: 511, ih: 470, box: [33, 141, 451, 411] },
+  slip: { src: A("note-slip.webp"), iw: 528, ih: 496, box: [12, 157, 528, 337] },
+  postcard: { src: A("photo-postcard.webp"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
+  tapes: { src: A("photo-postcard-tapes.webp"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
+  paper: { src: A("detail-paper.webp"), iw: 578, ih: 832, box: [0, 27, 534, 805] },
+  stamp: { src: A("coral-star-stamp.webp"), iw: 445, ih: 437, box: [131, 129, 322, 302] },
+  sparkle: { src: A("memory-sparkle.webp"), iw: 497, ih: 487, box: [109, 113, 436, 468] },
+  paws: { src: A("paw-prints.webp"), iw: 509, ih: 491, box: [143, 184, 410, 450] },
+  grass: { src: A("grass-accent.webp"), iw: 495, ih: 488, box: [49, 183, 469, 395] },
+  sign: { src: A("date-signpost.webp"), iw: 512, ih: 473, box: [99, 69, 477, 473] },
+  rest: { src: A("star-at-rest.webp"), iw: 511, ih: 470, box: [33, 141, 451, 411] },
 } satisfies Record<string, Art>;
 
 /** Path pieces, joined vertically at native aspect. `prof` = the band's
@@ -58,15 +58,15 @@ const ART = {
 type PieceKind = "L" | "R" | "S";
 const PIECES: Record<PieceKind, { src: string; iw: number; ih: number; prof: number[] }> = {
   L: {
-    src: A("path-curve-left.png"), iw: 511, ih: 1007,
+    src: A("path-curve-left.webp"), iw: 511, ih: 1007,
     prof: [0.3, 0.326, 0.33, 0.432, 0.506, 0.563, 0.649, 0.669, 0.684, 0.636, 0.603, 0.506, 0.425, 0.386, 0.341, 0.339, 0.433, 0.5, 0.569, 0.59, 0.59],
   },
   R: {
-    src: A("path-curve-right.png"), iw: 506, ih: 1009,
+    src: A("path-curve-right.webp"), iw: 506, ih: 1009,
     prof: [0.59, 0.6, 0.594, 0.51, 0.469, 0.386, 0.336, 0.308, 0.285, 0.33, 0.371, 0.471, 0.567, 0.601, 0.654, 0.63, 0.607, 0.541, 0.492, 0.44, 0.433],
   },
   S: {
-    src: A("path-straight.png"), iw: 510, ih: 1009,
+    src: A("path-straight.webp"), iw: 510, ih: 1009,
     prof: [0.54, 0.553, 0.577, 0.556, 0.562, 0.558, 0.564, 0.562, 0.587, 0.555, 0.566, 0.578, 0.548, 0.563, 0.579, 0.568, 0.579, 0.579, 0.563, 0.565, 0.578],
   },
 };
@@ -168,7 +168,7 @@ export function MemoryTrail() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="mt-night-img" src="/V2/ascent/night-sky-top.webp" alt="" aria-hidden />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="mt-night-star" src="/assets/sisi-star-mark-painted-512.png" alt="" aria-hidden />
+          <img className="mt-night-star" src="/assets/sisi-star-mark-painted-512.webp" alt="" aria-hidden />
           <svg className="mt-night-thread" viewBox="0 0 60 40" aria-hidden>
             <path d="M4 2 C 12 14, 22 10, 30 22 S 46 36, 56 34" />
           </svg>
@@ -771,6 +771,6 @@ function SisiPeek() {
   const [src, setSrc] = useState("/V2/moments/sisi-peek.png");
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img className="mt-peek" src={src} alt="" aria-hidden onError={() => setSrc("/V2/fox-walk/fox-walk-preview.png")} />
+    <img className="mt-peek" src={src} alt="" aria-hidden onError={() => setSrc("/V2/fox-walk/fox-walk-preview.webp")} />
   );
 }

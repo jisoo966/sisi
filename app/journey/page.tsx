@@ -118,9 +118,9 @@ import { primeKeyboard } from "@/lib/keyboard";
  */
 const PARALLAX_LAYERS = {
   skyFixed: "/V2/parallax/journey-sky-fixed.png",
-  midgroundVegetation: "/V2/parallax/journey-midground-vegetation.png",
-  walkingGround: "/V2/parallax/journey-walking-ground.png",
-  walkingPath: "/V2/parallax/journey-walking-path.png",
+  midgroundVegetation: "/V2/parallax/journey-midground-vegetation.webp",
+  walkingGround: "/V2/parallax/journey-walking-ground.webp",
+  walkingPath: "/V2/parallax/journey-walking-path.webp",
 };
 
 /**
@@ -136,14 +136,14 @@ const ASCENT_LAYERS = {
   // Top (starry) part of sky-star.webp — its low-res painted clouds are left
   // out; the soft front cloud bank frames the bottom instead.
   nightSky: "/V2/ascent/night-sky-top.webp",
-  frontClouds: "/V2/ascent/cloud-bank-front-v3.png", // versioned name: never served from an old cache
-  rearClouds: "/V2/ascent/cloud-bank-rear-v3.png",
+  frontClouds: "/V2/ascent/cloud-bank-front-v3.webp", // versioned name: never served from an old cache
+  rearClouds: "/V2/ascent/cloud-bank-rear-v3.webp",
 };
 
 
 
 /**
- * Walking path (journey-walking-path.png, 2048×768, transparent).
+ * Walking path (journey-walking-path.webp, 2048×768, transparent).
  * Rendered at 40% of the stage height, natural aspect (never stretched).
  * Its band runs from row 355 to 464; the band's vertical CENTER (row 409.5)
  * is 46.68% above the image bottom → shifting by 0.4668 × 40% = 18.67% puts

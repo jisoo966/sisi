@@ -30,11 +30,11 @@ import { deleteMoment, TYPE_LABEL, updateMoment } from "@/lib/momentStore";
 export type Art = { src: string; iw: number; ih: number; box: [number, number, number, number] };
 const A = (f: string) => `/V2/moments/${f}`;
 export const ART = {
-  slip: { src: A("note-slip.png"), iw: 528, ih: 496, box: [12, 157, 528, 337] },
-  postcard: { src: A("photo-postcard.png"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
-  tapes: { src: A("photo-postcard-tapes.png"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
-  paper: { src: A("detail-paper.png"), iw: 578, ih: 832, box: [0, 27, 534, 805] },
-  stamp: { src: A("coral-star-stamp.png"), iw: 445, ih: 437, box: [131, 129, 322, 302] },
+  slip: { src: A("note-slip.webp"), iw: 528, ih: 496, box: [12, 157, 528, 337] },
+  postcard: { src: A("photo-postcard.webp"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
+  tapes: { src: A("photo-postcard-tapes.webp"), iw: 550, ih: 719, box: [64, 138, 492, 705] },
+  paper: { src: A("detail-paper.webp"), iw: 578, ih: 832, box: [0, 27, 534, 805] },
+  stamp: { src: A("coral-star-stamp.webp"), iw: 445, ih: 437, box: [131, 129, 322, 302] },
 } satisfies Record<string, Art>;
 
 /** Stretches an artwork's painted area (its `box`) over the parent box. */

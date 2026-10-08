@@ -10,7 +10,7 @@ import { SpeakLines } from "@/components/sisi/SpeakLines";
  *
  * Art: the approved walk frames (fox-walk-cycle900.webp), every other frame
  * laid out as a 6×5 sheet (fox-walk-sprite30.webp) so the playback speed can
- * follow the finger. The idle pose is the approved fox-walk-preview.png.
+ * follow the finger. The idle pose is the approved fox-walk-preview.webp.
  *
  *   facing   left while travelling into the past, right toward Today
  *   speed    cycle rate follows |velocity|, capped
@@ -19,7 +19,7 @@ import { SpeakLines } from "@/components/sisi/SpeakLines";
  */
 
 const SPRITE = "/V2/fox-walk/fox-walk-sprite30.webp";
-const IDLE = "/V2/fox-walk/fox-walk-preview.png";
+const IDLE = "/V2/fox-walk/fox-walk-preview.webp";
 const COLS = 6;
 const ROWS = 5;
 const FRAMES = 30;

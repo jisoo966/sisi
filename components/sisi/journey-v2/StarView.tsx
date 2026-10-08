@@ -88,13 +88,13 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="p-sky" src="/V2/parallax/journey-sky-fixed.png" alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="p-ground" src="/V2/parallax/journey-walking-ground.png" alt="" />
+            <img className="p-ground" src="/V2/parallax/journey-walking-ground.webp" alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="p-path" src="/V2/parallax/journey-walking-path.png" alt="" />
+            <img className="p-path" src="/V2/parallax/journey-walking-path.webp" alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="p-fox" src="/V2/fox-walk/fox-walk-preview.png" alt="" />
+            <img className="p-fox" src="/V2/fox-walk/fox-walk-preview.webp" alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="p-star" src="/assets/sisi-star-mark-painted-512.png" alt="" />
+            <img className="p-star" src="/assets/sisi-star-mark-painted-512.webp" alt="" />
           </div>
 
           <p className="title">{title}</p>

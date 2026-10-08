@@ -14,7 +14,7 @@ export function NightBackdrop({ star = true }: { star?: boolean }) {
     <>
       <div className="nb-sky" aria-hidden />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="nb-clouds" src="/V2/ascent/cloud-bank-front-v3.png" alt="" aria-hidden draggable={false} />
+      <img className="nb-clouds" src="/V2/ascent/cloud-bank-front-v3.webp" alt="" aria-hidden draggable={false} />
       <AnimatePresence>
         {star && (
           <motion.span

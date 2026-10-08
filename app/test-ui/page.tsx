@@ -111,7 +111,7 @@ export default function DesignSystemSheet() {
           <MemoryPaper
             meta="Sep 20 · Star note"
             text="A longer reflection that keeps going so the paper grows with its words. Nothing is cut off; the torn edges stay at the top and bottom however tall it becomes."
-            image="/V2/fox-walk/fox-walk-preview.png"
+            image="/V2/fox-walk/fox-walk-preview.webp"
           />
         </div>
       </Section>
