@@ -23,10 +23,6 @@ import { worldClock } from "@/lib/worldMotion";
 
 const SPRITE = "/V2/fox-walk/fox-walk-sprite30-full.webp";
 const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.webp";
-/** Optional pose for the star moment (falls back to idle until the PNG exists). */
-const LOOK_UP_SRC = "/V2/fox-walk/fox-look-up.png";
-/** Optional pose after returning from the Star World. */
-const LOOK_AT_YOU_SRC = "/V2/fox-walk/fox-look-at-you.png";
 const COLS = 6;
 const ROWS = 5;
 const FRAMES = 30;
@@ -66,19 +62,11 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
   lookingUpRef.current = lookingUp;
   const restRef = useRef(rest);
   restRef.current = rest;
-  const [hasLookUpPose, setHasLookUpPose] = useState(false);
-  const [hasLookAtYouPose, setHasLookAtYouPose] = useState(false);
   const bobRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const a = new Image();
-    a.onload = () => setHasLookUpPose(true);
-    a.src = LOOK_UP_SRC;
-    const b = new Image();
-    b.onload = () => setHasLookAtYouPose(true);
-    b.src = LOOK_AT_YOU_SRC;
-    const c = new Image();
+    const c = new Image(); // the walk sheet, ready before the first step
     c.src = SPRITE;
   }, []);
 
@@ -140,8 +128,7 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
     });
   }, []);
 
-  const idleSrc =
-    lookingUp && hasLookUpPose ? LOOK_UP_SRC : lookingAtYou && hasLookAtYouPose ? LOOK_AT_YOU_SRC : IDLE_SRC;
+  const idleSrc = IDLE_SRC;
 
   return (
     <button
