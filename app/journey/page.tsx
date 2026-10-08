@@ -271,6 +271,29 @@ export default function JourneyPage() {
   // then "Walk with it" brings you back down to this meadow, carrying it.
   const [first, setFirst] = useState<null | "hello" | "walk" | "tap" | "sky">(null);
   const [firstBorn, setFirstBorn] = useState<Star | null>(null);
+  // ── After the first wish: Sísí shows the three places, one at a time, as you
+  //    walk (the pencil · Moments · Stars), each lit softly where it lives ──
+  const [tour, setTour] = useState<0 | 1 | 2 | 3>(0);
+  const tourPending = useRef(false);
+  const tourRef = useRef(tour);
+  tourRef.current = tour;
+  // remembered across the tabs: if you follow a lit tab, the rest waits for
+  // your return to the meadow (and is never shown again once finished)
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("sisi:tour") ?? 0);
+    if (saved >= 1 && saved <= 3) setTour(saved as 1 | 2 | 3);
+  }, []);
+  useEffect(() => {
+    if (tour > 0) localStorage.setItem("sisi:tour", String(tour));
+    else if (localStorage.getItem("sisi:tour")) localStorage.removeItem("sisi:tour");
+  }, [tour]);
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("tour-pencil", tour === 1);
+    el.classList.toggle("tour-moments", tour === 2);
+    el.classList.toggle("tour-stars", tour === 3);
+    return () => el.classList.remove("tour-pencil", "tour-moments", "tour-stars");
+  }, [tour]);
   /** the name being written into the greeting (first time) */
   const [draftName, setDraftName] = useState("");
   /** arriving: Sísí greets you once per part of the day ("Good afternoon, jisoo.") */
@@ -803,7 +826,7 @@ export default function JourneyPage() {
     }
     if (walkMarked.current === carried.id) return;
     const t = window.setInterval(() => {
-      const walkingNow = isWalking && !busy && !panelOpen && !chatOpen && document.visibilityState === "visible";
+      const walkingNow = isWalking && !busy && !panelOpen && !chatOpen && !tourRef.current && document.visibilityState === "visible";
       if (!walkingNow) return;
       walkedMs.current += 1000;
       if (walkedMs.current < WALK_MOMENT_MS) return;
@@ -827,7 +850,13 @@ export default function JourneyPage() {
   }, [walkLine]);
   useEffect(() => {
     if (walkLine !== "intro") return;
-    const t = setTimeout(() => setWalkLine(null), 7500);
+    const t = setTimeout(() => {
+      setWalkLine(null);
+      if (tourPending.current) {
+        tourPending.current = false;
+        setTour(1);
+      }
+    }, 7500);
     return () => clearTimeout(t);
   }, [walkLine]);
   const endCarry = () => {
@@ -1374,6 +1403,17 @@ export default function JourneyPage() {
                         ? `Nice to meet you, ${name}. Let’s walk a little.`
                         : "Every wish becomes a Star. Tap it to make yours.",
                 }
+              : tour > 0 && isWalking
+              ? {
+                  key: `tour-${tour}`,
+                  text:
+                    tour === 1
+                      ? "When something catches your eye, keep it with the pencil."
+                      : tour === 2
+                        ? "Everything you keep gathers in Moments."
+                        : "Your wishes live up in Stars. Visit one for a quiet moment.",
+                  actions: [{ label: tour < 3 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 3 ? ((t + 1) as 1 | 2 | 3) : 0)) }],
+                }
               : helloLine && !carried
               ? { key: "hello-arrive", text: helloLine }
               : visitAsk === "ask"
@@ -1454,6 +1494,7 @@ export default function JourneyPage() {
                 onClick={() => {
                   const s = firstBorn;
                   localStorage.setItem("sisi:guest-onboarded", "true");
+                  tourPending.current = true; // then Sísí shows the way around
                   setFirstBorn(null);
                   setFirst(null);
                   setNewStarOpen(false);
