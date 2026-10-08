@@ -16,8 +16,9 @@ import { bigEffectPlaying, emitFx, prefersReducedMotion, type AmbientKind } from
 function pick(evening: boolean): AmbientKind {
   const r = Math.random();
   if (r < 0.04) return "shooting"; // very rare
-  if (evening) return r < 0.55 ? "firefly" : r < 0.75 ? "dust" : r < 0.9 ? "grass" : "petal";
-  return r < 0.35 ? "petal" : r < 0.6 ? "grass" : r < 0.8 ? "dust" : "firefly";
+  // (no petals: a petal crossing the open sky with nothing to fall from reads as a stray)
+  if (evening) return r < 0.6 ? "firefly" : r < 0.82 ? "dust" : "grass";
+  return r < 0.4 ? "grass" : r < 0.75 ? "dust" : "firefly";
 }
 
 export function AmbientMagic({ enabled, evening = false }: { enabled: boolean; evening?: boolean }) {
