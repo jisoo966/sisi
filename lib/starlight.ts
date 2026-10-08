@@ -261,6 +261,9 @@ function afterAward(r: AwardResult) {
 }
 
 /** Starlight feedback: fired after each award attempt that earned (or hit the day's limit). */
+/** Sísí's one line the very first time Starlight is earned */
+export const FIRST_STARLIGHT_LINE = "Your first Starlight. Gather a little more, and a new world opens.";
+
 export function onStarlight(fn: (r: AwardResult) => void): () => void {
   const h = (e: Event) => fn((e as CustomEvent<AwardResult>).detail);
   window.addEventListener(EVENT, h);

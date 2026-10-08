@@ -10,7 +10,8 @@ import { emitFx, glintPoint, softGlint } from "@/lib/fx";
 import { RitualAudio, VOICE_LINES, appSoundOn, type VoiceId } from "@/lib/ritualAudio";
 import { haptic } from "@/lib/haptics";
 import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
-import { awardStarlight, localDate } from "@/lib/starlight";
+import { awardStarlight, FIRST_STARLIGHT_LINE, localDate, onStarlight } from "@/lib/starlight";
+import { hintDone, markHint } from "@/lib/hints";
 import { careFor, careGlow, daysTogether, marksFor } from "@/lib/starCare";
 import { primeKeyboard, takeKeyboard } from "@/lib/keyboard";
 import {
@@ -696,7 +697,20 @@ export function StarMemoryCard({
     return () => el.classList.remove("sms-open");
   }, [onScreen]);
   const isNote = mode === "saved";
-  const say = placeholder ? null : SAY[mode];
+  // the very first Starlight, earned here: she says what it is, once
+  const [firstLight, setFirstLight] = useState(false);
+  useEffect(
+    () =>
+      onStarlight((r) => {
+        if (r.awarded > 0 && !r.duplicate && !hintDone("firstStarlight")) {
+          markHint("firstStarlight");
+          setFirstLight(true);
+        }
+      }),
+    [],
+  );
+  const say =
+    placeholder ? null : firstLight && (mode === "saved" || mode === "done") ? { text: FIRST_STARLIGHT_LINE, face: "comfort" as const } : SAY[mode];
   const face: SisiChatExpression = FACE[mode] ?? say?.face ?? "listening";
   // journey: notes hang on the Star's thread, centred under it (kept on screen)
   const colX = Math.min(Math.max(anchor.x, 150), (typeof window !== "undefined" ? window.innerWidth : 390) - 150);

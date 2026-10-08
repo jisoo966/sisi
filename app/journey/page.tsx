@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { clearHandoff, handOff, readHandoff, rememberSaved } from "@/lib/worldHandoff";
 import { NewStarSky } from "@/components/sisi/stars/NewStarSky";
 import { CompanionCues } from "@/components/sisi/journey-v2/CompanionCues";
-import { markHint } from "@/lib/hints";
+import { hintDone, markHint } from "@/lib/hints";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -56,7 +56,7 @@ import { EveningReflection, eveningDue } from "@/components/sisi/journey-v2/Even
 import { awardStarlight, localDate } from "@/lib/starlight";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
 import { useStarlightBalance } from "@/lib/useStarlight";
-import { markDiscoveryShown, pendingDiscovery } from "@/lib/starlight";
+import { FIRST_STARLIGHT_LINE, markDiscoveryShown, onStarlight, pendingDiscovery } from "@/lib/starlight";
 import { markGiftShown, nextPathGift } from "@/lib/pathGifts";
 import { equipWorld } from "@/lib/worlds";
 import { JourneyReveal, type Reveal } from "@/components/sisi/magic/JourneyReveal";
@@ -349,6 +349,9 @@ export default function JourneyPage() {
    *  while you're among the Stars) it must not hide the tabs. */
   /** "Leave a small note" after a walk: the writing page, right here */
   const [noteOpen, setNoteOpen] = useState(false);
+  /** the very first Starlight earned in the meadow: Sísí says what it is, once */
+  const [firstLightLine, setFirstLightLine] = useState(false);
+  const firstLightPending = useRef(false);
   /** after the first walk together, Sísí asks once if she may visit (Angel Messages) */
   const [visitAsk, setVisitAsk] = useState<null | "ask" | "time">(null);
   const panelOpen = practiceOpen || momentOpen || noteOpen || visitAsk === "time" || createOpen || ((satchelOpen || eveningOpen) && isWalking);
@@ -680,6 +683,8 @@ export default function JourneyPage() {
   // world to ~12% while she rests; talking as you walk slows it to ~40%.
   const [speaking, setSpeaking] = useState(false);
   const [walkLine, setWalkLine] = useState<null | "intro" | "done">(null);
+  const walkLineRef = useRef(walkLine);
+  walkLineRef.current = walkLine;
   // (walking with a wish never stops the world: Sísí keeps walking as she speaks)
   const stillLine = false;
   const writing = chatOpen || momentOpen || noteOpen || (eveningOpen && isWalking);
@@ -834,6 +839,7 @@ export default function JourneyPage() {
       walkMarked.current = carried.id;
       window.clearInterval(t);
       setWalkWarm((n) => n + 1);
+      walkLineRef.current = "done"; // known at once (the award below may land before the render)
       setWalkLine("done");
       // once a day for walking, whichever wish (the shared "✦ +1" shows it)
       awardStarlight({ source: "walk_with_it_completed", sourceId: `walk:${localDate()}`, starId: carried.id });
@@ -845,6 +851,12 @@ export default function JourneyPage() {
     if (walkLine !== "done") return;
     const t = setTimeout(() => {
       setWalkLine(null);
+      // first her word on the first Starlight, then (once it has rested) may she visit?
+      if (firstLightPending.current) {
+        firstLightPending.current = false;
+        setFirstLightLine(true);
+        return;
+      }
       if (!visitsAsked()) setVisitAsk("ask"); // the first walk together: may she visit?
     }, 9000);
     return () => clearTimeout(t);
@@ -946,6 +958,27 @@ export default function JourneyPage() {
     setDateStr(formatDate());
   }, []);
 
+  // the first Starlight in the meadow (a walk, a note on the way): remember to say it
+  useEffect(
+    () =>
+      onStarlight((r) => {
+        if (r.awarded <= 0 || r.duplicate || hintDone("firstStarlight")) return;
+        if (document.documentElement.classList.contains("sms-open")) return; // the Star screen says it
+        markHint("firstStarlight");
+        // a walk's own line comes first ("You made space…"); the award lands with it
+        if (walkLineRef.current === "done") firstLightPending.current = true;
+        else setFirstLightLine(true);
+      }),
+    [],
+  );
+  useEffect(() => {
+    if (!firstLightLine) return;
+    const t = setTimeout(() => {
+      setFirstLightLine(false);
+      if (!visitsAsked()) setVisitAsk("ask");
+    }, 7500);
+    return () => clearTimeout(t);
+  }, [firstLightLine]);
   // arriving: Sísí says hello herself, once per part of the day
   useEffect(() => {
     const g = tod?.greeting;
@@ -1417,6 +1450,8 @@ export default function JourneyPage() {
                           : "Time with a wish gathers Starlight. It opens new worlds to walk in.",
                   actions: [{ label: tour < 4 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 4 ? ((t + 1) as 1 | 2 | 3 | 4) : 0)) }],
                 }
+              : firstLightLine && !walkLine
+              ? { key: "first-light", text: FIRST_STARLIGHT_LINE }
               : helloLine && !carried
               ? { key: "hello-arrive", text: helloLine }
               : visitAsk === "ask"
