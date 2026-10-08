@@ -50,6 +50,11 @@ export function ArtFill({ art }: { art: Art }) {
       alt=""
       aria-hidden
       draggable={false}
+      // the paper has arrived: the placeholder behind it steps away
+      ref={(el) => {
+        if (el?.complete && el.naturalWidth) el.parentElement?.setAttribute("data-art", "");
+      }}
+      onLoad={(e) => e.currentTarget.parentElement?.setAttribute("data-art", "")}
       style={{
         left: `${(-x0 / bw) * 100}%`,
         top: `${(-y0 / bh) * 100}%`,
@@ -410,9 +415,10 @@ export function MomentsSharedStyles() {
   return (
     <style jsx global>{`
       .mm-art { position: absolute; max-width: none; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-      /* while the paper art and photos arrive, a plain paper shape holds their place (never a broken image) */
-      .mw-note, .mm-pc { background: rgba(245, 239, 230, 0.92); border-radius: 3px; }
-      .mm-pc-win { background: #e8dfcf; }
+      /* while the paper art arrives, a plain paper shape holds its place (never a
+         broken image); once the torn paper itself is here, only it shows */
+      .mw-note:not([data-art]), .mm-pc:not([data-art]) { background: rgba(245, 239, 230, 0.92); border-radius: 3px; }
+      .mm-pc:not([data-art]) .mm-pc-win { background: #e8dfcf; }
       .mm-pc-win img[data-failed] { visibility: hidden; }
       .mm-crop { position: relative; display: block; }
       .mm-text { display: block; font-family: var(--font-editorial); font-size: var(--text-body); line-height: var(--leading-body); margin: 0 0 6px; }
