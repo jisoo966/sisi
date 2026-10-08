@@ -656,22 +656,11 @@ export function StarMemoryCard({
     const secondary = onPaper ? "ds-btn ds-btn--secondary ds-btn--block" : "ds-btn ds-btn--secondary ds-on-dark ds-btn--block sms-cta";
     const textSurface = onPaper ? "paper" : "dark";
     return mode === "journey" ? (
-      // the wish's own story first: keep a moment on it; the quiet practices under it
-      <div className="sms-cta-pair">
-        <button
-          type="button"
-          className={primary}
-          onClick={() => {
-            primeKeyboard(); // the writing page opens with the keyboard (iOS: inside the tap)
-            openReflect("journey");
-          }}
-        >
-          Leave a moment
-        </button>
-        <TextAction surface={textSurface} className="sms-cta-secondary" onClick={() => startPractice("journey")}>
-          Picture it, or walk with it
-        </TextAction>
-      </div>
+      // one way in; then the three ways to be with it, side by side and equal
+      // (Picture it · Walk with it · Reflect on today) — you choose what today wants
+      <button type="button" className={primary} onClick={() => startPractice("journey")}>
+        Spend a quiet moment
+      </button>
     ) : completion ? (
       <div className="sms-cta-pair">
         <button
@@ -1604,8 +1593,7 @@ export function StarMemoryCard({
         /* nothing of this kind yet: still there, quieter */
         .smj-mark.is-zero { opacity: 0.62; }
         .smj-hero .smj-edit { width: 100%; text-align: left; }
-        /* the pair (Leave a moment · Picture it, or walk with it) fits above the safe area */
-        .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 64px); }
+        .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 32px); }
         .smj-status {
           display: inline-flex; align-items: center; gap: 6px; margin: 0;
           font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.02em; color: var(--paper-80);
