@@ -314,7 +314,19 @@ export default function JourneyPage() {
   }, []);
   useEffect(() => {
     if (first !== "walk") return;
-    const t = setTimeout(() => setFirst("tap"), 5200); // a few steps together, then she looks up
+    // a few steps together, then she looks up — but never stopping behind a
+    // passing tree: she walks on until it has cleared her
+    let t: ReturnType<typeof setTimeout>;
+    const lookUp = () => {
+      const stage = document.querySelector<HTMLElement>(".journey-stage-v2");
+      const cat = document.querySelector<HTMLElement>(".walking-cat");
+      const sisiX = (stage?.offsetWidth ?? window.innerWidth) * 0.37;
+      const half = (cat?.offsetWidth ?? 117) / 2;
+      // the tree covers her, or one is about to: wait for open meadow
+      if (occludingSisi(sisiX, half) || occludingSisi(sisiX + half * 4, half * 3)) t = setTimeout(lookUp, 400);
+      else setFirst("tap");
+    };
+    t = setTimeout(lookUp, 5200);
     return () => clearTimeout(t);
   }, [first]);
   // the tabs step aside until the first Star is born (one thing at a time)
