@@ -88,6 +88,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ensureTodaysMessage, type AngelMessage } from "@/lib/angelMessages";
 import { loadSigns, loadStars, type Star, restStar, walkingStars } from "@/lib/myStars";
 import { careByStar } from "@/lib/starCare";
+import { logActivity } from "@/lib/starActivity";
 import { primeKeyboard } from "@/lib/keyboard";
 
 // LEGACY — Journey v1 (video world + path-following fox + BottomNav).
@@ -273,7 +274,11 @@ export default function JourneyPage() {
   const [firstBorn, setFirstBorn] = useState<Star | null>(null);
   // ── After the first wish: Sísí shows the three places, one at a time, as you
   //    walk (the pencil · Moments · Stars), each lit softly where it lives ──
-  const [tour, setTour] = useState<0 | 1 | 2 | 3 | 4>(0);
+  // 1 · ask: "Was there a small moment today…?" (the first record, written now)
+  // 2 · where it went: on the Star, and in Moments   3 · the pencil, always here
+  const [tour, setTour] = useState<0 | 1 | 2 | 3>(0);
+  /** the first record was kept during the tour (step 2 says where it went) */
+  const [tourKept, setTourKept] = useState(false);
   const tourPending = useRef(false);
   const tourRef = useRef(tour);
   tourRef.current = tour;
@@ -281,7 +286,7 @@ export default function JourneyPage() {
   // your return to the meadow (and is never shown again once finished)
   useEffect(() => {
     const saved = Number(localStorage.getItem("sisi:tour") ?? 0);
-    if (saved >= 1 && saved <= 4) setTour(saved as 1 | 2 | 3 | 4);
+    if (saved >= 1 && saved <= 3) setTour(saved as 1 | 2 | 3);
   }, []);
   useEffect(() => {
     if (tour > 0) localStorage.setItem("sisi:tour", String(tour));
@@ -289,10 +294,8 @@ export default function JourneyPage() {
   }, [tour]);
   useEffect(() => {
     const el = document.documentElement;
-    el.classList.toggle("tour-pencil", tour === 1);
     el.classList.toggle("tour-moments", tour === 2);
-    el.classList.toggle("tour-stars", tour === 3);
-    el.classList.toggle("tour-starlight", tour === 4);
+    el.classList.toggle("tour-pencil", tour === 3);
     return () => el.classList.remove("tour-pencil", "tour-moments", "tour-stars", "tour-starlight");
   }, [tour]);
   /** the name being written into the greeting (first time) */
@@ -816,6 +819,7 @@ export default function JourneyPage() {
 
   // ── "Walk with it" ──
   const startWalkWith = (s: Star) => {
+    logActivity(s.id, "walk"); // the day you set out with it counts
     setCarried(s);
     setWalkLine(null);
     backToMeadow();
@@ -984,13 +988,13 @@ export default function JourneyPage() {
     [],
   );
   useEffect(() => {
-    if (!firstLightLine) return;
+    if (!firstLightLine || tour > 0) return; // after her tour (one voice at a time)
     const t = setTimeout(() => {
       setFirstLightLine(false);
       if (!visitsAsked()) setVisitAsk("ask");
     }, 7500);
     return () => clearTimeout(t);
-  }, [firstLightLine]);
+  }, [firstLightLine, tour]);
   // arriving: Sísí says hello herself, once per part of the day
   useEffect(() => {
     const g = tod?.greeting;
@@ -1444,23 +1448,31 @@ export default function JourneyPage() {
                   key: `first-${first}`,
                   text:
                     first === "hello"
-                      ? "Hello. I’m Sísí. What should I call you?"
+                      ? "Hello. I’m Sísí. I keep your wishes, and the small moments that bring them closer. What should I call you?"
                       : first === "walk"
                         ? `Nice to meet you, ${name}. Let’s walk a little.`
                         : "Every wish becomes a Star. Tap it to make yours.",
                 }
-              : tour > 0 && isWalking
+              : tour === 1 && isWalking && carried
+              ? {
+                  // the first record, now: one line for this wish (it lands on the Star)
+                  key: "tour-ask",
+                  text: "Was there a small moment today that brought this wish closer?",
+                  actions: [
+                    { label: "Write it", act: () => { primeKeyboard(); setNoteOpen(true); } },
+                    { label: "Not today", quiet: true, act: () => setTour(2) },
+                  ],
+                }
+              : tour > 1 && isWalking
               ? {
                   key: `tour-${tour}`,
                   text:
-                    tour === 1
-                      ? "When something catches your eye, keep it with the pencil."
-                      : tour === 2
-                        ? "Everything you keep gathers in Moments."
-                        : tour === 3
-                          ? "In Stars, spend time with a wish. Picture it, walk with it, or reflect."
-                          : "Time with a wish gathers Starlight. It opens new worlds to walk in.",
-                  actions: [{ label: tour < 4 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 4 ? ((t + 1) as 1 | 2 | 3 | 4) : 0)) }],
+                    tour === 2
+                      ? tourKept
+                        ? `Kept on your Star, and in Moments.`
+                        : "Everything you keep for your wishes gathers in Moments."
+                      : "Whenever something catches your eye, the pencil is here.",
+                  actions: [{ label: tour < 3 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 3 ? 3 : 0)) }],
                 }
               : firstLightLine && !walkLine
               ? { key: "first-light", text: FIRST_STARLIGHT_LINE }
@@ -1572,7 +1584,20 @@ export default function JourneyPage() {
           onAway={() => setVisitAsk(null)}
         />
         <PaperToast message={isStarView ? toast : meadowToast} />
-        {carried && <WalkNote open={noteOpen && isWalking} star={carried} onClose={() => setNoteOpen(false)} onSaved={(e) => rememberSaved(`s-${e.id}`)} />}
+        {carried && (
+          <WalkNote
+            open={noteOpen && isWalking}
+            star={carried}
+            onClose={() => setNoteOpen(false)}
+            onSaved={(e) => {
+              rememberSaved(`s-${e.id}`);
+              if (tourRef.current === 1) {
+                setTourKept(true);
+                setTour(2); // then she says where it went
+              }
+            }}
+          />
+        )}
 
         <DailyPractice
           open={practiceOpen && isWalking}

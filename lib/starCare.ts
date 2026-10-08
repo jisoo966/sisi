@@ -9,6 +9,7 @@
 
 import type { Sign } from "@/lib/myStars";
 import { starlightRows } from "@/lib/starlight";
+import { activities } from "@/lib/starActivity";
 
 /** Days walked with each Star (from the Starlight ledger). */
 function walksByStar(): Map<string, number> {
@@ -22,14 +23,18 @@ function walksByStar(): Map<string, number> {
 
 /** Care for one Star, given its Moments. */
 export function careFor(starId: string, signs: Sign[]): number {
-  return signs.filter((s) => s.starId === starId).length + (walksByStar().get(starId) ?? 0);
+  const m = marksFor(starId, signs);
+  return m.pictured + m.walked + m.reflected;
 }
 
 /** Care for every Star at once (for the sky). */
 export function careByStar(signs: Sign[]): Record<string, number> {
+  const ids = new Set<string>();
+  for (const s of signs) if (s.starId) ids.add(s.starId);
+  walksByStar().forEach((_, id) => ids.add(id));
+  for (const a of activities()) ids.add(a.starId);
   const out: Record<string, number> = {};
-  for (const s of signs) if (s.starId) out[s.starId] = (out[s.starId] ?? 0) + 1;
-  walksByStar().forEach((n, id) => (out[id] = (out[id] ?? 0) + n));
+  ids.forEach((id) => (out[id] = careFor(id, signs)));
   return out;
 }
 
@@ -44,7 +49,16 @@ export function daysTogether(starId: string): string[] {
   for (const r of starlightRows()) {
     if (r.source_type === "walk_with_it_completed" && r.star_id === starId) days.add(r.earned_date_local);
   }
+  // the day you set out with it counts (not only once its Starlight was earned)
+  for (const a of activities()) if (a.kind === "walk" && a.starId === starId) days.add(a.day);
   return Array.from(days).sort().reverse();
+}
+
+/** Picture it, lived through (written or not) */
+export function picturedTimes(starId: string, signs: Sign[]): number {
+  const done = activities().filter((a) => a.kind === "picture" && a.starId === starId).length;
+  const written = signs.filter((s) => s.starId === starId && s.momentType === "visualization").length;
+  return Math.max(done, written); // older pictures were only remembered by their words
 }
 
 /** What has been done for a Star, one count per activity (the three marks
@@ -53,8 +67,9 @@ export type StarMarks = { pictured: number; walked: number; reflected: number };
 export function marksFor(starId: string, signs: Sign[]): StarMarks {
   const mine = signs.filter((s) => s.starId === starId);
   return {
-    pictured: mine.filter((s) => s.momentType === "visualization").length,
+    pictured: picturedTimes(starId, signs),
     walked: daysTogether(starId).length,
-    reflected: mine.filter((s) => s.kind === "small_step" || s.kind === "something_good").length,
+    // every written record on this wish — a sign, a step, or a moment kept on the way
+    reflected: mine.filter((s) => s.momentType !== "visualization").length,
   };
 }

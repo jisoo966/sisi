@@ -30,6 +30,8 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const STAR_PX = 48; // StarLayers base size (as in StarWorld)
 
 type Phase = "write" | "hold" | "birth";
+/** big and small: anything that would make your life feel more like yours */
+const WISH_EXAMPLES = ["More time to draw.", "A home by the sea.", "Calmer mornings.", "Work that feels like me.", "A trip with my mom."];
 /** the Star screen's composition (StarMemoryCard, journey mode): a Star of
  *  48px × 1.75, its wish starting 84px below its centre */
 const FOCUS_STAR_SCALE = 1.75;
@@ -63,6 +65,13 @@ export function NewStarSky({
   const [born, setBorn] = useState<Star | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // the example under an empty field changes now and then (what a wish can be)
+  const [exampleAt, setExampleAt] = useState(0);
+  useEffect(() => {
+    if (!open || wish) return;
+    const t = setInterval(() => setExampleAt((i) => (i + 1) % WISH_EXAMPLES.length), 2600);
+    return () => clearInterval(t);
+  }, [open, wish]);
   /** "Rephrase it for me" (only when asked): the words change in the field.
    *  rephrased.from is what was there before (Undo); same: they already said it */
   const [rephrased, setRephrased] = useState<{ from: string; to: string } | { same: string } | null>(null);
@@ -400,7 +409,7 @@ export function NewStarSky({
                     maxLength={140}
                     ref={fieldRef}
                     value={wish}
-                    placeholder="For example: A home by the sea."
+                    placeholder={`For example: ${WISH_EXAMPLES[exampleAt]}`}
                     onChange={(e) => {
                       setWish(e.target.value);
                       if (rephrased) setRephrased(null); // their own words again

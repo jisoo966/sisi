@@ -33,6 +33,7 @@ const KEPT = [
   "sisi:rested-stars",
   "sisi:star-visits",
   "sisi:visits-v1",
+  "sisi:star-activity-v1",
   "sisi:tour",
   "sisi:hints-v1",
   "sisi:conversation",

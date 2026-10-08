@@ -13,6 +13,7 @@ import { FX_BLOOM_ALL, preload } from "@/lib/fxAssets";
 import { awardStarlight, FIRST_STARLIGHT_LINE, localDate, onStarlight } from "@/lib/starlight";
 import { hintDone, markHint } from "@/lib/hints";
 import { careFor, careGlow, daysTogether, marksFor } from "@/lib/starCare";
+import { activities, logActivity } from "@/lib/starActivity";
 import { primeKeyboard, takeKeyboard } from "@/lib/keyboard";
 import {
   ConfirmationDialog,
@@ -446,6 +447,7 @@ export function StarMemoryCard({
   /** the whole ritual was lived through → Starlight (once per Star per day) */
   const completeRitual = async () => {
     if (placeholder) return;
+    logActivity(star.id, "picture"); // it counts now — words after are a gift, not the proof
     // the shared "✦ +1" shows it (no words added to the paper)
     await awardStarlight({ source: "picture_it_completed", sourceId: `${star.id}:${localDate()}`, starId: star.id });
   };
@@ -1081,7 +1083,7 @@ export function StarMemoryCard({
                           [
                             { id: "pictured", n: marks.pictured, one: "pictured", many: "pictured", icon: <IconEye /> },
                             { id: "walked", n: marks.walked, one: "day walked", many: "days walked", icon: <IconPaws /> },
-                            { id: "reflected", n: marks.reflected, one: "reflection", many: "reflections", icon: <IconPencil /> },
+                            { id: "reflected", n: marks.reflected, one: "moment", many: "moments", icon: <IconPencil /> },
                           ] as const
                         ).map((m) => (
                           <button key={m.id} type="button" className={`smj-mark${m.n === 0 ? " is-zero" : ""}`} onClick={() => setJournal(m.id)}>
@@ -1521,15 +1523,15 @@ export function StarMemoryCard({
         }
         .smj-mark-icon svg { width: 24px; height: 24px; }
         .smj-mark:active .smj-mark-icon { transform: scale(0.94); background: rgba(245, 239, 230, 0.18); }
-        .smj-mark-label { font-family: var(--font-editorial); font-size: 15px; line-height: 1.3; color: var(--paper-80); text-align: center; text-wrap: balance; }
+        .smj-mark-label { font-family: var(--font-editorial); font-size: 16px; line-height: 1.3; color: var(--paper-90); text-align: center; text-wrap: balance; }
         .smj-mark-label b { font-weight: 500; font-size: 17px; color: var(--sisi-paper); }
         /* nothing of this kind yet: still there, quieter */
-        .smj-mark.is-zero { opacity: 0.5; }
+        .smj-mark.is-zero { opacity: 0.62; }
         .smj-hero .smj-edit { width: 100%; text-align: left; }
         .sms-screen.is-journey { --bottom-controls-height: calc(var(--safe-bottom) + var(--cta-height) + 32px); }
         .smj-status {
           display: inline-flex; align-items: center; gap: 6px; margin: 0;
-          font-family: var(--font-ui); font-size: 12.5px; letter-spacing: 0.02em; color: var(--paper-60);
+          font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.02em; color: var(--paper-80);
         }
 
         /* ── full journey header ── */
@@ -1552,6 +1554,7 @@ export function StarMemoryCard({
           star={star}
           signs={signs ?? []}
           days={days}
+          pictures={activities().filter((a) => a.kind === "picture" && a.starId === star.id).map((a) => a.at)}
           marks={marks}
           kind={journal ?? "all"}
           onKind={setJournal}

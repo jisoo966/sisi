@@ -27,12 +27,11 @@ const FILTERS: { id: JournalKind; label: string }[] = [
   { id: "all", label: "All" },
   { id: "pictured", label: "Pictured" },
   { id: "walked", label: "Walked" },
-  { id: "reflected", label: "Reflected" },
+  { id: "reflected", label: "Moments" },
 ];
 
 /** which activity a record came from */
-const activityOf = (s: Sign): JournalKind =>
-  s.momentType === "visualization" ? "pictured" : s.kind === "small_step" || s.kind === "something_good" ? "reflected" : "all";
+const activityOf = (s: Sign): JournalKind => (s.momentType === "visualization" ? "pictured" : "reflected");
 
 const KIND_LABEL: Record<string, string> = {
   small_step: "A small step",
@@ -42,13 +41,14 @@ const KIND_LABEL: Record<string, string> = {
   general: "A moment",
 };
 
-type Row = { key: string; at: string; together?: true; sign?: Sign };
+type Row = { key: string; at: string; together?: true; pictured?: true; sign?: Sign };
 
 export function StarJournal({
   open,
   star,
   signs,
   days,
+  pictures = [],
   marks,
   kind,
   onKind,
@@ -60,6 +60,8 @@ export function StarJournal({
   signs: Sign[];
   /** the days walked together (YYYY-MM-DD), newest first */
   days: string[];
+  /** when Picture it was lived through (ISO) — shown even when nothing was written */
+  pictures?: string[];
   marks: StarMarks;
   kind: JournalKind;
   onKind: (k: JournalKind) => void;
@@ -73,10 +75,19 @@ export function StarJournal({
         out.push({ key: s.id, at: s.createdAt, sign: s });
       }
     }
+    // a Picture it with no words after: still a record of the time given
+    if (kind === "all" || kind === "pictured") {
+      const written = signs.filter((s) => s.momentType === "visualization").map((s) => new Date(s.createdAt).getTime());
+      for (const at of pictures) {
+        const t = new Date(at).getTime();
+        if (written.some((w) => Math.abs(w - t) < 30 * 60 * 1000)) continue;
+        out.push({ key: `pic-${at}`, at, pictured: true });
+      }
+    }
     // a day together is a quiet row of its own in "All" (noon: it sorts within its day)
     if (kind === "all") for (const d of days) out.push({ key: `day-${d}`, at: `${d}T12:00:00`, together: true });
     return out.sort((a, b) => (a.at < b.at ? 1 : -1));
-  }, [signs, days, kind]);
+  }, [signs, days, pictures, kind]);
 
   const months = useMemo(() => {
     const groups: { label: string; rows: Row[] }[] = [];
@@ -244,6 +255,19 @@ export function StarJournal({
 
 function JournalRow({ row }: { row: Row }) {
   const date = shortDate(row.at);
+  if (row.pictured) {
+    return (
+      <div className="sj-row">
+        <span className="sj-mark" aria-hidden>
+          <IconEye />
+        </span>
+        <span className="sj-body">
+          <span className="sj-text is-day">Pictured it with Sísí</span>
+        </span>
+        <span className="sj-date">{date}</span>
+      </div>
+    );
+  }
   if (row.together) {
     return (
       <div className="sj-row">
@@ -338,7 +362,7 @@ function sisiSays(kind: JournalKind, marks: StarMarks, total: number): string {
 function emptyLine(kind: JournalKind): string {
   if (kind === "walked") return "The days you walk with this wish will gather here.";
   if (kind === "pictured") return "What you picture for this wish will gather here.";
-  if (kind === "reflected") return "The signs and small steps you notice will gather here.";
+  if (kind === "reflected") return "The moments you keep for this wish will gather here.";
   return "Everything you do for this wish will gather here.";
 }
 
