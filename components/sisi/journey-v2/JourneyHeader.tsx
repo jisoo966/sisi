@@ -62,7 +62,7 @@ export function JourneyHeader({
 
       <div className="right-col">
         {onSatchelClick && (
-          <IconButton quiet surface="dark" label="Open your satchel" onClick={onSatchelClick}>
+          <IconButton quiet surface="dark" label="Open your satchel" className="satchel-btn" onClick={onSatchelClick}>
             <IconCustomize />
           </IconButton>
         )}

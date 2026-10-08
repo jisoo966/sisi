@@ -273,7 +273,7 @@ export default function JourneyPage() {
   const [firstBorn, setFirstBorn] = useState<Star | null>(null);
   // ── After the first wish: Sísí shows the three places, one at a time, as you
   //    walk (the pencil · Moments · Stars), each lit softly where it lives ──
-  const [tour, setTour] = useState<0 | 1 | 2 | 3>(0);
+  const [tour, setTour] = useState<0 | 1 | 2 | 3 | 4>(0);
   const tourPending = useRef(false);
   const tourRef = useRef(tour);
   tourRef.current = tour;
@@ -281,7 +281,7 @@ export default function JourneyPage() {
   // your return to the meadow (and is never shown again once finished)
   useEffect(() => {
     const saved = Number(localStorage.getItem("sisi:tour") ?? 0);
-    if (saved >= 1 && saved <= 3) setTour(saved as 1 | 2 | 3);
+    if (saved >= 1 && saved <= 4) setTour(saved as 1 | 2 | 3 | 4);
   }, []);
   useEffect(() => {
     if (tour > 0) localStorage.setItem("sisi:tour", String(tour));
@@ -292,7 +292,8 @@ export default function JourneyPage() {
     el.classList.toggle("tour-pencil", tour === 1);
     el.classList.toggle("tour-moments", tour === 2);
     el.classList.toggle("tour-stars", tour === 3);
-    return () => el.classList.remove("tour-pencil", "tour-moments", "tour-stars");
+    el.classList.toggle("tour-starlight", tour === 4);
+    return () => el.classList.remove("tour-pencil", "tour-moments", "tour-stars", "tour-starlight");
   }, [tour]);
   /** the name being written into the greeting (first time) */
   const [draftName, setDraftName] = useState("");
@@ -1411,8 +1412,10 @@ export default function JourneyPage() {
                       ? "When something catches your eye, keep it with the pencil."
                       : tour === 2
                         ? "Everything you keep gathers in Moments."
-                        : "Your wishes live up in Stars. Visit one for a quiet moment.",
-                  actions: [{ label: tour < 3 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 3 ? ((t + 1) as 1 | 2 | 3) : 0)) }],
+                        : tour === 3
+                          ? "In Stars, spend time with a wish. Picture it, walk with it, or reflect."
+                          : "Time with a wish gathers Starlight. It opens new worlds to walk in.",
+                  actions: [{ label: tour < 4 ? "Next" : "Let’s walk", act: () => setTour((t) => (t < 4 ? ((t + 1) as 1 | 2 | 3 | 4) : 0)) }],
                 }
               : helloLine && !carried
               ? { key: "hello-arrive", text: helloLine }

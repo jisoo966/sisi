@@ -113,9 +113,10 @@ const KIND: Record<EntryKind, { chip: string; label: string; ph: string }> = {
   small_step: { chip: "A small step", label: "A step I took", ph: "What small step did you take?" },
 };
 const PRACTICES = [
-  { id: "picture", title: "Picture it", desc: "Imagine this wish as part of your life." },
-  { id: "walk", title: "Walk with it", desc: "Carry this wish into your Journey." },
-  { id: "reflect", title: "Reflect on today", desc: "Notice a sign, or a small step you took." },
+  // what each is, and why it helps: seeing it as yours · keeping it close · noticing it arrive
+  { id: "picture", title: "Picture it", desc: "Close your eyes and see it as already yours." },
+  { id: "walk", title: "Walk with it", desc: "Carry it into your Journey, and keep it close today." },
+  { id: "reflect", title: "Reflect on today", desc: "Notice a sign or a small step. Proof it’s on its way." },
 ] as const;
 
 /** What Sísí says (and how she looks) in each moment. */
