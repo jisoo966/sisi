@@ -135,15 +135,16 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     pathBottom: "calc(var(--walking-baseline) - 18.02%)",
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
-    // the forest floor meets the path, as in the concept: its leafy top (row
-    // ~620 of 768, where the leaves close in) at the path's lower edge
-    // (baseline − 1.93%); its last rows sink behind the low foreground leaves
+    // the forest floor's flowers just below the clover verge: its leafy top
+    // (row ~620 of 768) under the clover's lower edge; its last rows sink
+    // behind the low foreground leaves
     groundHeight: 1.04,
-    groundBottom: "calc(var(--walking-baseline) - 22%)",
+    groundBottom: "calc(var(--walking-baseline) - 26.5%)",
     floorFill: "rgb(20, 62, 64)",
-    // the near verge, as in the concept: the forest's bright bank (leaf tips,
-    // flowers) right along the path's lower edge, over the floor's dark top
-    verge: { src: `${F}/meadow-strip-forest.webp`, heightPct: 0.13, bottom: "calc(var(--walking-baseline) - 11.6%)" },
+    // the near verge: a band of clover (2000×337, Jisoo's) right along the
+    // path's lower edge — its leaf tips tucked under the path, the forest
+    // floor's flowers below it
+    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.1, bottom: "calc(var(--walking-baseline) - 10.9%)" },
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
