@@ -80,10 +80,12 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
-    // the water: "flow" (default) runs a little faster than the bridge and on
-    // when Sísí stops; "calm" (?water=calm) drifts slower than the bridge
-    groundSpeed: 32,
-    groundDrift: 9,
+    // the water is calm: its surface moves at ~30% of a full flow (≈12 px/s
+    // while walking, 2 px/s of its own when Sísí stops) — never a strong
+    // current against her; a 1–2px ripple and a breathing light under the
+    // bridge keep it alive (PondFish, .jw-pond-*)
+    groundSpeed: 10,
+    groundDrift: 2,
     // the pond's far bank, painted to its last row
     strip: { src: `${T}/meadow-strip-pond.webp`, ih: 242, bottom: 241 },
     // the near bank, as in the reference: the tall bank art (the same as the
@@ -112,29 +114,13 @@ export function sceneThemeLocal(): SceneThemeId {
   }
 }
 
-/** comparing the pond's water (for now): ?water=flow | ?water=calm, remembered */
-const WATER_KEY = "sisi:water";
-function waterMode(): "flow" | "calm" {
-  try {
-    const q = new URLSearchParams(window.location.search).get("water");
-    if (q === "flow" || q === "calm") localStorage.setItem(WATER_KEY, q);
-    return localStorage.getItem(WATER_KEY) === "calm" ? "calm" : "flow";
-  } catch {
-    return "flow";
-  }
-}
-const CALM_WATER = { groundSpeed: 21, groundDrift: 4 };
-
 export function useSceneTheme(): SceneTheme {
   const [id, setId] = useState<SceneThemeId>("trail-plain");
-  const [calm, setCalm] = useState(false);
   useEffect(() => {
-    setCalm(waterMode() === "calm");
     setId(sceneThemeLocal());
     const h = (e: Event) => setId(((e as CustomEvent<SceneThemeId>).detail ?? sceneThemeLocal()) as SceneThemeId);
     window.addEventListener(SCENE_THEME_EVENT, h);
     return () => window.removeEventListener(SCENE_THEME_EVENT, h);
   }, []);
-  const t = SCENE_THEMES[id] ?? SCENE_THEMES["trail-plain"];
-  return calm && t.fish ? { ...t, ...CALM_WATER } : t;
+  return SCENE_THEMES[id] ?? SCENE_THEMES["trail-plain"];
 }

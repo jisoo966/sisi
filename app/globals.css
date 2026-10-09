@@ -553,6 +553,17 @@ input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; -web
 /* ── After the first wish: Sísí points out the pencil, Moments and Stars ── */
 @keyframes tourGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 236, 180, 0.0), 0 0 0 2px rgba(255, 236, 180, 0.55); } 50% { box-shadow: 0 0 18px 6px rgba(255, 236, 180, 0.45), 0 0 0 2px rgba(255, 236, 180, 0.95); } }
 html.tour-pencil .capture-fab { border-radius: 50%; animation: tourGlow 2s ease-in-out infinite; }
+/* Bridge & Pond: the water's ripple and the bridge's breathing light on it */
+.jw-pond-water { animation: pondRipple 21s ease-in-out infinite; }
+@keyframes pondRipple { 0%, 100% { translate: 0 0; } 30% { translate: 1.5px 1px; } 65% { translate: -1px 0.5px; } }
+.jw-pond-light {
+  position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none;
+  bottom: calc(var(--walking-baseline) - 9%); height: 8%;
+  background: linear-gradient(to bottom, rgba(255, 248, 228, 0.5), rgba(255, 248, 228, 0) 85%);
+  mix-blend-mode: soft-light; animation: pondBreathe 7s ease-in-out infinite alternate;
+}
+@keyframes pondBreathe { from { opacity: 0.12; } to { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .jw-pond-water, .jw-pond-light { animation: none; } }
 html.first-light .satchel-btn { border-radius: 50%; animation: tourGlow 2s ease-in-out infinite; }
 html.tour-moments .ds-nav-tab--moments { border-radius: 16px; animation: tourGlow 2s ease-in-out infinite; opacity: 1 !important; }
 

@@ -1209,7 +1209,8 @@ export default function JourneyPage() {
             through the bottom of the screen. */}
         <div className="jw-group jw-meadow">
           <ParallaxLayer
-            className="tod-grade"
+            // the pond's surface: a 1–2px ripple over ~20s (never a current)
+            className={scene.fish ? "tod-grade jw-pond-water" : "tod-grade"}
             key={`ground-${scene.id}`}
             src={scene.ground}
             speed={scene.groundSpeed ?? LAYER_SPEED.walkingGround}
@@ -1220,6 +1221,8 @@ export default function JourneyPage() {
             drift={scene.groundDrift}
             seamOverlap={2}
           />
+          {/* the bridge's light on the water: a faint band that breathes */}
+          {scene.fish && <div className="jw-pond-light" aria-hidden />}
           {/* the continuous time-of-day grass line, just behind the path */}
           <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} speed={scene.stripSpeed} />
           <ParallaxLayer
