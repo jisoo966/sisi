@@ -239,7 +239,10 @@ export function PassingSprites({
   return (
     <div ref={rootRef} className={`passing-sprites ${className}`} style={{ zIndex }} aria-hidden>
       {live.map((s) => {
-        const a = art[s.art];
+        // (a sprite from another place's set — after switching places — may name
+        // a picture this set doesn't have: wrap it, never break the page)
+        const a = art.length ? art[s.art % art.length] : null;
+        if (!a) return null;
         const [x0, y0, x1, y1] = a.box;
         const bw = x1 - x0;
         const bh = y1 - y0;
