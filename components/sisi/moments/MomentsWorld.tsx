@@ -58,6 +58,8 @@ type Band = {
   bottom: string;
   opacity?: number;
   filter?: string;
+  /** a CSS mask (e.g. a soft lower edge) */
+  mask?: string;
   /** px each copy overlaps the next — must match the Journey's layer so
    *  the meadow lines up exactly when the two pages hand over */
   seam: number;
@@ -714,7 +716,7 @@ export const MomentsWorld = forwardRef<
               {scene.verge && (
                 <BandLayer
                   key={`verge-${scene.id}`}
-                  spec={{ kind: "band", key: "verge", src: scene.verge.src, ratio: 1, heightPct: scene.verge.heightPct, bottom: scene.verge.bottom, filter: TOD_GRADE, seam: 2 }}
+                  spec={{ kind: "band", key: "verge", src: scene.verge.src, ratio: 1, heightPct: scene.verge.heightPct, bottom: scene.verge.bottom, filter: TOD_GRADE, seam: 2, mask: "linear-gradient(to bottom, #000 72%, transparent 100%)" }}
                   H={H}
                   W={W}
                   register={register}
@@ -877,7 +879,7 @@ export const MomentsWorld = forwardRef<
       </div>
 
       {/* a busy near bank (pond, forest): the soft fade under the tabs, as on the Journey */}
-      {scene.foreground && <div className="jw-nav-scrim" style={{ zIndex: 9 }} aria-hidden />}
+      {(scene.foreground || scene.backdrop) && <div className="jw-nav-scrim" style={{ zIndex: 9 }} aria-hidden />}
       {!gateDone && (
         <div ref={frontRef} className="mw-gate mw-gate--front" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1110,7 +1112,7 @@ function BandLayer({ spec, H, W, register }: { spec: Band; H: number; W: number;
     <div
       className="mw-band"
       aria-hidden
-      style={{ bottom: spec.bottom, height: h, opacity: spec.opacity, filter: spec.filter, zIndex: 1 }}
+      style={{ bottom: spec.bottom, height: h, opacity: spec.opacity, filter: spec.filter, zIndex: 1, ...(spec.mask ? { maskImage: spec.mask, WebkitMaskImage: spec.mask } : {}) }}
     >
       <div ref={lane} className="mw-lane">
         {Array.from({ length: copies }).map((_, i) => (

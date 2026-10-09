@@ -1297,6 +1297,8 @@ export default function JourneyPage() {
               align="bottom"
               heightPct={scene.verge.heightPct}
               bottom={scene.verge.bottom}
+              // its straight lower edge melts into the flowers below
+              maskImage="linear-gradient(to bottom, #000 72%, transparent 100%)"
               seamOverlap={2}
             />
           )}
@@ -1367,7 +1369,7 @@ export default function JourneyPage() {
         <div className="jw-group jw-fore">
           {/* Grass accents — 1.15–1.35×, over the paws, changing often */}
           {/* (a pond has its own near bank: no meadow clumps over the water) */}
-          {!scene.foreground && <PassingSprites
+          {!scene.foreground && !scene.backdrop && <PassingSprites
             layer="grass"
             role="flora"
             // coral flowers stay a rare accent
@@ -1387,7 +1389,7 @@ export default function JourneyPage() {
               two at once; the trunk may cross Sísí, the canopy stays clear of
               the header and the CTA */}
           {/* (a pond has no trees standing in front of it) */}
-          {!scene.foreground && (
+          {!scene.foreground && !scene.backdrop && (
           <PassingSprites
             layer="front-trees"
             role="front"
@@ -1452,7 +1454,7 @@ export default function JourneyPage() {
             the moving sky); faint and locked while the camera travels. */}
         {/* a busy near bank (pond, forest): a soft dark fade under the tabs so
             their names read — never an opaque bar */}
-        {scene.foreground && isWalking && <div className="jw-nav-scrim" aria-hidden />}
+        {(scene.foreground || scene.backdrop) && isWalking && <div className="jw-nav-scrim" aria-hidden />}
         <div
           className={`journey-walk-ui journey-dock${panelOpen ? " is-hidden" : ""}${
             busy || leavingTo === "moments-down" ? " is-transit" : ""

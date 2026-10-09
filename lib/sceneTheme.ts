@@ -135,23 +135,19 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     pathBottom: "calc(var(--walking-baseline) - 18.02%)",
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
-    // the forest floor's flowers just below the clover verge: its leafy top
-    // (row ~620 of 768) under the clover's lower edge; its last rows sink
-    // behind the low foreground leaves
+    // the one front layer: the forest floor's flowers, starting right at the
+    // clover's lower edge (row ~620 of 768 there) and running off the bottom
     groundHeight: 1.04,
-    groundBottom: "calc(var(--walking-baseline) - 26.5%)",
-    floorFill: "rgb(20, 62, 64)",
-    // the near verge: a band of clover (2000×337, Jisoo's) right along the
-    // path's lower edge — its leaf tips tucked under the path, the forest
-    // floor's flowers below it
-    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.1, bottom: "calc(var(--walking-baseline) - 10.9%)" },
+    groundBottom: "calc(var(--walking-baseline) - 30.3%)",
+    // the clover (2000×337, Jisoo's) comes up over the path's lower edge, so
+    // Sísí walks on the path, not on a shelf: its full leaves (from row ~70)
+    // stop just below her paws, only the tips reach the path
+    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.12, bottom: "calc(var(--walking-baseline) - 10.3%)" },
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
     // the forest's own bank behind the path, painted to its last row
     strip: { src: `${F}/meadow-strip-forest.webp`, ih: 242, bottom: 241 },
-    // low leaves passing along the very bottom (content from row 693)
-    foreground: `${F}/forest-foreground.webp`,
     backdrop: `${F}/forest-background.webp`,
     // roots (row 638 of 768) on the baseline; the canvas ~0.9 of the stage tall,
     // so the crowns run off the top: (768 − 638) / 768 × 89.8% = 15.2%
