@@ -1330,26 +1330,6 @@ export default function JourneyPage() {
             bottom={scene.pathBottom}
             seamOverlap={2}
           />
-          {/* near trees (the meadow's): fastest, beside the path — but behind
-              Sísí, so a passing trunk never covers her */}
-          {scene.frontTrees && (
-          <PassingSprites
-            key={`front-trees-${scene.id}`}
-            layer="front-trees"
-            role="front"
-            art={scene.frontTrees}
-            ratio={[1.55, 1.9]}
-            every={[5, 8]}
-            first={[2.5, 4]}
-            height={[0.48, 0.55]}
-            // rooted in the grass in front of the path, not standing on it
-            base={[-10, -8]}
-            max={1}
-            filter={TOD_GRADE}
-            zIndex={3}
-            className="passing-trees"
-          />
-          )}
           <WalkingCat
             onTap={isWalking && !busy ? () => openChat() : undefined}
             lookingUp={isStarView}
@@ -1407,7 +1387,26 @@ export default function JourneyPage() {
             filter={TOD_GRADE}
             zIndex={1}
           />}
-          {/* (the near trees pass behind Sísí now: see the meadow group) */}
+          {/* near trees (the meadow's): rare, fastest, in front of everything —
+              passing, the trunk may cover Sísí for a moment */}
+          {scene.frontTrees && (
+          <PassingSprites
+            key={`front-trees-${scene.id}`}
+            layer="front-trees"
+            role="front"
+            art={scene.frontTrees}
+            ratio={[1.55, 1.9]}
+            every={[5, 8]}
+            first={[2.5, 4]}
+            height={[0.48, 0.55]}
+            // rooted in the grass in front of the path, not standing on it
+            base={[-10, -8]}
+            max={1}
+            filter={TOD_GRADE}
+            zIndex={2}
+            className="passing-trees"
+          />
+          )}
         </div>
 
         {/* Trail of light from the fox to its star (0.45–1.1s, before the
