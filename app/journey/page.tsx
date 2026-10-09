@@ -66,6 +66,8 @@ import { glintPoint, softGlint } from "@/lib/fx";
 import { anchorElement } from "@/lib/fxAnchors";
 import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
+import { useSceneTheme } from "@/lib/sceneTheme";
+import { PondFish } from "@/components/sisi/journey-v2/PondFish";
 import { envCoord } from "@/lib/journeyWorld";
 import { WeatherLayer } from "@/components/sisi/weather/WeatherLayer";
 import type { TimeOfDay } from "@/lib/timeOfDay";
@@ -157,7 +159,6 @@ const ASCENT_LAYERS = {
  *  (+1 Starlight once a day) — a first value to test; never shown */
 const WALK_MOMENT_MS = 30_000;
 const PATH_HEIGHT_PCT = 0.4;
-const PATH_BOTTOM = "calc(var(--walking-baseline) - 18.67%)";
 
 /**
  * Dense meadow (walking ground) sits BELOW the path: its grass line
@@ -757,6 +758,8 @@ export default function JourneyPage() {
   const discovering = reveal?.kind === "world" && !revealLeaving;
   // ── Environment: selected World + local time of day + (optional) weather ──
   const world = useEquippedWorld();
+  /** the ground Sísí walks on (Customize → the path) */
+  const scene = useSceneTheme();
   const liveWeather = useWeather();
   // The time and the weather change only on the unobstructed Journey —
   // never while a sheet, a conversation, writing or a Star ceremony is open.
@@ -1180,7 +1183,8 @@ export default function JourneyPage() {
           {/* distant weather: between the far landscape and the mid landscape */}
           {!isStarView && <WeatherLayer state={wx} depth="far" zIndex={1} />}
           <ParallaxLayer
-            src={PARALLAX_LAYERS.midgroundVegetation}
+            key={`mid-${scene.id}`}
+            src={scene.midground}
             speed={LAYER_SPEED.midgroundVegetation}
             zIndex={2}
             align="bottom"
@@ -1206,7 +1210,8 @@ export default function JourneyPage() {
         <div className="jw-group jw-meadow">
           <ParallaxLayer
             className="tod-grade"
-            src={PARALLAX_LAYERS.walkingGround}
+            key={`ground-${scene.id}`}
+            src={scene.ground}
             speed={LAYER_SPEED.walkingGround}
             zIndex={1}
             align="bottom"
@@ -1215,15 +1220,16 @@ export default function JourneyPage() {
             seamOverlap={2}
           />
           {/* the continuous time-of-day grass line, just behind the path */}
-          <MeadowStrip phase={tod?.phase ?? null} zIndex={2} />
+          <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} />
           <ParallaxLayer
             className="jw-path tod-grade"
-            src={PARALLAX_LAYERS.walkingPath}
+            key={`path-${scene.id}`}
+            src={scene.path}
             speed={LAYER_SPEED.walkingPath}
             zIndex={2}
             align="bottom"
             heightPct={PATH_HEIGHT_PCT}
-            bottom={PATH_BOTTOM}
+            bottom={scene.pathBottom}
             seamOverlap={2}
           />
           <WalkingCat
@@ -1236,6 +1242,20 @@ export default function JourneyPage() {
               catWalking.current = w;
             }}
           />
+          {/* the pond's own life: fish below the bridge, then its low near bank */}
+          {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BOTTOM} />}
+          {scene.foreground && (
+            <ParallaxLayer
+              className="tod-grade jw-pond-fore"
+              src={scene.foreground}
+              speed={LAYER_SPEED.walkingGround}
+              zIndex={4}
+              align="bottom"
+              heightPct={1}
+              bottom={GROUND_BOTTOM}
+              seamOverlap={2}
+            />
+          )}
         </div>
 
         {/* sparse foreground weather: in front of Sísí, behind the foreground plants */}
@@ -1268,6 +1288,8 @@ export default function JourneyPage() {
           {/* Foreground trees — 1.55–1.9×, rare: one every 5–8 widths, never
               two at once; the trunk may cross Sísí, the canopy stays clear of
               the header and the CTA */}
+          {/* (a pond has no trees standing in front of it) */}
+          {!scene.foreground && (
           <PassingSprites
             layer="front-trees"
             role="front"
@@ -1283,6 +1305,7 @@ export default function JourneyPage() {
             zIndex={2}
             className="passing-trees"
           />
+          )}
         </div>
 
         {/* Trail of light from the fox to its star (0.45–1.1s, before the

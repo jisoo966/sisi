@@ -5,7 +5,7 @@ import { softGlint } from "@/lib/fx";
 import { haptic } from "@/lib/haptics";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { onStarlight, starlightBalance } from "@/lib/starlight";
-import { SATCHEL_CATALOG, loadSatchel, type SatchelCategory, type SatchelState } from "@/lib/satchel";
+import { SATCHEL_CATALOG, chooseItem, loadSatchel, type SatchelCategory, type SatchelState } from "@/lib/satchel";
 import { WORLDS, WORLD_LOOK, equipWorld, useEquippedWorld, worldAsset, type WorldId } from "@/lib/worlds";
 import { FocusPaper, IconCheck, IconFlower, IconFox, IconLandscape, IconLock, StarGlyph } from "@/components/ds";
 
@@ -99,7 +99,18 @@ export function SatchelDrawer({
             // eslint-disable-next-line @next/next/no-img-element
             art: <img src={item.preview} alt="" className={`sd-card-img is-${item.category}`} />,
             state: equipped ? "equipped" : "owned",
-            note: equipped ? "With you" : "Yours",
+            note: item.category === "trail" ? (equipped ? "Walking here" : "Tap to walk here") : equipped ? "With you" : "Yours",
+            // a path is chosen at once (seen live behind the sheet)
+            onPick:
+              !equipped && state && item.category === "trail"
+                ? async (el) => {
+                    const r = await chooseItem(state, item);
+                    if (!r.ok) return;
+                    setState(r.state);
+                    softGlint(el);
+                    haptic("select", el);
+                  }
+                : undefined,
           };
         });
 

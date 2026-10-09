@@ -15,6 +15,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { LOCAL_ONLY } from "@/lib/dataMode";
+import { SCENE_THEME_EVENT } from "@/lib/sceneTheme";
 
 export type SatchelCategory = "sisi" | "trail" | "world";
 
@@ -32,7 +33,9 @@ export const SATCHEL_CATALOG: SatchelItem[] = [
   // SiSi — scarf · small charm · small travel accessory (art to come)
   { id: "sisi-plain", category: "sisi", name: "Just Sísí", cost: 0, preview: "/V2/sisi/sisi-sitting.webp?v=2" },
   // Trail — sparse flowers · path variation · walking-light (art to come)
-  { id: "trail-plain", category: "trail", name: "Quiet path", cost: 0, preview: "/V2/parallax/journey-walking-path.webp" },
+  { id: "trail-plain", category: "trail", name: "Quiet path", cost: 0, preview: "/V2/themes/quiet-path-preview.webp" },
+  // a cream footbridge over a pond (lib/sceneTheme)
+  { id: "trail-bridge-pond", category: "trail", name: "Bridge & Pond", cost: 0, preview: "/V2/themes/bridge-pond/preview.webp" },
   // World — Quiet Meadow · Blue Riverside · Whispering Forest … (art to come)
   { id: "world-quiet-meadow", category: "world", name: "Quiet Meadow", cost: 0, preview: "/V2/parallax/journey-sky-fixed.png" },
 ];
@@ -123,5 +126,10 @@ export async function chooseItem(
   const next: SatchelState = { owned, equipped: { ...state.equipped, [item.category]: item.id } };
   const prev = SATCHEL_CATALOG.find((i) => i.id === prevId);
   await save(next, prev && prev.id !== item.id ? [item, prev] : [item]);
+  // the path changes at once, wherever Sísí is walking
+  if (item.category === "trail" && typeof window !== "undefined") {
+    writeLocal(next); // the scene reads this phone's choice
+    window.dispatchEvent(new CustomEvent(SCENE_THEME_EVENT, { detail: item.id }));
+  }
   return { state: next, ok: true };
 }

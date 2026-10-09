@@ -20,6 +20,8 @@ import { useTimeOfDay } from "@/lib/timeOfDay";
 import { TOD_GRADE } from "@/lib/worldArt";
 import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 import { BASE_H, STRIP } from "@/components/sisi/journey-v2/MeadowStrip";
+import { PondFish } from "@/components/sisi/journey-v2/PondFish";
+import { useSceneTheme, type SceneTheme } from "@/lib/sceneTheme";
 import type { SkyPhase } from "@/lib/timeOfDay";
 
 /**
@@ -71,6 +73,8 @@ type Fixed = { kind: "fixed"; key: string; src: string; className: string };
 /** The shared time-of-day sky (same as the Journey's). */
 type Sky = { kind: "sky"; key: string };
 
+const GROUND_BAND_BOTTOM = "calc(var(--walking-baseline) - 1% - 26.95%)";
+
 export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
   { kind: "sky", key: "sky" },
   {
@@ -101,7 +105,7 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
     src: "/V2/parallax/journey-walking-ground.webp",
     ratio: 1,
     heightPct: 1,
-    bottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
+    bottom: GROUND_BAND_BOTTOM,
     filter: TOD_GRADE,
     seam: 2,
   },
@@ -120,13 +124,13 @@ export const MOMENTS_SCENE: (Band | Scatter | Fixed | Sky)[] = [
 ];
 
 /** The Journey's grass line (MeadowStrip) as a band: same height and baseline. */
-function stripBand(phase: SkyPhase): Band {
-  const S = STRIP[phase];
+function stripBand(phase: SkyPhase, override?: SceneTheme["strip"]): Band {
+  const S = override ?? STRIP[phase];
   const h = BASE_H * (S.ih / 242);
   const below = ((S.ih - S.bottom) / S.ih) * h; // transparent rows under the grass
   return {
     kind: "band",
-    key: `strip-${phase}`,
+    key: `strip-${override ? "theme" : phase}`,
     src: S.src,
     ratio: 1,
     heightPct: h,
@@ -639,6 +643,23 @@ export const MomentsWorld = forwardRef<
     };
   }, []);
 
+  // the same ground as the Journey (Customize → the path): its art, its path line
+  const scene = useSceneTheme();
+  const sceneLayers = useMemo(
+    () =>
+      MOMENTS_SCENE.map((L) =>
+        L.kind !== "band"
+          ? L
+          : L.key === "midground"
+            ? { ...L, src: scene.midground }
+            : L.key === "ground"
+              ? { ...L, src: scene.ground }
+              : L.key === "path"
+                ? { ...L, src: scene.path, bottom: scene.pathBottom }
+                : L,
+      ),
+    [scene],
+  );
   const rootClass = `mw-root${veiled ? " mw-veiled" : ""}${revealing ? " mw-revealing" : ""}${phase === "leaving" ? " mw-leaving" : ""}`;
 
   return (
@@ -677,17 +698,28 @@ export const MomentsWorld = forwardRef<
       {/* Land group: meadow bands, the trail + memories, Sísí (0.75×) */}
       <div ref={landGroupRef} className="mw-group mw-group--land">
       {W > 0 &&
-        MOMENTS_SCENE.map((L) =>
+        sceneLayers.map((L) =>
           L.kind !== "band" ? null : L.key === "path" ? (
             <Fragment key={L.key}>
               {/* the Journey's time-of-day grass line, just behind the path,
                   so the meadow is the same on both pages (nothing appears or
                   disappears when they hand over) */}
-              {tod && <BandLayer key={`strip-${tod.phase}`} spec={stripBand(tod.phase)} H={H} W={W} register={register} />}
-              <BandLayer spec={L} H={H} W={W} register={register} />
+              {tod && <BandLayer key={`strip-${tod.phase}-${scene.id}`} spec={stripBand(tod.phase, scene.strip)} H={H} W={W} register={register} />}
+              <BandLayer key={`path-${scene.id}`} spec={L} H={H} W={W} register={register} />
+              {/* the pond's fish, then its low near bank (Bridge & Pond) */}
+              {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BAND_BOTTOM} />}
+              {scene.foreground && (
+                <BandLayer
+                  key={`fore-${scene.id}`}
+                  spec={{ kind: "band", key: "pond-fore", src: scene.foreground, ratio: 1, heightPct: 1, bottom: GROUND_BAND_BOTTOM, filter: TOD_GRADE, seam: 2 }}
+                  H={H}
+                  W={W}
+                  register={register}
+                />
+              )}
             </Fragment>
           ) : (
-            <BandLayer key={L.key} spec={L} H={H} W={W} register={register} />
+            <BandLayer key={`${L.key}-${scene.id}`} spec={L} H={H} W={W} register={register} />
           ),
         )}
 

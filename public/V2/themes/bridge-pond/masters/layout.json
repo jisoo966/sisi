@@ -1,0 +1,94 @@
+{
+  "theme": "bridge-pond-day-v1",
+  "source": "Live Journey layer dimensions and rectangles inspected on 2026-10-08",
+  "replacements": [
+    {
+      "original": "/V2/parallax/journey-walking-path.webp",
+      "png": "png/journey-walking-path-bridge.png",
+      "webp": "webp/journey-walking-path-bridge.webp",
+      "size": [
+        2048,
+        768
+      ],
+      "walking_line_y": 422
+    },
+    {
+      "original": "/V2/parallax/journey-walking-ground.webp",
+      "png": "png/journey-walking-ground-pond.png",
+      "webp": "webp/journey-walking-ground-pond.webp",
+      "size": [
+        2048,
+        768
+      ],
+      "water_starts_y": 500
+    },
+    {
+      "original": "/V2/parallax/journey-midground-vegetation.webp",
+      "png": "png/journey-midground-pond.png",
+      "webp": "webp/journey-midground-pond.webp",
+      "size": [
+        2048,
+        768
+      ]
+    },
+    {
+      "original": "/V2/time-of-day/meadow-strip-afternoon.webp",
+      "png": "png/meadow-strip-pond.png",
+      "webp": "webp/meadow-strip-pond.webp",
+      "size": [
+        2172,
+        242
+      ]
+    }
+  ],
+  "additional_layers": [
+    {
+      "png": "png/pond-foreground.png",
+      "webp": "webp/pond-foreground.webp",
+      "size": [
+        2048,
+        768
+      ],
+      "placement": "same transform as ground; after fish; optional",
+      "content_starts_y": 684
+    },
+    {
+      "png": "png/fish-coral.png",
+      "webp": "webp/fish-coral.webp",
+      "size": [
+        256,
+        128
+      ],
+      "facing": "right",
+      "display_width_css_px": [
+        28,
+        48
+      ]
+    },
+    {
+      "png": "png/fish-ivory.png",
+      "webp": "webp/fish-ivory.webp",
+      "size": [
+        256,
+        128
+      ],
+      "facing": "right",
+      "display_width_css_px": [
+        28,
+        48
+      ]
+    }
+  ],
+  "layer_order": [
+    "existing sky and clouds",
+    "midground",
+    "pond ground",
+    "meadow bank",
+    "bridge",
+    "existing fox",
+    "fish in pond zone",
+    "optional low foreground"
+  ],
+  "preview": "Static composition uses existing sky and fox; no production code was changed.",
+  "animation": "Fish images are static, independent sprites. Translate them horizontally at different speeds; mirror to swim left. No animated frames are included."
+}

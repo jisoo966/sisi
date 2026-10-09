@@ -30,7 +30,16 @@ export const MEADOW_FADE_MS = 15000;
 
 type Layer = { id: number; phase: SkyPhase; shown: boolean };
 
-export function MeadowStrip({ phase, zIndex = 2 }: { phase: SkyPhase | null; zIndex?: number }) {
+export function MeadowStrip({
+  phase,
+  zIndex = 2,
+  override,
+}: {
+  phase: SkyPhase | null;
+  zIndex?: number;
+  /** a theme's own grass line, the same at every hour (lib/sceneTheme) */
+  override?: { src: string; ih: number; bottom: number };
+}) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const nextId = useRef(1);
 
@@ -62,12 +71,14 @@ export function MeadowStrip({ phase, zIndex = 2 }: { phase: SkyPhase | null; zIn
   return (
     <div className="jw-strip" style={{ zIndex }} aria-hidden>
       {layers.map((l, i) => {
-        const S = STRIP[l.phase];
+        const S = override ?? STRIP[l.phase];
         const h = BASE_H * (S.ih / 242);
         const below = ((S.ih - S.bottom) / S.ih) * h; // transparent rows under the grass
         return (
           <div key={l.id} className="jw-strip-layer" style={{ opacity: l.shown ? 1 : 0, zIndex: i }}>
             <ParallaxLayer
+              key={S.src}
+              className={override ? "tod-grade" : undefined}
               src={S.src}
               speed={LAYER_SPEED.walkingGround}
               align="bottom"
