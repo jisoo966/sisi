@@ -1259,7 +1259,9 @@ export default function JourneyPage() {
           <div className="jw-wx jw-wx-mid">
             <WeatherLayer state={wx} depth="mid" />
             {/* rare, unannounced small magic — behind Sísí, only on the open Journey */}
-            <AmbientMagic enabled={calm && !reveal && !toast} evening={tod?.phase === "evening"} />
+            {/* (off: drifting glow dots — fireflies, dust, a glint on the grass —
+                read as stray spots on this painted world, day or evening) */}
+            <AmbientMagic enabled={false} evening={tod?.phase === "evening"} />
           </div>
         )}
 
