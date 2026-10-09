@@ -214,6 +214,9 @@ export function SatchelDrawer({
         /* the world rises while the sheet is up (see the lift effect) */
         .journey-stage-v2 .jw-group { transition: translate 460ms var(--ease-sisi); }
         html.sd-lifting .journey-stage-v2 .jw-group { translate: 0 calc(-1 * var(--sd-lift, 0px)); }
+        /* her words (and where her head is) rise with her, so they never cover her face */
+        .journey-stage-v2 .cc-root, .journey-stage-v2 .cc-head, .journey-stage-v2 .sisi-speak-lines { transition: translate 460ms var(--ease-sisi); }
+        html.sd-lifting .journey-stage-v2 .cc-root, html.sd-lifting .journey-stage-v2 .cc-head, html.sd-lifting .journey-stage-v2 .sisi-speak-lines { translate: 0 calc(-1 * var(--sd-lift, 0px)); }
         /* a low sheet: Sísí and the world stay in view above it */
         .sd-focus { max-height: min(54dvh, 440px) !important; }
         .sd-focus .ds-focus-head { padding-top: 22px; }

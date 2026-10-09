@@ -1562,7 +1562,7 @@ export default function JourneyPage() {
             starlightLine && satchelOpen
               ? {
                   key: "starlight-told",
-                  text: "Our time together gathers Starlight, up to three a day. It’s never spent. It opens new places, and they stay yours.",
+                  text: "The more time we spend together, the more new worlds open.",
                   onDismiss: () => {
                     markHint("starlightTold");
                     setStarlightLine(false);
