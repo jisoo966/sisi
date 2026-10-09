@@ -381,6 +381,8 @@ export default function JourneyPage() {
   const firstLightPending = useRef(false);
   /** after the first walk together, Sísí asks once if she may visit (Angel Messages) */
   const [visitAsk, setVisitAsk] = useState<null | "ask" | "time">(null);
+  /** once, on a quiet walk: Sísí says what the pencil is for (it glows) */
+  const [pencilLine, setPencilLine] = useState(false);
   const panelOpen = practiceOpen || momentOpen || noteOpen || visitAsk === "time" || createOpen || ((satchelOpen || eveningOpen) && isWalking);
   // Meadow star tapped → view the Current Star once we arrive above.
   const [viewCurrentOnArrival, setViewCurrentOnArrival] = useState(false);
@@ -1007,6 +1009,19 @@ export default function JourneyPage() {
     document.documentElement.classList.toggle("first-light", pointingAtWorlds);
     return () => document.documentElement.classList.remove("first-light");
   }, [pointingAtWorlds]);
+  // the pencil, said once: after ~10 quiet seconds of walking, when nothing
+  // else is being said and no moment has been kept yet; it glows meanwhile
+  useEffect(() => {
+    if (pencilLine || first !== null || tour > 0 || !isWalking || busy || panelOpen || chatOpen) return;
+    if (helloLine || walkLine || firstLightLine || visitAsk || hintDone("capture") || hintDone("pencilTold")) return;
+    const t = setTimeout(() => setPencilLine(true), 10000);
+    return () => clearTimeout(t);
+  }, [pencilLine, first, tour, isWalking, busy, panelOpen, chatOpen, helloLine, walkLine, firstLightLine, visitAsk]);
+  const pointingAtPencil = pencilLine && isWalking && !panelOpen && !chatOpen;
+  useEffect(() => {
+    document.documentElement.classList.toggle("pencil-told", pointingAtPencil);
+    return () => document.documentElement.classList.remove("pencil-told");
+  }, [pointingAtPencil]);
   /** what Starlight is: said once, and it waits for you (never on a timer) */
   const firstLightSeen = () => {
     setFirstLightLine(false);
@@ -1369,7 +1384,6 @@ export default function JourneyPage() {
                 primeKeyboard(); // the writing page opens with the keyboard (iOS: only inside the tap)
                 setMomentOpen(true);
               }}
-              showName={!first && tour === 0 && isWalking}
             />
           </div>
           {/* The one primary action on the home screen. */}
@@ -1619,6 +1633,30 @@ export default function JourneyPage() {
                       },
                     },
                     { label: "Keep walking", act: endReveal, quiet: true },
+                  ],
+                }
+              : pencilLine
+              ? {
+                  key: "pencil-told",
+                  text: "When something small happens along the way, you can keep it here.",
+                  actions: [
+                    {
+                      label: "Keep a moment",
+                      act: () => {
+                        markHint("pencilTold");
+                        setPencilLine(false);
+                        primeKeyboard();
+                        setMomentOpen(true);
+                      },
+                    },
+                    {
+                      label: "Later",
+                      quiet: true,
+                      act: () => {
+                        markHint("pencilTold");
+                        setPencilLine(false);
+                      },
+                    },
                   ],
                 }
               : wxLine && (!carried || !walkLine)

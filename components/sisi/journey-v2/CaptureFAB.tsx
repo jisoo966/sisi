@@ -1,8 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { hintDone } from "@/lib/hints";
 
 import { IconPencil } from "@/components/ds";
 
@@ -23,16 +21,13 @@ import { IconPencil } from "@/components/ds";
 type Props = {
   onClick: () => void;
   look?: "paper" | "quiet" | "sketch";
-  /** the first times: its name beside it (until the first moment is kept) */
+  /** @deprecated Sísí says what it is, once, on a walk (no name label) */
   showName?: boolean;
 };
 
-export function CaptureFAB({ onClick, look = "sketch", showName = false }: Props) {
-  const [named, setNamed] = useState(false);
-  useEffect(() => setNamed(!hintDone("capture")), []);
+export function CaptureFAB({ onClick, look = "sketch" }: Props) {
   return (
     <>
-    {showName && named && <span className="capture-fab-name" aria-hidden>Keep a moment</span>}
     <motion.button
       type="button"
       onClick={onClick}
@@ -62,15 +57,6 @@ export function CaptureFAB({ onClick, look = "sketch", showName = false }: Props
           -webkit-tap-highlight-color: transparent;
         }
         .capture-fab svg { width: 26px; height: 26px; }
-        .capture-fab-name {
-          position: absolute; z-index: 12; pointer-events: none; white-space: nowrap;
-          right: calc(var(--fab-right) + var(--fab-size) + 8px);
-          bottom: calc(var(--fab-bottom) + var(--fab-size) / 2); translate: 0 50%;
-          /* the same type as the tabs' names */
-          font-family: var(--font-editorial); font-weight: 500; font-size: 13px; color: var(--sisi-paper);
-          text-shadow: 0 1px 6px rgba(16, 45, 50, 0.6); animation: fab-name-in 600ms ease 1s both;
-        }
-        @keyframes fab-name-in { from { opacity: 0; transform: translateX(4px); } to { opacity: 0.95; transform: none; } }
         /* paper: warm paper with its grain, a soft lift */
         .capture-fab.is-paper {
           color: var(--sisi-ink);

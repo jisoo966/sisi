@@ -552,7 +552,7 @@ input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; -web
 
 /* ── After the first wish: Sísí points out the pencil, Moments and Stars ── */
 @keyframes tourGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 236, 180, 0.0), 0 0 0 2px rgba(255, 236, 180, 0.55); } 50% { box-shadow: 0 0 18px 6px rgba(255, 236, 180, 0.45), 0 0 0 2px rgba(255, 236, 180, 0.95); } }
-html.tour-pencil .capture-fab { border-radius: 50%; animation: tourGlow 2s ease-in-out infinite; }
+html.tour-pencil .capture-fab, html.pencil-told .capture-fab { border-radius: 50%; animation: tourGlow 2s ease-in-out infinite; }
 /* Bridge & Pond: the water's ripple and the bridge's breathing light on it */
 .jw-pond-water { animation: pondRipple 21s ease-in-out infinite; }
 @keyframes pondRipple { 0%, 100% { translate: 0 0; } 30% { translate: 1.5px 1px; } 65% { translate: -1px 0.5px; } }

@@ -10,7 +10,7 @@
  * Once dismissed (or the thing it explains has been done) it never returns.
  */
 
-export type HintKey = "talk" | "capture" | "starSaved" | "moments" | "tapStar" | "firstStarlight" | "customize";
+export type HintKey = "talk" | "capture" | "starSaved" | "moments" | "tapStar" | "firstStarlight" | "customize" | "pencilTold";
 const KEY = "sisi:hints-v1";
 
 function read(): Record<string, true> {
