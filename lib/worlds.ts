@@ -53,6 +53,9 @@ export const WORLD_LOOK: Record<WorldId, { preview: string; grade: string; cloud
 const KEY = "sisi:world";
 const EVENT = "sisi:world-change";
 export const DEFAULT_WORLD: WorldId = "quiet-meadow";
+/** for now (showing every place to people): all places open, whatever the
+ *  Starlight. Set back to false to bring the unlocks back. */
+export const PLACES_ALL_OPEN = true;
 /** places opened without Starlight (chosen before the Map existed) */
 const GRANTED = "sisi:places-granted";
 export function placesGranted(): WorldId[] {

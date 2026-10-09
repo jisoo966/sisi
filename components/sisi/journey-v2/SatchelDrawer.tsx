@@ -5,7 +5,7 @@ import { softGlint } from "@/lib/fx";
 import { haptic } from "@/lib/haptics";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { onStarlight, starlightBalance } from "@/lib/starlight";
-import { WORLDS, WORLD_LOOK, equipWorld, placesGranted, useEquippedWorld } from "@/lib/worlds";
+import { PLACES_ALL_OPEN, WORLDS, WORLD_LOOK, equipWorld, placesGranted, useEquippedWorld } from "@/lib/worlds";
 import { FocusPaper, IconCheck, IconLock, StarGlyph } from "@/components/ds";
 
 /**
@@ -57,7 +57,8 @@ export function SatchelDrawer({
   }, [open]);
 
   // only the very next place shows how far away it is; the rest simply wait
-  const isOpen = (id: string, threshold: number) => (balance ?? 0) >= threshold || granted.includes(id) || world === id;
+  const isOpen = (id: string, threshold: number) =>
+    PLACES_ALL_OPEN || (balance ?? 0) >= threshold || granted.includes(id) || world === id;
   const nextPlace = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => !isOpen(w.id, w.threshold));
   const cards: Card[] = [
     ...WORLDS.map((w): Card => {
