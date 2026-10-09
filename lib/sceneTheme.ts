@@ -2,7 +2,7 @@
 
 import type { SpriteArt } from "@/components/sisi/journey-v2/PassingSprites";
 import { useEquippedWorld, type WorldId } from "@/lib/worlds";
-import { FAR_TREES } from "@/lib/worldArt";
+import { FAR_TREES, TREES_FAR_V2, TREES_FRONT_V2, TREES_MID_V2 } from "@/lib/worldArt";
 
 /**
  * lib/sceneTheme — the ground of each place on the Map (lib/worlds).
@@ -66,6 +66,10 @@ export type SceneTheme = {
   midTrees?: SpriteArt[];
   /** their painted height, a fraction of the stage (default 0.32–0.42) */
   midTreeHeight?: [number, number];
+  /** the faint far trees (default: the meadow's) */
+  farTrees?: SpriteArt[];
+  /** near trees passing in front of Sísí, now and then (none if absent) */
+  frontTrees?: SpriteArt[];
   /** a place that closes over the sky (a forest): its own backdrop instead of
    *  the sky and clouds (the time of day still tints it) */
   backdrop?: string;
@@ -86,10 +90,13 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     path: "/V2/parallax/journey-walking-path.webp",
     // the path band's centre (row 409.5 of 768) on the baseline
     pathBottom: "calc(var(--walking-baseline) - 18.67%)",
-    // the meadow's own whole trees (their crowns complete), passing behind
-    // Sísí at full colour — modest, so the sky stays the heart of this place
-    midTrees: FAR_TREES,
-    midTreeHeight: [0.24, 0.32],
+    // Jisoo's tree set, in depth: far (slender, faint, slowest) → mid (tiered,
+    // curved, dense; clear, taking turns behind Sísí — modest, so the sky stays
+    // the heart of this place) → near (drooping, now and then, fastest)
+    farTrees: [...FAR_TREES, ...TREES_FAR_V2],
+    midTrees: TREES_MID_V2,
+    midTreeHeight: [0.26, 0.34],
+    frontTrees: TREES_FRONT_V2,
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
     groundBottom: "calc(var(--walking-baseline) - 1% - 26.95%)",

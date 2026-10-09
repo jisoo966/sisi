@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "format": "RGBA PNG",
+  "publicDirectory": "/assets/sisi/trees/",
+  "anchorCoordinates": "normalized to the complete image canvas, including transparent padding",
+  "assets": [
+    {
+      "id": "tree-mid-01-tiered",
+      "filename": "tree-mid-01-tiered.png",
+      "src": "/assets/sisi/trees/tree-mid-01-tiered.png",
+      "width": 1089,
+      "height": 1445,
+      "sizeBytes": 1488198,
+      "suggestedLayer": "midground",
+      "anchor": {
+        "x": 0.577594,
+        "y": 0.958478
+      },
+      "anchorMethod": "approximate trunk base from lower opaque pixels; visually confirm at final display scale",
+      "sourceSuffix": "c9b5f6fd-891f-4cf6-b651-5d9d30ebf210_1"
+    },
+    {
+      "id": "tree-mid-02-curved",
+      "filename": "tree-mid-02-curved.png",
+      "src": "/assets/sisi/trees/tree-mid-02-curved.png",
+      "width": 1089,
+      "height": 1445,
+      "sizeBytes": 1137375,
+      "suggestedLayer": "midground",
+      "anchor": {
+        "x": 0.467401,
+        "y": 0.956401
+      },
+      "anchorMethod": "approximate trunk base from lower opaque pixels; visually confirm at final display scale",
+      "sourceSuffix": "e6dbe8ea-cf3e-40bb-a77c-3fdef4fe484e_2"
+    },
+    {
+      "id": "tree-mid-03-dense",
+      "filename": "tree-mid-03-dense.png",
+      "src": "/assets/sisi/trees/tree-mid-03-dense.png",
+      "width": 1089,
+      "height": 1445,
+      "sizeBytes": 1704376,
+      "suggestedLayer": "midground",
+      "anchor": {
+        "x": 0.498623,
+        "y": 0.971626
+      },
+      "anchorMethod": "approximate trunk base from lower opaque pixels; visually confirm at final display scale",
+      "sourceSuffix": "e6dbe8ea-cf3e-40bb-a77c-3fdef4fe484e_1"
+    },
+    {
+      "id": "tree-front-04-drooping",
+      "filename": "tree-front-04-drooping.png",
+      "src": "/assets/sisi/trees/tree-front-04-drooping.png",
+      "width": 1089,
+      "height": 1445,
+      "sizeBytes": 1698583,
+      "suggestedLayer": "foreground",
+      "anchor": {
+        "x": 0.597796,
+        "y": 0.904498
+      },
+      "anchorMethod": "approximate trunk base from lower opaque pixels; visually confirm at final display scale",
+      "sourceSuffix": "e6dbe8ea-cf3e-40bb-a77c-3fdef4fe484e_0"
+    },
+    {
+      "id": "tree-far-05-slender",
+      "filename": "tree-far-05-slender.png",
+      "src": "/assets/sisi/trees/tree-far-05-slender.png",
+      "width": 1089,
+      "height": 1445,
+      "sizeBytes": 1504993,
+      "suggestedLayer": "background",
+      "anchor": {
+        "x": 0.506887,
+        "y": 0.991003
+      },
+      "anchorMethod": "approximate trunk base from lower opaque pixels; visually confirm at final display scale",
+      "sourceSuffix": "21d285fa-8941-49fd-96bc-673f53d816de_1"
+    }
+  ]
+}

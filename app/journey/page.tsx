@@ -20,7 +20,7 @@ import { PassingSprites } from "@/components/sisi/journey-v2/PassingSprites";
 import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
 import { CloudField } from "@/components/sisi/journey-v2/CloudField";
 import { MeadowStrip } from "@/components/sisi/journey-v2/MeadowStrip";
-import { FAR_TREES, FRONT_TREES, GRASS, TOD_GRADE } from "@/lib/worldArt";
+import { FAR_TREES, GRASS, TOD_GRADE } from "@/lib/worldArt";
 import { useTimeOfDay } from "@/lib/timeOfDay";
 import { occludingSisi, worldCoord } from "@/lib/journeyWorld";
 // CloudDrift (earlier clouds cut from slow-clouds.png) stays on disk, unused.
@@ -159,8 +159,6 @@ const ASCENT_LAYERS = {
 /** walking with a wish: how much walking gathers before its quiet moment
  *  (+1 Starlight once a day) — a first value to test; never shown */
 const WALK_MOMENT_MS = 30_000;
-/** the near trees passing in front of Sísí (off until their new art arrives) */
-const SHOW_FRONT_TREES = false;
 const PATH_HEIGHT_PCT = 0.4;
 
 /**
@@ -1209,7 +1207,7 @@ export default function JourneyPage() {
           {!scene.backdrop && <PassingSprites
             layer="far-trees"
             role="far"
-            art={FAR_TREES}
+            art={scene.farTrees ?? FAR_TREES}
             ratio={[0.12, 0.18]}
             every={[2, 4]}
             first={[0.8, 1.6]}
@@ -1330,6 +1328,26 @@ export default function JourneyPage() {
             bottom={scene.pathBottom}
             seamOverlap={2}
           />
+          {/* near trees (the meadow's): fastest, beside the path — but behind
+              Sísí, so a passing trunk never covers her */}
+          {scene.frontTrees && (
+          <PassingSprites
+            key={`front-trees-${scene.id}`}
+            layer="front-trees"
+            role="front"
+            art={scene.frontTrees}
+            ratio={[1.55, 1.9]}
+            every={[5, 8]}
+            first={[2.5, 4]}
+            height={[0.48, 0.55]}
+            // rooted in the grass in front of the path, not standing on it
+            base={[-10, -8]}
+            max={1}
+            filter={TOD_GRADE}
+            zIndex={3}
+            className="passing-trees"
+          />
+          )}
           <WalkingCat
             onTap={isWalking && !busy ? () => openChat() : undefined}
             lookingUp={isStarView}
@@ -1387,28 +1405,7 @@ export default function JourneyPage() {
             filter={TOD_GRADE}
             zIndex={1}
           />}
-          {/* Foreground trees — 1.55–1.9×, rare: one every 5–8 widths, never
-              two at once; the trunk may cross Sísí, the canopy stays clear of
-              the header and the CTA */}
-          {/* (off for now: this tree art is cut flat at the top — new tree art is
-              coming; a pond or a forest has none in front anyway) */}
-          {SHOW_FRONT_TREES && !scene.foreground && !scene.backdrop && (
-          <PassingSprites
-            layer="front-trees"
-            role="front"
-            art={FRONT_TREES}
-            ratio={[1.55, 1.9]}
-            every={[5, 8]}
-            first={[2.5, 4]}
-            height={[0.48, 0.55]}
-            // rooted in the grass in front of the path, not standing on it
-            base={[-10, -8]}
-            max={1}
-            filter={TOD_GRADE}
-            zIndex={2}
-            className="passing-trees"
-          />
-          )}
+          {/* (the near trees pass behind Sísí now: see the meadow group) */}
         </div>
 
         {/* Trail of light from the fox to its star (0.45–1.1s, before the
