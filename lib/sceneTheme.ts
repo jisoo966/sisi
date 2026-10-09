@@ -2,6 +2,7 @@
 
 import type { SpriteArt } from "@/components/sisi/journey-v2/PassingSprites";
 import { useEquippedWorld, type WorldId } from "@/lib/worlds";
+import { FRONT_TREES } from "@/lib/worldArt";
 
 /**
  * lib/sceneTheme — the ground of each place on the Map (lib/worlds).
@@ -63,6 +64,8 @@ export type SceneTheme = {
   /** the theme's own bigger trees on the far shore, behind Sísí (a layer of
    *  depth between the far reeds and the bridge) */
   midTrees?: SpriteArt[];
+  /** their painted height, a fraction of the stage (default 0.32–0.42) */
+  midTreeHeight?: [number, number];
   /** a place that closes over the sky (a forest): its own backdrop instead of
    *  the sky and clouds (the time of day still tints it) */
   backdrop?: string;
@@ -83,6 +86,12 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     path: "/V2/parallax/journey-walking-path.webp",
     // the path band's centre (row 409.5 of 768) on the baseline
     pathBottom: "calc(var(--walking-baseline) - 18.67%)",
+    // the meadow's own broad-crowned trees, passing behind Sísí at full colour
+    // (nearer than the faint far trees, which stay as the distance)
+    midTrees: FRONT_TREES,
+    // drawn as near trees (crowns cut at the top of the art): tall enough that
+    // the crowns run off the top of the screen, so the cut never shows
+    midTreeHeight: [0.78, 0.88],
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
     groundBottom: "calc(var(--walking-baseline) - 1% - 26.95%)",

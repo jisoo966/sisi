@@ -1244,7 +1244,7 @@ export default function JourneyPage() {
               every={[2.2, 3.5]}
               first={[0.6, 1.2]}
               startInView
-              height={[0.32, 0.42]}
+              height={scene.midTreeHeight ?? [0.32, 0.42]}
               base={[0.5, 2.5]}
               max={2}
               filter={TOD_GRADE}
