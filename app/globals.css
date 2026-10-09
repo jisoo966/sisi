@@ -555,6 +555,8 @@ input, textarea, [contenteditable="true"] { -webkit-touch-callout: default; -web
 html.tour-pencil .capture-fab, html.pencil-told .capture-fab { border-radius: 50%; animation: tourGlow 2s ease-in-out infinite; }
 /* the header's two tools keep their shape over a busy canopy (a faint shadow) */
 .journey-header svg { filter: drop-shadow(0 1px 2.5px rgba(10, 28, 44, 0.45)); }
+/* a place's floor colour, behind its ground (up to just under the path) */
+.jw-floor { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; height: calc(var(--walking-baseline) - 3%); pointer-events: none; }
 /* a place's own backdrop (the forest), over the sky and its clouds */
 .jw-backdrop { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; pointer-events: none; user-select: none; }
 /* under the tabs, on a busy near bank: a soft dark fade (the names stay legible) */

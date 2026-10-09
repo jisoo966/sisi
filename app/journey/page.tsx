@@ -1267,6 +1267,8 @@ export default function JourneyPage() {
             during the ascent: the fox stays in the meadow and leaves
             through the bottom of the screen. */}
         <div className="jw-group jw-meadow">
+          {/* behind the ground: its own leaf colour, so the backdrop never shows through */}
+          {scene.floorFill && <div className="jw-floor" style={{ background: scene.floorFill }} aria-hidden />}
           <ParallaxLayer
             // the pond's surface: a 1–2px ripple over ~20s (never a current)
             className={scene.fish ? "tod-grade jw-pond-water" : "tod-grade"}
@@ -1275,7 +1277,7 @@ export default function JourneyPage() {
             speed={scene.groundSpeed ?? LAYER_SPEED.walkingGround}
             zIndex={1}
             align="bottom"
-            heightPct={1}
+            heightPct={scene.groundHeight ?? 1}
             bottom={scene.groundBottom}
             drift={scene.groundDrift}
             seamOverlap={2}
@@ -1284,6 +1286,20 @@ export default function JourneyPage() {
           {scene.fish && <div className="jw-pond-light" aria-hidden />}
           {/* the continuous time-of-day grass line, just behind the path */}
           <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} speed={scene.stripSpeed} />
+          {/* the near verge (forest): bright leaf tips along the path's lower edge */}
+          {scene.verge && (
+            <ParallaxLayer
+              key={`verge-${scene.id}`}
+              className="tod-grade"
+              src={scene.verge.src}
+              speed={36}
+              zIndex={2}
+              align="bottom"
+              heightPct={scene.verge.heightPct}
+              bottom={scene.verge.bottom}
+              seamOverlap={2}
+            />
+          )}
           {/* the forest's big trees, rooted on the path line behind Sísí (the path
               covers their roots); crowns run off the top */}
           {scene.bigTrees && (

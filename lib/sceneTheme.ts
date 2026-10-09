@@ -33,6 +33,13 @@ export type SceneTheme = {
   midgroundBottom: string;
   /** where the ground image rests (the water's top hidden under the deck) */
   groundBottom: string;
+  /** the ground's height as a fraction of the stage (default 1) */
+  groundHeight?: number;
+  /** a verge just below the path (the near side's leaf tips and flowers) */
+  verge?: { src: string; heightPct: number; bottom: string };
+  /** a solid colour behind the ground, from the bottom up to the path, so a
+   *  backdrop never shows through gaps between its leaves */
+  floorFill?: string;
   /** px/s the ground flows by itself (a pond's water) */
   groundDrift?: number;
   /** px/s while walking, when it differs from the path's (a pond's water) */
@@ -128,7 +135,15 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     pathBottom: "calc(var(--walking-baseline) - 18.02%)",
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
-    groundBottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
+    // the forest floor meets the path, as in the concept: its leafy top (row
+    // ~620 of 768, where the leaves close in) at the path's lower edge
+    // (baseline − 1.93%); its last rows sink behind the low foreground leaves
+    groundHeight: 1.04,
+    groundBottom: "calc(var(--walking-baseline) - 22%)",
+    floorFill: "rgb(20, 62, 64)",
+    // the near verge, as in the concept: the forest's bright bank (leaf tips,
+    // flowers) right along the path's lower edge, over the floor's dark top
+    verge: { src: `${F}/meadow-strip-forest.webp`, heightPct: 0.13, bottom: "calc(var(--walking-baseline) - 11.6%)" },
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,

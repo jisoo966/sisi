@@ -654,7 +654,7 @@ export const MomentsWorld = forwardRef<
           : L.key === "midground"
             ? { ...L, src: scene.midground, heightPct: scene.midgroundHeight, bottom: scene.midgroundBottom }
             : L.key === "ground"
-              ? { ...L, src: scene.ground, bottom: scene.groundBottom }
+              ? { ...L, src: scene.ground, bottom: scene.groundBottom, heightPct: scene.groundHeight ?? L.heightPct }
               : L.key === "path"
                 ? { ...L, src: scene.path, bottom: scene.pathBottom }
                 : L,
@@ -711,6 +711,15 @@ export const MomentsWorld = forwardRef<
                   so the meadow is the same on both pages (nothing appears or
                   disappears when they hand over) */}
               {tod && <BandLayer key={`strip-${tod.phase}-${scene.id}`} spec={stripBand(tod.phase, scene.strip)} H={H} W={W} register={register} />}
+              {scene.verge && (
+                <BandLayer
+                  key={`verge-${scene.id}`}
+                  spec={{ kind: "band", key: "verge", src: scene.verge.src, ratio: 1, heightPct: scene.verge.heightPct, bottom: scene.verge.bottom, filter: TOD_GRADE, seam: 2 }}
+                  H={H}
+                  W={W}
+                  register={register}
+                />
+              )}
               {/* the forest's big trees, behind the path (as on the Journey) */}
               {scene.bigTrees && (
                 <BandLayer
