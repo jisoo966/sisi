@@ -651,7 +651,7 @@ export const MomentsWorld = forwardRef<
         L.kind !== "band"
           ? L
           : L.key === "midground"
-            ? { ...L, src: scene.midground }
+            ? { ...L, src: scene.midground, heightPct: scene.midgroundHeight, bottom: scene.midgroundBottom }
             : L.key === "ground"
               ? { ...L, src: scene.ground }
               : L.key === "path"

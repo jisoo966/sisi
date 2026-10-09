@@ -24,6 +24,9 @@ export type SceneTheme = {
   path: string;
   /** where the path image rests so the walking line meets --walking-baseline */
   pathBottom: string;
+  /** the midground's size and rest (as a fraction / a CSS length of the stage) */
+  midgroundHeight: number;
+  midgroundBottom: string;
   /** one grass line for every hour (else the time-of-day strips) */
   strip?: { src: string; ih: number; bottom: number };
   /** drawn in front of the fish, with the ground's own transform */
@@ -41,6 +44,8 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     path: "/V2/parallax/journey-walking-path.webp",
     // the path band's centre (row 409.5 of 768) on the baseline
     pathBottom: "calc(var(--walking-baseline) - 18.67%)",
+    midgroundHeight: 0.18,
+    midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
   },
   "trail-bridge-pond": {
     id: "trail-bridge-pond",
@@ -49,6 +54,9 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     path: `${T}/journey-walking-path-bridge.webp`,
     // the deck's walking line is row 422 of 768: (768 − 422) / 768 × 40% = 18.02%
     pathBottom: "calc(var(--walking-baseline) - 18.02%)",
+    // raised (and a touch larger) so the reeds and willows show above the far bank
+    midgroundHeight: 0.23,
+    midgroundBottom: "calc(var(--walking-baseline) + 2.5%)",
     // the pond's far bank, painted to its last row
     strip: { src: `${T}/meadow-strip-pond.webp`, ih: 242, bottom: 241 },
     foreground: `${T}/pond-foreground.webp`,

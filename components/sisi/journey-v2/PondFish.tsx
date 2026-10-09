@@ -9,7 +9,8 @@ import { useMemo } from "react";
  * moving: each crosses the pond at its own depth and pace, some to the left
  * (mirrored), with a slow, gentle sway. Placed in the ground's own box
  * (same height and bottom as the ground layer), inside the water rows
- * (row 500 → 768 of the 768-tall ground: the lowest 34.9%).
+ * — only the open water below the bridge, between the piles' feet and the
+ * near bank. All drift one way, with the current (leftward).
  * Reduced motion: they simply rest in the water.
  */
 
@@ -25,15 +26,16 @@ export function PondFish({ srcs, bottom, count = 5 }: Props) {
   const fish = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => {
-        const left = rnd(i, 1) > 0.45; // swims to the left
+        const left = true; // all with the pond's current: leftward, as the ground flows
         const dur = 26 + rnd(i, 2) * 22; // s to cross the screen
         return {
           src: srcs[i % srcs.length],
           left,
           w: 28 + Math.round(rnd(i, 3) * 18), // 28–46 css px
-          // % of the ground box above its bottom (water: 0–34.9%), clear of the
-          // near bank and the tabs below, and of the bridge's piles above
-          depth: 14 + rnd(i, 4) * 13,
+          // % of the ground box above its bottom. Only the open water under the
+          // bridge: above the near bank (row 684 → 10.9%) and below the piles'
+          // feet (path row 590 → 19.2% of this box), less a fish's own height
+          depth: 10.8 + rnd(i, 4) * 4.6,
           dur,
           delay: -rnd(i, 5) * dur, // already on their way
           sway: 2.6 + rnd(i, 6) * 1.8,

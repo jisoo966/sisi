@@ -1188,8 +1188,8 @@ export default function JourneyPage() {
             speed={LAYER_SPEED.midgroundVegetation}
             zIndex={2}
             align="bottom"
-            heightPct={0.18}
-            bottom="calc(var(--walking-baseline) - 1.5%)"
+            heightPct={scene.midgroundHeight}
+            bottom={scene.midgroundBottom}
             opacity={0.8}
             filter={`saturate(0.75) brightness(1.15) contrast(0.85) ${TOD_GRADE}`}
           />
