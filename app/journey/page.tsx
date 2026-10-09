@@ -1410,6 +1410,9 @@ export default function JourneyPage() {
             Meadow: Stars ascends. Star World: Journey descends. */}
         {/* The dock stays on screen (fixed to the bottom safe area, never on
             the moving sky); faint and locked while the camera travels. */}
+        {/* a busy near bank (pond, forest): a soft dark fade under the tabs so
+            their names read — never an opaque bar */}
+        {scene.foreground && isWalking && <div className="jw-nav-scrim" aria-hidden />}
         <div
           className={`journey-walk-ui journey-dock${panelOpen ? " is-hidden" : ""}${
             busy || leavingTo === "moments-down" ? " is-transit" : ""
