@@ -81,11 +81,9 @@ export function SkyStarV2({ star, selected, disabled = false, onTap, carrying = 
         </>
       )}
       {warm > 0 && <span key={warm} className="sky-warm" aria-hidden />}
-      {/* alive, so it reads as something to touch: a soft light that breathes,
-          and now and then a small glint (never a constant blink) */}
+      {/* alive, so it reads as something to touch: a soft light that breathes */}
       <span className="sky-halo" aria-hidden />
       <StarLayers selected={selected} alt="Current Star" />
-      <span className="sky-glint" aria-hidden />
       {/* the wish being carried, quietly under its Star */}
       {carrying && star.wish && <span className="sky-wish">{star.wish}</span>}
 
@@ -113,20 +111,7 @@ export function SkyStarV2({ star, selected, disabled = false, onTap, carrying = 
           animation: skyHalo 3.6s ease-in-out infinite; z-index: -1;
         }
         @keyframes skyHalo { 0%, 100% { opacity: 0.45; transform: scale(0.88); } 50% { opacity: 0.95; transform: scale(1.1); } }
-        .sky-glint {
-          position: absolute; left: 50%; top: 50%; width: 88px; height: 88px; margin: -44px 0 0 -44px; pointer-events: none;
-          filter: drop-shadow(0 0 4px rgba(255, 236, 170, 0.9));
-          background:
-            linear-gradient(to right, rgba(255, 250, 230, 0), rgba(255, 250, 230, 0.95) 50%, rgba(255, 250, 230, 0)) center / 100% 3px no-repeat,
-            linear-gradient(to bottom, rgba(255, 250, 230, 0), rgba(255, 250, 230, 0.95) 50%, rgba(255, 250, 230, 0)) center / 3px 100% no-repeat;
-          opacity: 0; animation: skyGlint 9s ease-in-out infinite 2.4s;
-        }
-        @keyframes skyGlint {
-          0%, 86%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
-          90% { opacity: 1; transform: scale(1) rotate(12deg); }
-          95% { opacity: 0; transform: scale(1.15) rotate(20deg); }
-        }
-        @media (prefers-reduced-motion: reduce) { .sky-halo { animation: none; opacity: 0.7; } .sky-glint { display: none; } }
+        @media (prefers-reduced-motion: reduce) { .sky-halo { animation: none; opacity: 0.7; } }
         /* ahead of Sísí, above the path, clear of the header — and it stays there */
         .sky-star-btn.is-carrying { top: 24%; left: 74%; }
         /* tap me (first time): a soft ring of light breathes around the Star */
