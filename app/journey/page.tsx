@@ -159,6 +159,8 @@ const ASCENT_LAYERS = {
 /** walking with a wish: how much walking gathers before its quiet moment
  *  (+1 Starlight once a day) — a first value to test; never shown */
 const WALK_MOMENT_MS = 30_000;
+/** the near trees passing in front of Sísí (off until their new art arrives) */
+const SHOW_FRONT_TREES = false;
 const PATH_HEIGHT_PCT = 0.4;
 
 /**
@@ -1388,8 +1390,9 @@ export default function JourneyPage() {
           {/* Foreground trees — 1.55–1.9×, rare: one every 5–8 widths, never
               two at once; the trunk may cross Sísí, the canopy stays clear of
               the header and the CTA */}
-          {/* (a pond has no trees standing in front of it) */}
-          {!scene.foreground && !scene.backdrop && (
+          {/* (off for now: this tree art is cut flat at the top — new tree art is
+              coming; a pond or a forest has none in front anyway) */}
+          {SHOW_FRONT_TREES && !scene.foreground && !scene.backdrop && (
           <PassingSprites
             layer="front-trees"
             role="front"
