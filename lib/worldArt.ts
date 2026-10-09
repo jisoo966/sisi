@@ -22,13 +22,14 @@ export const FRONT_TREES: SpriteArt[] = [
 /* Jisoo's tree set (public/assets/sisi/trees/, 1089×1445 each; box = the
    painted bounds, whose bottom is the trunk base) */
 const NT = (id: string) => `/assets/sisi/trees/${id}.webp`;
-export const TREES_FAR_V2: SpriteArt[] = [{ src: NT("tree-far-05-slender"), iw: 1089, ih: 1445, box: [136, 63, 967, 1437] }];
+// the teal set (v2: foliage ~12–15% less saturated, toward a muted blue-teal)
+export const TREES_FAR_V2: SpriteArt[] = [{ src: NT("tree-far-05-slender-teal"), iw: 1089, ih: 1445, box: [135, 63, 969, 1438] }];
 export const TREES_MID_V2: SpriteArt[] = [
-  { src: NT("tree-mid-01-tiered"), iw: 1089, ih: 1445, box: [23, 152, 1082, 1389] },
-  { src: NT("tree-mid-02-curved"), iw: 1089, ih: 1445, box: [20, 65, 1081, 1384] },
-  { src: NT("tree-mid-03-dense"), iw: 1089, ih: 1445, box: [37, 73, 1076, 1408] },
+  { src: NT("tree-mid-01-tiered-teal"), iw: 1089, ih: 1445, box: [19, 146, 1089, 1395] },
+  { src: NT("tree-mid-02-curved-teal"), iw: 1089, ih: 1445, box: [19, 65, 1088, 1385] },
+  { src: NT("tree-mid-03-dense-teal"), iw: 1089, ih: 1445, box: [36, 73, 1076, 1409] },
 ];
-export const TREES_FRONT_V2: SpriteArt[] = [{ src: NT("tree-front-04-drooping"), iw: 1089, ih: 1445, box: [4, 86, 1080, 1313] }];
+export const TREES_FRONT_V2: SpriteArt[] = [{ src: NT("tree-front-04-drooping-teal"), iw: 1088, ih: 1445, box: [1, 81, 1088, 1315] }];
 
 export const GRASS: SpriteArt[] = [
   { src: T("grass-01.webp"), iw: 491, ih: 459, box: [20, 104, 477, 444] },

@@ -95,7 +95,8 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     // the heart of this place) → near (drooping, now and then, fastest)
     farTrees: [...FAR_TREES, ...TREES_FAR_V2],
     midTrees: TREES_MID_V2,
-    midTreeHeight: [0.26, 0.34],
+    // ~2.2–2.7× Sísí's height (she is ~17% of the stage)
+    midTreeHeight: [0.37, 0.46],
     frontTrees: TREES_FRONT_V2,
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",

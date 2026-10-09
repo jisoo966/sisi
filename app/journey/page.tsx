@@ -1398,7 +1398,7 @@ export default function JourneyPage() {
             ratio={[1.55, 1.9]}
             every={[5, 8]}
             first={[2.5, 4]}
-            height={[0.48, 0.55]}
+            height={[0.56, 0.64]}
             // rooted in the grass in front of the path, not standing on it
             base={[-10, -8]}
             max={1}
