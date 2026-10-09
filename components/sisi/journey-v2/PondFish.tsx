@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 /**
  * PondFish — now and then, a fish (Bridge & Pond theme).
  *
- * A calm pond: never a school. One fish at a time (two at most) slips in
- * from the left and swims slowly across, the way Sísí is walking, in 10–16s;
- * the next comes 15–30s later (the first a few seconds after arriving). Each
+ * A calm pond, never a school: fish slip in from the left one by one and
+ * swim slowly across, the way Sísí is walking, in 10–16s; the next comes
+ * 4–9s later, so 2–3 are in view (three at most). Each
  * rises and falls 2–4px over 3–5s. Coral or ivory; now and then a smaller,
  * paler one further off (nearer the bridge).
  *
@@ -25,9 +25,9 @@ type Props = {
   waterDrift?: number;
 };
 
-type Swimmer = { id: number; src: string; w: number; depth: number; dur: number; opacity: number; bob: number; bobS: number };
+type Swimmer = { id: number; src: string; w: number; depth: number; dur: number; delay: number; opacity: number; bob: number; bobS: number };
 
-const MAX_AT_ONCE = 2;
+const MAX_AT_ONCE = 3;
 const between = (a: number, b: number) => a + Math.random() * (b - a);
 
 export function PondFish({ srcs, bottom }: Props) {
@@ -38,8 +38,9 @@ export function PondFish({ srcs, bottom }: Props) {
 
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    let t: ReturnType<typeof setTimeout>;
-    const spawn = () => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    /** midway: already partway across (s into its crossing), for the pond you arrive at */
+    const add = (midway = 0) =>
       setFish((list) => {
         if (list.length >= MAX_AT_ONCE || document.hidden) return list;
         const far = Math.random() < 0.25;
@@ -52,15 +53,25 @@ export function PondFish({ srcs, bottom }: Props) {
             w: Math.round(far ? between(20, 26) : between(32, 44)),
             depth: far ? between(15.6, 16.8) : between(12.4, 15),
             dur: between(10, 16),
+            delay: -midway,
             opacity: far ? 0.78 : 1,
             bob: between(2, 4),
             bobS: between(3, 5),
           },
         ];
       });
-      t = setTimeout(spawn, between(15000, 30000));
+    // one every 4–9s while each takes 10–16s to cross: usually 2–3 in view,
+    // now and then a moment of open water
+    const next = () => {
+      t = setTimeout(() => {
+        add();
+        next();
+      }, between(4000, 9000));
     };
-    t = setTimeout(spawn, between(2500, 6000)); // the first, soon after arriving
+    // arriving, the pond already has two on their way (one further along)
+    add(between(3, 5));
+    add(between(0, 1));
+    next();
     return () => clearTimeout(t);
   }, []);
 
@@ -70,7 +81,7 @@ export function PondFish({ srcs, bottom }: Props) {
         <span
           key={f.id}
           className="pf-fish"
-          style={{ bottom: `${f.depth.toFixed(2)}%`, width: f.w, animationDuration: `${f.dur.toFixed(1)}s` }}
+          style={{ bottom: `${f.depth.toFixed(2)}%`, width: f.w, animationDuration: `${f.dur.toFixed(1)}s`, animationDelay: `${f.delay.toFixed(1)}s` }}
           onAnimationEnd={(e) => {
             if (e.target === e.currentTarget) setFish((list) => list.filter((x) => x.id !== f.id));
           }}

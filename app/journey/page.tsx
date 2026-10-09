@@ -1193,6 +1193,27 @@ export default function JourneyPage() {
             opacity={0.8}
             filter={`saturate(0.75) brightness(1.15) contrast(0.85) ${TOD_GRADE}`}
           />
+          {/* the far shore's bigger trees (the theme's own art): ~2–2.5× Sísí's
+              height, rooted behind the far bank; sparse and uneven, at 0.6× the
+              bridge — between the far reeds and the bridge */}
+          {scene.midTrees && (
+            <PassingSprites
+              key={`mid-trees-${scene.id}`}
+              layer="mid-trees"
+              role="far"
+              art={scene.midTrees}
+              ratio={[0.56, 0.64]}
+              every={[2.2, 3.5]}
+              first={[0.6, 1.2]}
+              startInView
+              height={[0.32, 0.42]}
+              base={[0.5, 2.5]}
+              max={2}
+              filter={TOD_GRADE}
+              zIndex={3}
+              className="passing-trees"
+            />
+          )}
         </div>
 
         {/* middle weather: above the mid landscape, behind the ground and Sísí */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { SpriteArt } from "@/components/sisi/journey-v2/PassingSprites";
 
 /**
  * lib/sceneTheme — the ground Sísí walks on (chosen in Customize → the path tab).
@@ -46,6 +47,9 @@ export type SceneTheme = {
   foregroundHeight?: number;
   foregroundBottom?: string;
   fish?: string[];
+  /** the theme's own bigger trees on the far shore, behind Sísí (a layer of
+   *  depth between the far reeds and the bridge) */
+  midTrees?: SpriteArt[];
 };
 
 const T = "/V2/themes/bridge-pond";
@@ -97,6 +101,12 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     foregroundHeight: 0.15,
     foregroundBottom: "0%",
     fish: [`${T}/fish-coral.webp`, `${T}/fish-ivory.webp`],
+    // the two willows of this set's midground, cut out (willow-0x.webp) and
+    // drawn nearer and larger — only this theme's own art
+    midTrees: [
+      { src: `${T}/willow-01.webp`, iw: 366, ih: 358, box: [0, 0, 366, 358] },
+      { src: `${T}/willow-02.webp`, iw: 411, ih: 481, box: [0, 0, 411, 481] },
+    ],
   },
 };
 
