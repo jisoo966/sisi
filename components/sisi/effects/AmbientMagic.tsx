@@ -15,10 +15,11 @@ import { bigEffectPlaying, emitFx, prefersReducedMotion, type AmbientKind } from
 
 function pick(evening: boolean): AmbientKind {
   const r = Math.random();
-  if (r < 0.04) return "shooting"; // very rare
   // (no petals: a petal crossing the open sky with nothing to fall from reads as a stray)
-  if (evening) return r < 0.6 ? "firefly" : r < 0.82 ? "dust" : "grass";
-  return r < 0.4 ? "grass" : r < 0.75 ? "dust" : "firefly";
+  // fireflies, drifting dust and shooting stars belong to the evening
+  if (evening) return r < 0.04 ? "shooting" : r < 0.6 ? "firefly" : r < 0.82 ? "dust" : "grass";
+  // daylight: only the glint on the grass (a drifting glow dot reads as a smudge)
+  return "grass";
 }
 
 export function AmbientMagic({ enabled, evening = false }: { enabled: boolean; evening?: boolean }) {

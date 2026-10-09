@@ -156,9 +156,10 @@ function ambientGeo(variant?: AmbientKind): AmbientGeo | null {
 
 function pickAmbient(evening = false): AmbientKind {
   const r = Math.random();
-  if (r < 0.04) return "shooting"; // very rare
-  if (evening) return r < 0.55 ? "firefly" : r < 0.75 ? "dust" : r < 0.9 ? "grass" : "petal";
-  return r < 0.35 ? "petal" : r < 0.6 ? "grass" : r < 0.8 ? "dust" : "firefly";
+  // (the same as AmbientMagic: no stray petals; fireflies and shooting stars only in the evening)
+  if (evening) return r < 0.04 ? "shooting" : r < 0.6 ? "firefly" : r < 0.82 ? "dust" : "grass";
+  // daylight: only the glint on the grass (a drifting glow dot reads as a smudge)
+  return "grass";
 }
 
 /* ── debug channel (development only) ─────────────────────────────── */
