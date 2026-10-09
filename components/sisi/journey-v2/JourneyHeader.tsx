@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { IconButton, IconCustomize, IconMenu } from "@/components/ds";
+import { IconButton, IconLandscape, IconMenu } from "@/components/ds";
 import { markHint } from "@/lib/hints";
 
 /**
@@ -70,14 +70,15 @@ export function JourneyHeader({
             <IconButton
               quiet
               surface="dark"
-              label="Customize"
+              label="Map"
               className="satchel-btn"
               onClick={() => {
                 markHint("customize");
                 onSatchelClick();
               }}
             >
-              <IconCustomize />
+              {/* the Map: where you walk */}
+              <IconLandscape />
             </IconButton>
           </span>
         )}

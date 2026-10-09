@@ -1,0 +1,110 @@
+{
+  "theme": "butterfly-forest-naive-v2",
+  "walking_line_y": 422,
+  "replacement_sizes": {
+    "forest-background": [
+      1672,
+      940
+    ],
+    "journey-walking-path-forest": [
+      2048,
+      768
+    ],
+    "journey-walking-ground-forest": [
+      2048,
+      768
+    ],
+    "journey-midground-forest": [
+      2048,
+      768
+    ],
+    "meadow-strip-forest": [
+      2172,
+      242
+    ]
+  },
+  "new_layers": {
+    "forest-main-trees": {
+      "size": [
+        2048,
+        768
+      ],
+      "root_y": 638,
+      "placement": "Anchor root_y to walking-baseline. Use a separate larger tree layer, not the small existing vegetation render width."
+    },
+    "forest-foreground": {
+      "size": [
+        2048,
+        768
+      ],
+      "content_y": 684
+    }
+  },
+  "butterflies": {
+    "frame_size": [
+      256,
+      192
+    ],
+    "sheet_size": [
+      768,
+      192
+    ],
+    "frame_count": 3,
+    "order": [
+      0,
+      1,
+      2,
+      1
+    ],
+    "frame_duration_ms": 110,
+    "display_width_css_px": [
+      24,
+      36
+    ],
+    "screen_horizontal_speed_css_px_per_s": [
+      8,
+      18
+    ],
+    "vertical_drift_css_px": [
+      5,
+      12
+    ],
+    "vertical_period_s": [
+      3,
+      5
+    ]
+  },
+  "phone_static_reference": {
+    "viewport": [
+      430,
+      936
+    ],
+    "tree_scale": 1.0956112852664577,
+    "left_root_css_x": 35,
+    "right_root_css_x": 395,
+    "tree_top_css_y": 0,
+    "walking_baseline_css_y": 699
+  },
+  "tree_split_files": [
+    "forest-tree-left",
+    "forest-tree-right"
+  ],
+  "layer_order": [
+    "forest-background",
+    "forest-tree-left and forest-tree-right",
+    "journey-midground-forest",
+    "journey-walking-ground-forest",
+    "meadow-strip-forest",
+    "journey-walking-path-forest",
+    "existing fox",
+    "independent butterflies",
+    "optional forest-foreground",
+    "UI"
+  ],
+  "notes": [
+    "Generated independently from the same preview, not pixel-perfect layer extraction from the flattened painting.",
+    "Dimensions match original canvases; main trees and butterflies need separate layer integration.",
+    "Sprites are three painted wing poses; app movement and animation are not deployed.",
+    "Loop seams and device layouts require verification after integration."
+  ]
+}

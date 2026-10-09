@@ -43,18 +43,25 @@ export function worldAsset(world: WorldId, slot: WorldSlot, ext = "webp"): strin
   return `/V2/worlds/${world}/${slot}.${ext}`;
 }
 
-/** What each World does before (and on top of) its own art. */
+/** Each place's card picture and how cloudy its sky is (a forest hides it). */
 export const WORLD_LOOK: Record<WorldId, { preview: string; grade: string; clouds: number; tagline: string }> = {
-  "morning-meadow": { preview: "/V2/time-of-day/sky-morning.webp", grade: "none", clouds: 1, tagline: "Where we began." },
-  "cloud-garden": { preview: "/V2/time-of-day/sky-afternoon.webp", grade: "saturate(0.96) brightness(1.03)", clouds: 1.6, tagline: "Soft clouds, close enough to touch." },
-  "golden-afternoon": { preview: "/V2/time-of-day/sky-afternoon.webp", grade: "sepia(0.12) saturate(1.05)", clouds: 0.9, tagline: "Warm light that lingers." },
-  "evening-field": { preview: "/V2/time-of-day/sky-evening.webp", grade: "saturate(0.95) brightness(0.96)", clouds: 1, tagline: "The field, just before the stars." },
-  "quiet-winter": { preview: "/V2/time-of-day/sky-morning.webp", grade: "saturate(0.8) brightness(1.04)", clouds: 1.2, tagline: "A hush over everything." },
+  "quiet-meadow": { preview: "/V2/themes/quiet-path-preview.webp", grade: "none", clouds: 1, tagline: "Where we began." },
+  "bridge-pond": { preview: "/V2/themes/bridge-pond/preview.webp", grade: "none", clouds: 1, tagline: "A footbridge over still water." },
+  "butterfly-forest": { preview: "/V2/themes/butterfly-forest/preview.webp", grade: "none", clouds: 0, tagline: "Light through the leaves." },
 };
 
 const KEY = "sisi:world";
 const EVENT = "sisi:world-change";
-export const DEFAULT_WORLD: WorldId = "morning-meadow";
+export const DEFAULT_WORLD: WorldId = "quiet-meadow";
+/** places opened without Starlight (chosen before the Map existed) */
+const GRANTED = "sisi:places-granted";
+export function placesGranted(): WorldId[] {
+  try {
+    return JSON.parse(localStorage.getItem(GRANTED) ?? "[]");
+  } catch {
+    return [];
+  }
+}
 
 async function signedInUser(): Promise<string | null> {
   if (LOCAL_ONLY) return null;
@@ -69,7 +76,18 @@ async function signedInUser(): Promise<string | null> {
 export function equippedWorldLocal(): WorldId {
   if (typeof window === "undefined") return DEFAULT_WORLD;
   const v = localStorage.getItem(KEY) as WorldId | null;
-  return v && WORLDS.some((w) => w.id === v) ? v : DEFAULT_WORLD;
+  if (v && WORLDS.some((w) => w.id === v)) return v;
+  // before the Map: the bridge chosen in Customize is kept (and stays open)
+  try {
+    if (JSON.parse(localStorage.getItem("sisi:satchel") ?? "null")?.equipped?.trail === "trail-bridge-pond") {
+      localStorage.setItem(KEY, "bridge-pond");
+      localStorage.setItem(GRANTED, JSON.stringify(Array.from(new Set([...placesGranted(), "bridge-pond"]))));
+      return "bridge-pond";
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_WORLD;
 }
 
 export async function loadEquippedWorld(): Promise<WorldId> {

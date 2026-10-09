@@ -21,6 +21,7 @@ import { TOD_GRADE } from "@/lib/worldArt";
 import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 import { BASE_H, STRIP } from "@/components/sisi/journey-v2/MeadowStrip";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
+import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
 import { useSceneTheme, type SceneTheme } from "@/lib/sceneTheme";
 import type { SkyPhase } from "@/lib/timeOfDay";
 
@@ -685,6 +686,11 @@ export const MomentsWorld = forwardRef<
               <ScatterLayer key={L.key} spec={L} W={W} register={register} />
             ) : null,
           )}
+        {/* a place with its own backdrop (the forest) closes over the sky */}
+        {scene.backdrop && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={scene.backdrop} className="jw-backdrop tod-grade" src={scene.backdrop} alt="" aria-hidden draggable={false} />
+        )}
       </div>
 
       {/* Cloud Gate (arriving from the Stars): the same painted banks as the ascent */}
@@ -705,7 +711,18 @@ export const MomentsWorld = forwardRef<
                   so the meadow is the same on both pages (nothing appears or
                   disappears when they hand over) */}
               {tod && <BandLayer key={`strip-${tod.phase}-${scene.id}`} spec={stripBand(tod.phase, scene.strip)} H={H} W={W} register={register} />}
+              {/* the forest's big trees, behind the path (as on the Journey) */}
+              {scene.bigTrees && (
+                <BandLayer
+                  key={`trees-${scene.id}`}
+                  spec={{ kind: "band", key: "big-trees", src: scene.bigTrees.src, ratio: 1, heightPct: scene.bigTrees.heightPct, bottom: scene.bigTrees.bottom, filter: TOD_GRADE, seam: 2 }}
+                  H={H}
+                  W={W}
+                  register={register}
+                />
+              )}
               <BandLayer key={`path-${scene.id}`} spec={L} H={H} W={W} register={register} />
+              {scene.butterflies && <Butterflies kinds={scene.butterflies} />}
               {/* the pond's fish, then its low near bank (Bridge & Pond) */}
               {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BAND_BOTTOM} waterSpeed={scene.groundSpeed ?? 32} waterDrift={scene.groundDrift ?? 0} />}
               {scene.foreground && (
@@ -850,6 +867,8 @@ export const MomentsWorld = forwardRef<
       )}
       </div>
 
+      {/* a busy near bank (pond, forest): the soft fade under the tabs, as on the Journey */}
+      {scene.foreground && <div className="jw-nav-scrim" style={{ zIndex: 9 }} aria-hidden />}
       {!gateDone && (
         <div ref={frontRef} className="mw-gate mw-gate--front" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}

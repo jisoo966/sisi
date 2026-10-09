@@ -1,22 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { SpriteArt } from "@/components/sisi/journey-v2/PassingSprites";
+import { useEquippedWorld, type WorldId } from "@/lib/worlds";
 
 /**
- * lib/sceneTheme — the ground Sísí walks on (chosen in Customize → the path tab).
+ * lib/sceneTheme — the ground of each place on the Map (lib/worlds).
  *
- *   trail-plain        the quiet meadow path (the original layers)
- *   trail-bridge-pond  a cream footbridge over a pond, fish below (day set v1,
- *                      public/V2/themes/bridge-pond; PNG originals in masters/)
+ *   trail-plain        Quiet Meadow: the meadow path (the original layers)
+ *   trail-bridge-pond  Bridge & Pond: a cream footbridge over a pond, fish below
+ *   butterfly-forest   Butterfly Forest: a path between big trees, butterflies;
+ *                      its own backdrop closes over the sky
+ * (assets in public/V2/themes/<place>/, PNG originals in masters/)
  *
- * The sky, clouds and Sísí stay the same; a theme swaps the midground, the
- * ground, the grass line behind the path and the path itself, and may add
- * its own layers (the pond's low foreground, its fish). The Journey and the
- * Moments Trail read the same theme, so the hand-over between them matches.
+ * Sísí stays the same; a place swaps the midground, the ground, the grass
+ * line behind the path and the path itself, and may add its own layers (a
+ * near bank, fish, trees, butterflies, a backdrop). The sky follows the real
+ * time of day. The Journey and the Moments Trail read the same place, so the
+ * hand-over between them matches.
  */
 
-export type SceneThemeId = "trail-plain" | "trail-bridge-pond";
+export type SceneThemeId = "trail-plain" | "trail-bridge-pond" | "butterfly-forest";
 
 export type SceneTheme = {
   id: SceneThemeId;
@@ -50,9 +53,17 @@ export type SceneTheme = {
   /** the theme's own bigger trees on the far shore, behind Sísí (a layer of
    *  depth between the far reeds and the bridge) */
   midTrees?: SpriteArt[];
+  /** a place that closes over the sky (a forest): its own backdrop instead of
+   *  the sky and clouds (the time of day still tints it) */
+  backdrop?: string;
+  /** big trees rooted on the path line, behind Sísí (one 2048×768 canvas) */
+  bigTrees?: { src: string; heightPct: number; bottom: string };
+  /** butterflies: each kind's wing frames (01 → 02 → 03 → 02) */
+  butterflies?: string[][];
 };
 
 const T = "/V2/themes/bridge-pond";
+const F = "/V2/themes/butterfly-forest";
 
 export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
   "trail-plain": {
@@ -108,29 +119,46 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
       { src: `${T}/willow-02.webp`, iw: 411, ih: 481, box: [0, 0, 411, 481] },
     ],
   },
+  "butterfly-forest": {
+    id: "butterfly-forest",
+    midground: `${F}/journey-midground-forest.webp`,
+    ground: `${F}/journey-walking-ground-forest.webp`,
+    path: `${F}/journey-walking-path-forest.webp`,
+    // the path's walking line is row 422 of 768, as the bridge's
+    pathBottom: "calc(var(--walking-baseline) - 18.02%)",
+    midgroundHeight: 0.18,
+    midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
+    groundBottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
+    midgroundSpeed: 11,
+    stripSpeed: 26,
+    foregroundSpeed: 43,
+    // the forest's own bank behind the path, painted to its last row
+    strip: { src: `${F}/meadow-strip-forest.webp`, ih: 242, bottom: 241 },
+    // low leaves passing along the very bottom (content from row 693)
+    foreground: `${F}/forest-foreground.webp`,
+    backdrop: `${F}/forest-background.webp`,
+    // roots (row 638 of 768) on the baseline; the canvas ~0.9 of the stage tall,
+    // so the crowns run off the top: (768 − 638) / 768 × 89.8% = 15.2%
+    bigTrees: { src: `${F}/forest-main-trees.webp`, heightPct: 0.898, bottom: "calc(var(--walking-baseline) - 15.2%)" },
+    butterflies: [
+      [`${F}/butterfly-ivory-01.webp`, `${F}/butterfly-ivory-02.webp`, `${F}/butterfly-ivory-03.webp`],
+      [`${F}/butterfly-lavender-01.webp`, `${F}/butterfly-lavender-02.webp`, `${F}/butterfly-lavender-03.webp`],
+    ],
+  },
 };
 
-const KEY = "sisi:satchel";
+/** each place on the Map, and the ground it walks on */
+export const PLACE_SCENE: Record<WorldId, SceneThemeId> = {
+  "quiet-meadow": "trail-plain",
+  "bridge-pond": "trail-bridge-pond",
+  "butterfly-forest": "butterfly-forest",
+};
+
+/** (kept for lib/satchel's old path slot; the Map decides now) */
 export const SCENE_THEME_EVENT = "sisi:scene-theme";
 
-/** the path chosen on this phone (the satchel's "trail" slot) */
-export function sceneThemeLocal(): SceneThemeId {
-  if (typeof window === "undefined") return "trail-plain";
-  try {
-    const id = JSON.parse(localStorage.getItem(KEY) ?? "null")?.equipped?.trail;
-    return id in SCENE_THEMES ? (id as SceneThemeId) : "trail-plain";
-  } catch {
-    return "trail-plain";
-  }
-}
-
+/** the ground of the place chosen on the Map */
 export function useSceneTheme(): SceneTheme {
-  const [id, setId] = useState<SceneThemeId>("trail-plain");
-  useEffect(() => {
-    setId(sceneThemeLocal());
-    const h = (e: Event) => setId(((e as CustomEvent<SceneThemeId>).detail ?? sceneThemeLocal()) as SceneThemeId);
-    window.addEventListener(SCENE_THEME_EVENT, h);
-    return () => window.removeEventListener(SCENE_THEME_EVENT, h);
-  }, []);
-  return SCENE_THEMES[id] ?? SCENE_THEMES["trail-plain"];
+  const place = useEquippedWorld();
+  return SCENE_THEMES[PLACE_SCENE[place]] ?? SCENE_THEMES["trail-plain"];
 }

@@ -68,6 +68,7 @@ import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
 import { useSceneTheme } from "@/lib/sceneTheme";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
+import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
 import { envCoord } from "@/lib/journeyWorld";
 import { WeatherLayer } from "@/components/sisi/weather/WeatherLayer";
 import type { TimeOfDay } from "@/lib/timeOfDay";
@@ -1168,6 +1169,12 @@ export default function JourneyPage() {
           <TimeOfDaySky tod={tod} />
           {/* clouds from the time-of-day pool — seeded, varied, continuous */}
           <CloudField zIndex={1} />
+          {/* a place that closes over the sky (the forest): its own backdrop,
+              tinted by the hour like everything else */}
+          {scene.backdrop && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={scene.backdrop} className="jw-backdrop tod-grade" src={scene.backdrop} alt="" draggable={false} />
+          )}
           {skyStar && (
             <SkyStarV2
               star={skyStar}
@@ -1195,8 +1202,9 @@ export default function JourneyPage() {
         {/* 2. Distant hills — far silhouettes (7px/s) + midground vegetation
             (13.5px/s). 0.35× during the ascent. */}
         <div className="jw-group jw-hills">
-          {/* Far trees — 0.12–0.18×, faint, one every 2–4 widths of walking */}
-          <PassingSprites
+          {/* Far trees — 0.12–0.18×, faint, one every 2–4 widths of walking
+              (not in a place with its own backdrop) */}
+          {!scene.backdrop && <PassingSprites
             layer="far-trees"
             role="far"
             art={FAR_TREES}
@@ -1209,7 +1217,7 @@ export default function JourneyPage() {
             opacity={[0.35, 0.55]}
             zIndex={1}
             className="passing-trees"
-          />
+          />}
           {/* distant weather: between the far landscape and the mid landscape */}
           {!isStarView && <WeatherLayer state={wx} depth="far" zIndex={1} />}
           <ParallaxLayer
@@ -1251,7 +1259,7 @@ export default function JourneyPage() {
           <div className="jw-wx jw-wx-mid">
             <WeatherLayer state={wx} depth="mid" />
             {/* rare, unannounced small magic — behind Sísí, only on the open Journey */}
-            <AmbientMagic enabled={calm && !reveal && !toast} evening={tod?.phase === "evening" || world === "evening-field"} />
+            <AmbientMagic enabled={calm && !reveal && !toast} evening={tod?.phase === "evening"} />
           </div>
         )}
 
@@ -1276,6 +1284,21 @@ export default function JourneyPage() {
           {scene.fish && <div className="jw-pond-light" aria-hidden />}
           {/* the continuous time-of-day grass line, just behind the path */}
           <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} speed={scene.stripSpeed} />
+          {/* the forest's big trees, rooted on the path line behind Sísí (the path
+              covers their roots); crowns run off the top */}
+          {scene.bigTrees && (
+            <ParallaxLayer
+              key={`trees-${scene.id}`}
+              className="tod-grade"
+              src={scene.bigTrees.src}
+              speed={LAYER_SPEED.walkingPath}
+              zIndex={2}
+              align="bottom"
+              heightPct={scene.bigTrees.heightPct}
+              bottom={scene.bigTrees.bottom}
+              seamOverlap={2}
+            />
+          )}
           <ParallaxLayer
             className="jw-path tod-grade"
             key={`path-${scene.id}`}
@@ -1297,6 +1320,7 @@ export default function JourneyPage() {
               catWalking.current = w;
             }}
           />
+          {scene.butterflies && <Butterflies kinds={scene.butterflies} />}
           {/* the pond's own life: fish below the bridge, then its low near bank */}
           {scene.fish && (
             <PondFish srcs={scene.fish} bottom={GROUND_BOTTOM} waterSpeed={scene.groundSpeed ?? LAYER_SPEED.walkingGround} waterDrift={scene.groundDrift ?? 0} />

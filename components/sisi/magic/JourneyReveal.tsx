@@ -37,7 +37,7 @@ export function JourneyReveal({ reveal, leaving = false }: { reveal: Reveal; lea
     <>
       <motion.div
         ref={ref}
-        className={`jr-object jr-${reveal.kind}${reveal.kind === "world" && reveal.world === "cloud-garden" && object === "fallback" ? " is-cloud" : ""}`}
+        className={`jr-object jr-${reveal.kind}`}
         aria-hidden
         initial={{ opacity: 0, y: 10, scale: 0.94 }}
         animate={leaving ? { opacity: 0, y: 6, transition: { duration: 0.6 } } : { opacity: 1, y: 0, scale: 1, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } }}
@@ -87,30 +87,11 @@ export function JourneyReveal({ reveal, leaving = false }: { reveal: Reveal; lea
 function WorldObject({ world }: { world: WorldId }) {
   /* eslint-disable @next/next/no-img-element */
   switch (world) {
-    case "cloud-garden":
-      return <img className="jr-obj-cloud" src={FX_STANDIN.cloud} alt="" draggable={false} />;
-    case "golden-afternoon":
-      return <img className="jr-obj-flower" src={FX_STANDIN.warmFlower} alt="" draggable={false} style={{ filter: "var(--tod-grade, none)" }} />;
-    case "evening-field":
-      return <img className="jr-obj-firefly" src={FX.ambient.fireflies[0]} alt="" draggable={false} />;
-    case "quiet-winter": {
-      // the first large flake, cut from the snow sheet
-      const [x, y, w, h] = SNOW_FLAKES[0];
-      const k = 34 / Math.max(w, h);
-      return (
-        <span
-          className="jr-obj-snow"
-          style={{
-            display: "block",
-            backgroundImage: `url(${PACK.snow.src})`,
-            backgroundSize: `${PACK.snow.w * k}px ${PACK.snow.h * k}px`,
-            backgroundPosition: `${-x * k}px ${-y * k}px`,
-            width: w * k,
-            height: h * k,
-          }}
-        />
-      );
-    }
+    case "bridge-pond":
+      // a fish of the pond, leaping just ahead of Sísí
+      return <img className="jr-obj-flower" src="/V2/themes/bridge-pond/fish-coral.webp" alt="" draggable={false} style={{ width: 48 }} />;
+    case "butterfly-forest":
+      return <img className="jr-obj-flower" src="/V2/themes/butterfly-forest/butterfly-ivory-01.webp" alt="" draggable={false} style={{ width: 44 }} />;
     default:
       return (
         <span className="jr-card ds-paper ds-paper--memory">

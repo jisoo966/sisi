@@ -5,37 +5,31 @@ import { softGlint } from "@/lib/fx";
 import { haptic } from "@/lib/haptics";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { onStarlight, starlightBalance } from "@/lib/starlight";
-import { SATCHEL_CATALOG, chooseItem, loadSatchel, type SatchelCategory, type SatchelState } from "@/lib/satchel";
-import { WORLDS, WORLD_LOOK, equipWorld, useEquippedWorld, worldAsset, type WorldId } from "@/lib/worlds";
-import { FocusPaper, IconCheck, IconFlower, IconFox, IconLandscape, IconLock, StarGlyph } from "@/components/ds";
+import { WORLDS, WORLD_LOOK, equipWorld, placesGranted, useEquippedWorld } from "@/lib/worlds";
+import { FocusPaper, IconCheck, IconLock, StarGlyph } from "@/components/ds";
 
 /**
- * SatchelDrawer — Customize (optional, secondary).
+ * SatchelDrawer — the Map: where you walk.
  *
  * A low ivory sheet over the Journey. Nothing behind it dims or blurs, and
- * it stays short enough that Sísí and the world remain in view — so every
- * change is seen live, the moment a card is tapped.
+ * it stays short enough that Sísí and the world remain in view — so a new
+ * place is seen live, the moment its card is tapped.
  *
- *   tabs    pictures, not words: Sísí (her face) · Trail (a wayside flower)
- *           · World (a landscape); the chosen one rests on a soft paper tile
- *   cards   one row of large picture cards that scrolls sideways; the name
- *           and its state below. Walking here = solid outline + check;
- *           yours = plain; still to discover = dashed outline + lock
- *   balance Starlight, upper right. Worlds open with cumulative Starlight —
- *           nothing is spent, there are no prices.
+ *   cards   one row of large picture cards (the place itself: its path, its
+ *           water or trees, Sísí walking), scrolling sideways; the name and
+ *           its state below. Walking here = solid outline + check; open =
+ *           plain; still to discover = dashed outline + lock
+ *   the end "More places are on the way" — the Map keeps growing
+ *   balance Starlight, upper right. Places open with cumulative Starlight —
+ *           nothing is spent, there are no prices. (The sky is not chosen:
+ *           it follows the real time of day, and the weather if asked.)
  */
-
-const TABS: { key: SatchelCategory; label: string; Icon: (p: { size?: number }) => React.ReactNode }[] = [
-  { key: "sisi", label: "Sísí", Icon: IconFox },
-  { key: "trail", label: "Trail", Icon: IconFlower },
-  { key: "world", label: "World", Icon: IconLandscape },
-];
 
 type Card = {
   id: string;
   name: string;
   art: React.ReactNode;
-  state: "equipped" | "owned" | "locked";
+  state: "equipped" | "owned" | "locked" | "soon";
   /** words under the name */
   note: React.ReactNode;
   onPick?: (el: HTMLElement) => void;
@@ -47,71 +41,52 @@ export function SatchelDrawer({
 }: {
   open: boolean;
   onClose: () => void;
-  /** @deprecated the World is applied through lib/worlds */
-  onEquip?: (equipped: SatchelState["equipped"]) => void;
+  /** @deprecated the place is applied through lib/worlds */
+  onEquip?: (equipped: unknown) => void;
 }) {
-  const [tab, setTab] = useState<SatchelCategory>("world");
   const [balance, setBalance] = useState<number | null>(null);
-  const [state, setState] = useState<SatchelState | null>(null);
+  const [granted, setGranted] = useState<string[]>([]);
   const world = useEquippedWorld();
   const rowRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     if (!open) return;
     starlightBalance().then(setBalance);
-    loadSatchel().then(setState);
+    setGranted(placesGranted());
     return onStarlight((r) => setBalance(r.balance));
   }, [open]);
 
-  // only the very next World shows how far away it is; the rest simply wait
-  const nextWorld = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => w.threshold > (balance ?? 0));
-  const cards: Card[] =
-    tab === "world"
-      ? WORLDS.map((w) => {
-          const unlocked = (balance ?? 0) >= w.threshold;
-          const equipped = world === w.id;
-          const need = Math.max(0, w.threshold - (balance ?? 0));
-          return {
-            id: w.id,
-            name: w.name,
-            art: <WorldPreview id={w.id} />,
-            state: equipped ? "equipped" : unlocked ? "owned" : "locked",
-            note: equipped ? (
-              "Walking here"
-            ) : unlocked ? (
-              "Tap to walk here"
-            ) : w.id === nextWorld?.id ? (
-              <>
-                <StarGlyph size={12} /> {need} more to unlock
-              </>
-            ) : (
-              "Still to discover"
-            ),
-            onPick: unlocked && !equipped ? (el) => { equipWorld(w.id); softGlint(el); haptic("select", el); } : undefined,
-          };
-        })
-      : SATCHEL_CATALOG.filter((i) => i.category === tab).map((item) => {
-          const equipped = state?.equipped[item.category] === item.id;
-          return {
-            id: item.id,
-            name: item.name.replace("SiSi", "Sísí"),
-            // eslint-disable-next-line @next/next/no-img-element
-            art: <img src={item.preview} alt="" className={`sd-card-img is-${item.category}`} />,
-            state: equipped ? "equipped" : "owned",
-            note: item.category === "trail" ? (equipped ? "Walking here" : "Tap to walk here") : equipped ? "With you" : "Yours",
-            // a path is chosen at once (seen live behind the sheet)
-            onPick:
-              !equipped && state && item.category === "trail"
-                ? async (el) => {
-                    const r = await chooseItem(state, item);
-                    if (!r.ok) return;
-                    setState(r.state);
-                    softGlint(el);
-                    haptic("select", el);
-                  }
-                : undefined,
-          };
-        });
+  // only the very next place shows how far away it is; the rest simply wait
+  const isOpen = (id: string, threshold: number) => (balance ?? 0) >= threshold || granted.includes(id) || world === id;
+  const nextPlace = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => !isOpen(w.id, w.threshold));
+  const cards: Card[] = [
+    ...WORLDS.map((w): Card => {
+      const unlocked = isOpen(w.id, w.threshold);
+      const equipped = world === w.id;
+      const need = Math.max(0, w.threshold - (balance ?? 0));
+      return {
+        id: w.id,
+        name: w.name,
+        // eslint-disable-next-line @next/next/no-img-element
+        art: <img className="sd-card-img" src={WORLD_LOOK[w.id].preview} alt="" draggable={false} />,
+        state: equipped ? "equipped" : unlocked ? "owned" : "locked",
+        note: equipped ? (
+          "Walking here"
+        ) : unlocked ? (
+          "Tap to walk here"
+        ) : w.id === nextPlace?.id ? (
+          <>
+            <StarGlyph size={12} /> {need} more to unlock
+          </>
+        ) : (
+          "Still to discover"
+        ),
+        onPick: unlocked && !equipped ? (el) => { equipWorld(w.id); softGlint(el); haptic("select", el); } : undefined,
+      };
+    }),
+    // the Map keeps growing
+    { id: "soon", name: "More places", art: <span className="sd-soon" aria-hidden><StarGlyph size={22} /></span>, state: "soon", note: "On the way" },
+  ];
 
   // Keep Sísí in view: while the sheet is up, the whole world rises just
   // enough that her paws rest a little above the sheet's edge (and settles
@@ -149,32 +124,15 @@ export function SatchelDrawer({
     const row = rowRef.current;
     const on = row?.querySelector<HTMLElement>(".sd-card.is-equipped");
     if (row && on) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
-  }, [open, tab, cards.length]);
+  }, [open, cards.length]);
 
   return (
     <FocusPaper
       open={open}
       onClose={onClose}
       live
-      closeLabel="Close Customize"
-      title={
-        <div className="sd-tabs" role="tablist" aria-label="Customize">
-          {TABS.map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={tab === key}
-              aria-label={label}
-              title={label}
-              className={`sd-tab${tab === key ? " is-on" : ""}`}
-              onClick={() => setTab(key)}
-            >
-              <Icon size={26} />
-            </button>
-          ))}
-        </div>
-      }
+      closeLabel="Close the Map"
+      title={<h2 className="sd-title">Map</h2>}
       headerExtra={
         <span className="sd-balance" ref={(el) => fxAnchorRef("starlightCounter", el)} aria-label={`${balance ?? 0} Starlight`}>
           <StarGlyph size={16} />
@@ -185,7 +143,7 @@ export function SatchelDrawer({
       className="sd-focus"
     >
       {/* the sheet opens with focus here (quietly), not on a tab — so no focus ring shows by itself */}
-      <ul className="sd-row" ref={rowRef} role="tabpanel" tabIndex={-1} data-autofocus aria-label={TABS.find((t) => t.key === tab)?.label}>
+      <ul className="sd-row" ref={rowRef} tabIndex={-1} data-autofocus aria-label="Places">
         {cards.map((c) => (
           <li key={c.id}>
             <button
@@ -197,7 +155,7 @@ export function SatchelDrawer({
             >
               <span className="sd-card-art">
                 {c.art}
-                {c.state !== "owned" && (
+                {(c.state === "equipped" || c.state === "locked") && (
                   <span className="sd-badge" aria-hidden>
                     {c.state === "equipped" ? <IconCheck size={20} /> : <IconLock size={18} />}
                   </span>
@@ -221,7 +179,11 @@ export function SatchelDrawer({
         .sd-focus { max-height: min(54dvh, 440px) !important; }
         .sd-focus .ds-focus-head { padding-top: 22px; }
         .sd-focus .ds-focus-body { padding: 14px 0 calc(var(--space-5) + var(--safe-bottom)); }
-        .sd-tabs { display: flex; gap: 6px; }
+        .sd-title { margin: 0; font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-paper-title); line-height: 1.2; color: var(--sisi-ink); }
+        .sd-soon { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--ink-35); }
+        .sd-card.is-soon .sd-card-art { background: none; }
+        .sd-card.is-soon .sd-card-art::after { box-shadow: none; border: 1.5px dashed var(--ink-14); }
+        .sd-card.is-soon .sd-card-name { color: var(--ink-60); }
         .sd-tab {
           display: inline-flex; align-items: center; justify-content: center;
           width: 56px; height: 48px; border: 0; border-radius: 14px; cursor: pointer;
@@ -291,48 +253,5 @@ export function SatchelDrawer({
         .sd-card.is-equipped .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
       `}</style>
     </FocusPaper>
-  );
-}
-
-/** the meadow each World walks through (until its own pack arrives) */
-const PREVIEW_MEADOW: Record<WorldId, "morning" | "afternoon" | "evening"> = {
-  "morning-meadow": "morning",
-  "cloud-garden": "afternoon",
-  "golden-afternoon": "afternoon",
-  "evening-field": "evening",
-  "quiet-winter": "morning",
-};
-
-/**
- * The World's own preview when its pack has arrived; otherwise a small scene
- * made of the Journey's real layers (its sky, clouds, a far tree and the
- * meadow), in the World's own light — never a flat swatch.
- */
-function WorldPreview({ id }: { id: WorldId }) {
-  const [own, setOwn] = useState(true);
-  const look = WORLD_LOOK[id];
-  const many = look.clouds >= 1.4;
-  return (
-    <span className={`sd-world-thumb sd-scene is-${id}`} aria-hidden style={{ filter: look.grade }}>
-      {own ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="sd-scene-own" src={worldAsset(id, "preview")} alt="" onError={() => setOwn(false)} />
-      ) : (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="sd-scene-sky" src={look.preview} alt="" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="sd-scene-cloud c1" src="/V2/time-of-day/cloud-04-mid-rounded.webp" alt="" />
-          {many && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className="sd-scene-cloud c2" src="/V2/time-of-day/cloud-06-mid-broken.webp" alt="" />
-          )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="sd-scene-tree" src="/V2/time-of-day/tree-far-01.webp" alt="" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="sd-scene-meadow" src={`/V2/time-of-day/meadow-strip-${PREVIEW_MEADOW[id]}.webp`} alt="" />
-        </>
-      )}
-    </span>
   );
 }

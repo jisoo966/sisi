@@ -73,15 +73,16 @@ const KEY = "sisi:starlight-v1";
 const LEGACY_KEY = "sisi:little-lights-v2";
 const EVENT = "sisi:starlight";
 
-/* ── Worlds (thresholds on cumulative Starlight; nothing is spent) ───── */
+/* ── Places (the Map): opened by cumulative Starlight; nothing is spent ── */
+// (still called "worlds" in code: the same unlock, reveal and choice as before)
+// The sky follows the real time of day (and, if chosen, the real weather);
+// a place is where you walk — its ground, path, plants and life together.
 
-export type WorldId = "morning-meadow" | "cloud-garden" | "golden-afternoon" | "evening-field" | "quiet-winter";
+export type WorldId = "quiet-meadow" | "bridge-pond" | "butterfly-forest";
 export const WORLDS: { id: WorldId; name: string; threshold: number }[] = [
-  { id: "morning-meadow", name: "Morning Meadow", threshold: 0 },
-  { id: "cloud-garden", name: "Cloud Garden", threshold: 12 },
-  { id: "golden-afternoon", name: "Golden Afternoon", threshold: 25 },
-  { id: "evening-field", name: "Evening Field", threshold: 40 },
-  { id: "quiet-winter", name: "Quiet Winter", threshold: 60 },
+  { id: "quiet-meadow", name: "Quiet Meadow", threshold: 0 },
+  { id: "bridge-pond", name: "Bridge & Pond", threshold: 12 },
+  { id: "butterfly-forest", name: "Butterfly Forest", threshold: 25 },
 ];
 export function worldsUnlockedAt(balance: number): WorldId[] {
   return WORLDS.filter((w) => balance >= w.threshold).map((w) => w.id);
