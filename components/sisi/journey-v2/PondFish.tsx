@@ -17,8 +17,8 @@ import { BASE_GROUND_SPEED, worldClock } from "@/lib/worldMotion";
  *
  * Each rises and falls 2–4px over 3–5s, out of step. They are spread over a
  * span wider than the screen, unevenly, so 2–4 show at a time with empty
- * water between. Only the open water below the bridge: above the near bank
- * (ground row 684 → 10.9% of its box) and below the piles' feet (19.2%).
+ * water between. Only the open water below the bridge: above the near
+ * bank's grass and below the piles' feet (19.2% of the ground box).
  * Reduced motion: they rest in the water.
  */
 
@@ -40,12 +40,14 @@ const rnd = (i: number, k: number) => {
 /** where the fish travel: wider than the screen, so some water stays empty */
 const SPAN = 2.1; // × the stage width
 const KINDS = [
-  { src: 0, speed: [12, 16], w: [34, 44], depth: [10.8, 13.6], opacity: 1 },
-  { src: 1, speed: [7, 10], w: [36, 46], depth: [11.4, 14.4], opacity: 1 },
-  { src: 0, speed: [4, 6], w: [20, 26], depth: [15, 16.6], opacity: 0.78 },
-  { src: 1, speed: [4, 6], w: [20, 24], depth: [15.2, 16.8], opacity: 0.78 },
-  { src: 0, speed: [12, 16], w: [30, 38], depth: [11, 13], opacity: 1 },
-  { src: 1, speed: [7, 10], w: [34, 42], depth: [12, 14.6], opacity: 1 },
+  // depths: % of the ground box, in the open water between the near bank's
+  // grass tips (~12%) and the bridge piles' feet (19.2%, less a fish's height)
+  { src: 0, speed: [12, 16], w: [34, 44], depth: [12.4, 14.6], opacity: 1 },
+  { src: 1, speed: [7, 10], w: [36, 46], depth: [12.8, 15], opacity: 1 },
+  { src: 0, speed: [4, 6], w: [20, 26], depth: [15.6, 16.8], opacity: 0.78 },
+  { src: 1, speed: [4, 6], w: [20, 24], depth: [15.8, 17], opacity: 0.78 },
+  { src: 0, speed: [12, 16], w: [30, 38], depth: [12.2, 14], opacity: 1 },
+  { src: 1, speed: [7, 10], w: [34, 42], depth: [13, 15.2], opacity: 1 },
 ] as const;
 
 export function PondFish({ srcs, bottom, waterSpeed, waterDrift }: Props) {

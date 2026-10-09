@@ -40,8 +40,11 @@ export type SceneTheme = {
   foregroundSpeed?: number;
   /** one grass line for every hour (else the time-of-day strips) */
   strip?: { src: string; ih: number; bottom: number };
-  /** drawn in front of the fish, with the ground's own transform */
+  /** the near bank, drawn in front of the fish: its art, height (fraction of
+   *  the stage) and rest */
   foreground?: string;
+  foregroundHeight?: number;
+  foregroundBottom?: string;
   fish?: string[];
 };
 
@@ -83,7 +86,14 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     groundDrift: 9,
     // the pond's far bank, painted to its last row
     strip: { src: `${T}/meadow-strip-pond.webp`, ih: 242, bottom: 241 },
-    foreground: `${T}/pond-foreground.webp`,
+    // the near bank, as in the reference: the tall bank art (the same as the
+    // far bank, nearer and larger) along the bottom, so the water's lower edge
+    // is covered (pond-foreground.webp is not used). 15% of the stage: on a
+    // phone there is less room under the deck than in the wide reference, and
+    // a band of open water (and its fish) must stay in view
+    foreground: `${T}/meadow-strip-pond.webp`,
+    foregroundHeight: 0.15,
+    foregroundBottom: "0%",
     fish: [`${T}/fish-coral.webp`, `${T}/fish-ivory.webp`],
   },
 };

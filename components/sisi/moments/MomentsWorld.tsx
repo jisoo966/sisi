@@ -711,7 +711,7 @@ export const MomentsWorld = forwardRef<
               {scene.foreground && (
                 <BandLayer
                   key={`fore-${scene.id}`}
-                  spec={{ kind: "band", key: "pond-fore", src: scene.foreground, ratio: 1, heightPct: 1, bottom: GROUND_BAND_BOTTOM, filter: TOD_GRADE, seam: 2 }}
+                  spec={{ kind: "band", key: "pond-fore", src: scene.foreground, ratio: 1, heightPct: scene.foregroundHeight ?? 1, bottom: scene.foregroundBottom ?? GROUND_BAND_BOTTOM, filter: TOD_GRADE, seam: 2 }}
                   H={H}
                   W={W}
                   register={register}

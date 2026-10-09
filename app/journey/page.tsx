@@ -1254,8 +1254,8 @@ export default function JourneyPage() {
               speed={scene.foregroundSpeed ?? LAYER_SPEED.walkingGround}
               zIndex={4}
               align="bottom"
-              heightPct={1}
-              bottom={GROUND_BOTTOM}
+              heightPct={scene.foregroundHeight ?? 1}
+              bottom={scene.foregroundBottom ?? GROUND_BOTTOM}
               seamOverlap={2}
             />
           )}
