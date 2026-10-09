@@ -1216,7 +1216,8 @@ export default function JourneyPage() {
             zIndex={1}
             align="bottom"
             heightPct={1}
-            bottom={GROUND_BOTTOM}
+            bottom={scene.groundBottom}
+            drift={scene.groundDrift}
             seamOverlap={2}
           />
           {/* the continuous time-of-day grass line, just behind the path */}
@@ -1269,7 +1270,8 @@ export default function JourneyPage() {
             1.15× during the ascent. */}
         <div className="jw-group jw-fore">
           {/* Grass accents — 1.15–1.35×, over the paws, changing often */}
-          <PassingSprites
+          {/* (a pond has its own near bank: no meadow clumps over the water) */}
+          {!scene.foreground && <PassingSprites
             layer="grass"
             role="flora"
             // coral flowers stay a rare accent
@@ -1284,7 +1286,7 @@ export default function JourneyPage() {
             sway
             filter={TOD_GRADE}
             zIndex={1}
-          />
+          />}
           {/* Foreground trees — 1.55–1.9×, rare: one every 5–8 widths, never
               two at once; the trunk may cross Sísí, the canopy stays clear of
               the header and the CTA */}

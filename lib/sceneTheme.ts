@@ -27,6 +27,10 @@ export type SceneTheme = {
   /** the midground's size and rest (as a fraction / a CSS length of the stage) */
   midgroundHeight: number;
   midgroundBottom: string;
+  /** where the ground image rests (the water's top hidden under the deck) */
+  groundBottom: string;
+  /** px/s the ground flows by itself (a pond's water) */
+  groundDrift?: number;
   /** one grass line for every hour (else the time-of-day strips) */
   strip?: { src: string; ih: number; bottom: number };
   /** drawn in front of the fish, with the ground's own transform */
@@ -46,6 +50,7 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     pathBottom: "calc(var(--walking-baseline) - 18.67%)",
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
+    groundBottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
   },
   "trail-bridge-pond": {
     id: "trail-bridge-pond",
@@ -57,6 +62,11 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     // raised (and a touch larger) so the reeds and willows show above the far bank
     midgroundHeight: 0.23,
     midgroundBottom: "calc(var(--walking-baseline) + 2.5%)",
+    // the water begins at row 500 of 768 (34.9% of the box): its top edge sits
+    // just under the deck, never showing above the far bank's plants
+    groundBottom: "calc(var(--walking-baseline) - 34.4%)",
+    // the water flows on its own, leftward, a little faster than the walk
+    groundDrift: 9,
     // the pond's far bank, painted to its last row
     strip: { src: `${T}/meadow-strip-pond.webp`, ih: 242, bottom: 241 },
     foreground: `${T}/pond-foreground.webp`,

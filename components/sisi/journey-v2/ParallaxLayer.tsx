@@ -39,6 +39,9 @@ type Props = {
   seamOverlap?: number;
   ariaLabel?: string;
   className?: string;
+  /** px/s of its own, always (e.g. water flowing): added to the walk, and
+   *  still moving when Sísí stops. Off with reduced motion. */
+  drift?: number;
 };
 
 export function ParallaxLayer({
@@ -54,6 +57,7 @@ export function ParallaxLayer({
   seamOverlap = 1,
   ariaLabel,
   className = "",
+  drift = 0,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const laneRef = useRef<HTMLDivElement>(null);
@@ -88,8 +92,26 @@ export function ParallaxLayer({
     };
   }, [src, seamOverlap, copies, speed]);
 
+  // A layer with a flow of its own: every frame, the walk plus its drift.
+  useEffect(() => {
+    if (!drift || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const tick = (now: number) => {
+      const lane = laneRef.current;
+      const tile = tileRef.current;
+      if (lane && tile > 0) {
+        const travelled = worldClock().getDistance() * (speed / BASE_GROUND_SPEED) + drift * (now / 1000);
+        lane.style.transform = `translate3d(${-(((travelled % tile) + tile) % tile)}px,0,0)`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [drift, speed]);
+
   // Drive the transform from the shared clock.
   useEffect(() => {
+    if (drift) return; // (moved by its own frame loop above)
     let animating = false;
     return worldClock().subscribe((f) => {
       const lane = laneRef.current;
@@ -105,7 +127,7 @@ export function ParallaxLayer({
         lane.style.willChange = moving ? "transform" : "auto";
       }
     });
-  }, [speed]);
+  }, [speed, drift]);
 
   const onImgError = () => {
     if (containerRef.current) containerRef.current.style.display = "none";
