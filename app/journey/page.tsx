@@ -364,6 +364,21 @@ export default function JourneyPage() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   // Travel satchel — optional customization drawer.
   const [satchelOpen, setSatchelOpen] = useState(false);
+  /** the first time Customize opens: Sísí says how Starlight grows, above the sheet */
+  const [starlightLine, setStarlightLine] = useState(false);
+  useEffect(() => {
+    if (!satchelOpen) {
+      if (starlightLine) {
+        markHint("starlightTold"); // said once (closing the sheet counts as heard)
+        setStarlightLine(false);
+      }
+      return;
+    }
+    if (hintDone("starlightTold")) return;
+    const t = setTimeout(() => setStarlightLine(true), 650); // once the sheet has risen
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [satchelOpen]);
   // Camera → keep a Moment or Sign.
   const [momentOpen, setMomentOpen] = useState(false);
   // Create a Star (+ Vision Postcard).
@@ -1536,11 +1551,24 @@ export default function JourneyPage() {
         {/* beside Sísí: the one-time "Tap Sísí" hint, or some days a thought */}
         <CompanionCues
           // the first-time words are said whatever the hour
-          visible={isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2}
+          visible={
+            (isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2) ||
+            // Customize, the first time: her words about Starlight, above the sheet
+            (starlightLine && satchelOpen && isWalking)
+          }
           onTalk={(opening) => openChat(opening)}
           onSpeaking={setSpeaking}
           line={
-            first === "hello" || first === "walk" || first === "tap"
+            starlightLine && satchelOpen
+              ? {
+                  key: "starlight-told",
+                  text: "Our time together gathers Starlight, up to three a day. It’s never spent. It opens new places, and they stay yours.",
+                  onDismiss: () => {
+                    markHint("starlightTold");
+                    setStarlightLine(false);
+                  },
+                }
+              : first === "hello" || first === "walk" || first === "tap"
               ? {
                   key: `first-${first}`,
                   text:

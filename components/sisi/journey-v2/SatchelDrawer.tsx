@@ -65,7 +65,6 @@ export function SatchelDrawer({
 
   // only the very next World shows how far away it is; the rest simply wait
   const nextWorld = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => w.threshold > (balance ?? 0));
-  const [howOpen, setHowOpen] = useState(false);
   const cards: Card[] =
     tab === "world"
       ? WORLDS.map((w) => {
@@ -210,18 +209,7 @@ export function SatchelDrawer({
           </li>
         ))}
       </ul>
-      {/* how it grows (and the gentle daily limit) lives here, quietly — never as a goal */}
-      <div className="sd-how">
-        <button type="button" className="ds-text-action sd-how-toggle" aria-expanded={howOpen} onClick={() => setHowOpen((o) => !o)}>
-          How Starlight grows
-        </button>
-        {howOpen && (
-          <p className="sd-how-text">
-            Starlight gathers from time with Sísí: picturing a wish, walking with it, a good thing or a small step — up to 3 a day.
-            It is never spent. It opens new worlds, and whatever opens stays yours.
-          </p>
-        )}
-      </div>
+      {/* how Starlight grows: Sísí says it herself, once, above the sheet (Journey) */}
       <style jsx global>{`
         /* the world rises while the sheet is up (see the lift effect) */
         .journey-stage-v2 .jw-group { transition: translate 460ms var(--ease-sisi); }
@@ -244,9 +232,6 @@ export function SatchelDrawer({
         .sd-balance { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 6px; color: var(--sisi-ink); }
         .sd-balance-n { font-family: var(--font-editorial); font-size: 17px; }
         .sd-balance-word { font-family: var(--font-ui); font-size: 13px; color: var(--ink-60); letter-spacing: 0.01em; }
-        .sd-how { padding: 6px var(--focus-pad) 0; }
-        .sd-how-toggle { padding-left: 0 !important; min-height: 40px; font-size: 14px !important; color: var(--ink-60) !important; }
-        .sd-how-text { margin: 0 0 6px; font-family: var(--font-editorial); font-size: 14px; line-height: 1.45; color: var(--ink-80); max-width: 36ch; }
 
         /* one row of big cards that bleeds to the sheet's edges */
         .sd-row {
