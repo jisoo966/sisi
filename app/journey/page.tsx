@@ -1185,7 +1185,7 @@ export default function JourneyPage() {
           <ParallaxLayer
             key={`mid-${scene.id}`}
             src={scene.midground}
-            speed={LAYER_SPEED.midgroundVegetation}
+            speed={scene.midgroundSpeed ?? LAYER_SPEED.midgroundVegetation}
             zIndex={2}
             align="bottom"
             heightPct={scene.midgroundHeight}
@@ -1212,7 +1212,7 @@ export default function JourneyPage() {
             className="tod-grade"
             key={`ground-${scene.id}`}
             src={scene.ground}
-            speed={LAYER_SPEED.walkingGround}
+            speed={scene.groundSpeed ?? LAYER_SPEED.walkingGround}
             zIndex={1}
             align="bottom"
             heightPct={1}
@@ -1221,7 +1221,7 @@ export default function JourneyPage() {
             seamOverlap={2}
           />
           {/* the continuous time-of-day grass line, just behind the path */}
-          <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} />
+          <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} speed={scene.stripSpeed} />
           <ParallaxLayer
             className="jw-path tod-grade"
             key={`path-${scene.id}`}
@@ -1244,12 +1244,14 @@ export default function JourneyPage() {
             }}
           />
           {/* the pond's own life: fish below the bridge, then its low near bank */}
-          {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BOTTOM} />}
+          {scene.fish && (
+            <PondFish srcs={scene.fish} bottom={GROUND_BOTTOM} waterSpeed={scene.groundSpeed ?? LAYER_SPEED.walkingGround} waterDrift={scene.groundDrift ?? 0} />
+          )}
           {scene.foreground && (
             <ParallaxLayer
               className="tod-grade jw-pond-fore"
               src={scene.foreground}
-              speed={LAYER_SPEED.walkingGround}
+              speed={scene.foregroundSpeed ?? LAYER_SPEED.walkingGround}
               zIndex={4}
               align="bottom"
               heightPct={1}

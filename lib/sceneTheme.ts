@@ -31,6 +31,13 @@ export type SceneTheme = {
   groundBottom: string;
   /** px/s the ground flows by itself (a pond's water) */
   groundDrift?: number;
+  /** px/s while walking, when it differs from the path's (a pond's water) */
+  groundSpeed?: number;
+  midgroundSpeed?: number;
+  /** the grass line behind the path (the far bank) */
+  stripSpeed?: number;
+  /** the near bank in front of the water */
+  foregroundSpeed?: number;
   /** one grass line for every hour (else the time-of-day strips) */
   strip?: { src: string; ih: number; bottom: number };
   /** drawn in front of the fish, with the ground's own transform */
@@ -65,7 +72,14 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     // the water begins at row 500 of 768 (34.9% of the box): its top edge sits
     // just under the deck, never showing above the far bank's plants
     groundBottom: "calc(var(--walking-baseline) - 34.4%)",
-    // the water flows on its own, leftward, a little faster than the walk
+    // speeds in step with the bridge (32 px/s, locked to Sísí's paws):
+    //   far reeds ⅓ · far bank ~0.8 · bridge 1 · near bank 1⅓
+    midgroundSpeed: 11,
+    stripSpeed: 26,
+    foregroundSpeed: 43,
+    // the water: "flow" (default) runs a little faster than the bridge and on
+    // when Sísí stops; "calm" (?water=calm) drifts slower than the bridge
+    groundSpeed: 32,
     groundDrift: 9,
     // the pond's far bank, painted to its last row
     strip: { src: `${T}/meadow-strip-pond.webp`, ih: 242, bottom: 241 },
@@ -88,13 +102,29 @@ export function sceneThemeLocal(): SceneThemeId {
   }
 }
 
+/** comparing the pond's water (for now): ?water=flow | ?water=calm, remembered */
+const WATER_KEY = "sisi:water";
+function waterMode(): "flow" | "calm" {
+  try {
+    const q = new URLSearchParams(window.location.search).get("water");
+    if (q === "flow" || q === "calm") localStorage.setItem(WATER_KEY, q);
+    return localStorage.getItem(WATER_KEY) === "calm" ? "calm" : "flow";
+  } catch {
+    return "flow";
+  }
+}
+const CALM_WATER = { groundSpeed: 21, groundDrift: 4 };
+
 export function useSceneTheme(): SceneTheme {
   const [id, setId] = useState<SceneThemeId>("trail-plain");
+  const [calm, setCalm] = useState(false);
   useEffect(() => {
+    setCalm(waterMode() === "calm");
     setId(sceneThemeLocal());
     const h = (e: Event) => setId(((e as CustomEvent<SceneThemeId>).detail ?? sceneThemeLocal()) as SceneThemeId);
     window.addEventListener(SCENE_THEME_EVENT, h);
     return () => window.removeEventListener(SCENE_THEME_EVENT, h);
   }, []);
-  return SCENE_THEMES[id] ?? SCENE_THEMES["trail-plain"];
+  const t = SCENE_THEMES[id] ?? SCENE_THEMES["trail-plain"];
+  return calm && t.fish ? { ...t, ...CALM_WATER } : t;
 }

@@ -1,20 +1,35 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { BASE_GROUND_SPEED, worldClock } from "@/lib/worldMotion";
 
 /**
  * PondFish — a few small fish in the pond (Bridge & Pond theme).
  *
- * The art is one still, right-facing fish each (256×128); they swim by
- * moving: each crosses the pond at its own depth and pace, some to the left
- * (mirrored), with a slow, gentle sway. Placed in the ground's own box
- * (same height and bottom as the ground layer), inside the water rows
- * — only the open water below the bridge, between the piles' feet and the
- * near bank. All drift one way, with the current (leftward).
- * Reduced motion: they simply rest in the water.
+ * The pond flows left; the fish face right and swim against it. On screen
+ * the two add up: water −41 px/s + a coral fish's own +14 = drifting left at
+ * 27 — while Sísí walks she slowly passes them; when she stops, the water
+ * slows to its own drift and the fish make headway to the right.
+ *
+ *   coral        12–16 px/s   lively
+ *   ivory         7–10 px/s   unhurried
+ *   far, small    4–6 px/s    small, quiet, a little higher (nearer the bridge)
+ *
+ * Each rises and falls 2–4px over 3–5s, out of step. They are spread over a
+ * span wider than the screen, unevenly, so 2–4 show at a time with empty
+ * water between. Only the open water below the bridge: above the near bank
+ * (ground row 684 → 10.9% of its box) and below the piles' feet (19.2%).
+ * Reduced motion: they rest in the water.
  */
 
-type Props = { srcs: string[]; bottom: string; count?: number };
+type Props = {
+  srcs: string[];
+  /** the ground box's bottom (the fish depths are measured in it) */
+  bottom: string;
+  /** the water's own speed while walking, and its drift (px/s) */
+  waterSpeed: number;
+  waterDrift: number;
+};
 
 // deterministic, so a reload looks the same (and server = client)
 const rnd = (i: number, k: number) => {
@@ -22,66 +37,105 @@ const rnd = (i: number, k: number) => {
   return x - Math.floor(x);
 };
 
-export function PondFish({ srcs, bottom, count = 5 }: Props) {
+/** where the fish travel: wider than the screen, so some water stays empty */
+const SPAN = 2.1; // × the stage width
+const KINDS = [
+  { src: 0, speed: [12, 16], w: [34, 44], depth: [10.8, 13.6], opacity: 1 },
+  { src: 1, speed: [7, 10], w: [36, 46], depth: [11.4, 14.4], opacity: 1 },
+  { src: 0, speed: [4, 6], w: [20, 26], depth: [15, 16.6], opacity: 0.78 },
+  { src: 1, speed: [4, 6], w: [20, 24], depth: [15.2, 16.8], opacity: 0.78 },
+  { src: 0, speed: [12, 16], w: [30, 38], depth: [11, 13], opacity: 1 },
+  { src: 1, speed: [7, 10], w: [34, 42], depth: [12, 14.6], opacity: 1 },
+] as const;
+
+export function PondFish({ srcs, bottom, waterSpeed, waterDrift }: Props) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const fishRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const fish = useMemo(
     () =>
-      Array.from({ length: count }, (_, i) => {
-        const left = true; // all with the pond's current: leftward, as the ground flows
-        const dur = 26 + rnd(i, 2) * 22; // s to cross the screen
+      KINDS.map((k, i) => {
+        const lerp = (r: readonly [number, number], n: number) => r[0] + (r[1] - r[0]) * rnd(i, n);
         return {
-          src: srcs[i % srcs.length],
-          left,
-          w: 28 + Math.round(rnd(i, 3) * 18), // 28–46 css px
-          // % of the ground box above its bottom. Only the open water under the
-          // bridge: above the near bank (row 684 → 10.9%) and below the piles'
-          // feet (path row 590 → 19.2% of this box), less a fish's own height
-          depth: 10.8 + rnd(i, 4) * 4.6,
-          dur,
-          delay: -rnd(i, 5) * dur, // already on their way
-          sway: 2.6 + rnd(i, 6) * 1.8,
-          restX: 8 + rnd(i, 7) * 84, // reduced motion: where each rests
+          src: srcs[k.src % srcs.length],
+          speed: lerp(k.speed, 1),
+          w: Math.round(lerp(k.w, 2)),
+          depth: lerp(k.depth, 3),
+          opacity: k.opacity,
+          // uneven starts along the span (gaps of open water between)
+          at: (i / KINDS.length + (rnd(i, 4) - 0.5) * 0.12) * SPAN,
+          bob: 2 + rnd(i, 5) * 2, // px
+          bobS: 3 + rnd(i, 6) * 2, // s
+          bobDelay: -rnd(i, 7) * 5,
         };
       }),
-    [srcs, count],
+    [srcs],
   );
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      const W = boxRef.current?.offsetWidth ?? 0;
+      fish.forEach((f, i) => {
+        const el = fishRefs.current[i];
+        if (el) el.style.transform = `translate3d(${(((f.at % 1) + 1) % 1) * W}px,0,0)`;
+      });
+      return;
+    }
+    let raf = 0;
+    const tick = (now: number) => {
+      const W = boxRef.current?.offsetWidth ?? 0;
+      if (W > 0) {
+        const t = now / 1000;
+        // how far the water has carried things (the same as the water layer)
+        const water = worldClock().getDistance() * (waterSpeed / BASE_GROUND_SPEED) + waterDrift * t;
+        const span = W * SPAN;
+        fish.forEach((f, i) => {
+          const el = fishRefs.current[i];
+          if (!el) return;
+          const x = f.at * W + f.speed * t - water; // swimming right, carried left
+          const wrapped = (((x % span) + span) % span) - f.w; // in (−w, span − w]
+          el.style.transform = `translate3d(${wrapped.toFixed(1)}px,0,0)`;
+        });
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [fish, waterSpeed, waterDrift]);
+
   return (
-    <div className="pf-box" style={{ bottom }} aria-hidden>
+    <div ref={boxRef} className="pf-box" style={{ bottom }} aria-hidden>
       {fish.map((f, i) => (
         <span
           key={i}
-          className={`pf-fish${f.left ? " is-left" : ""}`}
-          style={
-            {
-              bottom: `${f.depth.toFixed(2)}%`,
-              width: f.w,
-              animationDuration: `${f.dur.toFixed(1)}s`,
-              animationDelay: `${f.delay.toFixed(1)}s`,
-              ["--rest-x" as string]: `${f.restX.toFixed(1)}%`,
-            } as React.CSSProperties
-          }
+          ref={(el) => {
+            fishRefs.current[i] = el;
+          }}
+          className="pf-fish"
+          style={{ bottom: `${f.depth.toFixed(2)}%`, width: f.w, opacity: f.opacity }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={f.src} alt="" draggable={false} style={{ animationDuration: `${f.sway.toFixed(2)}s` }} />
+          <img
+            src={f.src}
+            alt=""
+            draggable={false}
+            style={
+              {
+                animationDuration: `${f.bobS.toFixed(2)}s`,
+                animationDelay: `${f.bobDelay.toFixed(2)}s`,
+                ["--bob" as string]: `${f.bob.toFixed(1)}px`,
+              } as React.CSSProperties
+            }
+          />
         </span>
       ))}
       <style jsx global>{`
         /* the ground's box: as tall as the stage, resting where the ground rests */
         .pf-box { position: absolute; left: 0; right: 0; height: 100%; pointer-events: none; overflow: hidden; z-index: 3; }
-        .pf-fish {
-          position: absolute; left: 0; display: block; aspect-ratio: 2 / 1;
-          animation-name: pf-swim-right; animation-timing-function: linear; animation-iteration-count: infinite;
-          will-change: transform;
-        }
-        .pf-fish.is-left { animation-name: pf-swim-left; }
-        .pf-fish img { display: block; width: 100%; height: 100%; animation: pf-sway ease-in-out infinite alternate; }
-        .pf-fish.is-left img { scale: -1 1; }
-        @keyframes pf-swim-right { from { transform: translateX(-60px); } to { transform: translateX(calc(100vw + 60px)); } }
-        @keyframes pf-swim-left { from { transform: translateX(calc(100vw + 60px)); } to { transform: translateX(-60px); } }
-        @keyframes pf-sway { from { translate: 0 -1.5px; rotate: -2deg; } to { translate: 0 1.5px; rotate: 2deg; } }
-        @media (prefers-reduced-motion: reduce) {
-          .pf-fish { animation: none; left: var(--rest-x); }
-          .pf-fish img { animation: none; }
-        }
+        .pf-fish { position: absolute; left: 0; display: block; aspect-ratio: 2 / 1; will-change: transform; }
+        /* the art faces right: they swim upstream */
+        .pf-fish img { display: block; width: 100%; height: 100%; animation: pf-bob ease-in-out infinite alternate; }
+        @keyframes pf-bob { from { translate: 0 calc(var(--bob) / -2); rotate: -1.5deg; } to { translate: 0 calc(var(--bob) / 2); rotate: 1.5deg; } }
+        @media (prefers-reduced-motion: reduce) { .pf-fish img { animation: none; } }
       `}</style>
     </div>
   );

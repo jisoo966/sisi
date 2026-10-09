@@ -34,11 +34,14 @@ export function MeadowStrip({
   phase,
   zIndex = 2,
   override,
+  speed = LAYER_SPEED.walkingGround,
 }: {
   phase: SkyPhase | null;
   zIndex?: number;
   /** a theme's own grass line, the same at every hour (lib/sceneTheme) */
   override?: { src: string; ih: number; bottom: number };
+  /** px/s (the ground's, unless a theme says otherwise) */
+  speed?: number;
 }) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const nextId = useRef(1);
@@ -80,7 +83,7 @@ export function MeadowStrip({
               key={S.src}
               className={override ? "tod-grade" : undefined}
               src={S.src}
-              speed={LAYER_SPEED.walkingGround}
+              speed={speed}
               align="bottom"
               heightPct={h}
               // painted bottom exactly on the baseline (tucked under the path)

@@ -707,7 +707,7 @@ export const MomentsWorld = forwardRef<
               {tod && <BandLayer key={`strip-${tod.phase}-${scene.id}`} spec={stripBand(tod.phase, scene.strip)} H={H} W={W} register={register} />}
               <BandLayer key={`path-${scene.id}`} spec={L} H={H} W={W} register={register} />
               {/* the pond's fish, then its low near bank (Bridge & Pond) */}
-              {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BAND_BOTTOM} />}
+              {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BAND_BOTTOM} waterSpeed={scene.groundSpeed ?? 32} waterDrift={scene.groundDrift ?? 0} />}
               {scene.foreground && (
                 <BandLayer
                   key={`fore-${scene.id}`}
