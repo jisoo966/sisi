@@ -60,6 +60,8 @@ type Band = {
   filter?: string;
   /** a CSS mask (e.g. a soft lower edge) */
   mask?: string;
+  /** stacking among the bands (default 1) */
+  z?: number;
   /** px each copy overlaps the next — must match the Journey's layer so
    *  the meadow lines up exactly when the two pages hand over */
   seam: number;
@@ -656,7 +658,15 @@ export const MomentsWorld = forwardRef<
           : L.key === "midground"
             ? { ...L, src: scene.midground, heightPct: scene.midgroundHeight, bottom: scene.midgroundBottom }
             : L.key === "ground"
-              ? { ...L, src: scene.ground, bottom: scene.groundBottom, heightPct: scene.groundHeight ?? L.heightPct }
+              ? {
+                  ...L,
+                  src: scene.ground,
+                  bottom: scene.groundBottom,
+                  heightPct: scene.groundHeight ?? L.heightPct,
+                  ...(scene.groundOverVerge
+                    ? { z: 3, mask: `linear-gradient(to bottom, transparent ${(scene.groundOverVerge * 100).toFixed(2)}%, #000 ${(scene.groundOverVerge * 100).toFixed(2)}%)` }
+                    : {}),
+                }
               : L.key === "path"
                 ? { ...L, src: scene.path, bottom: scene.pathBottom }
                 : L,
@@ -716,7 +726,7 @@ export const MomentsWorld = forwardRef<
               {scene.verge && (
                 <BandLayer
                   key={`verge-${scene.id}`}
-                  spec={{ kind: "band", key: "verge", src: scene.verge.src, ratio: 1, heightPct: scene.verge.heightPct, bottom: scene.verge.bottom, filter: TOD_GRADE, seam: 2, mask: "linear-gradient(to bottom, #000 72%, transparent 100%)" }}
+                  spec={{ kind: "band", key: "verge", src: scene.verge.src, ratio: 1, heightPct: scene.verge.heightPct, bottom: scene.verge.bottom, filter: TOD_GRADE, seam: 2 }}
                   H={H}
                   W={W}
                   register={register}
@@ -1112,7 +1122,7 @@ function BandLayer({ spec, H, W, register }: { spec: Band; H: number; W: number;
     <div
       className="mw-band"
       aria-hidden
-      style={{ bottom: spec.bottom, height: h, opacity: spec.opacity, filter: spec.filter, zIndex: 1, ...(spec.mask ? { maskImage: spec.mask, WebkitMaskImage: spec.mask } : {}) }}
+      style={{ bottom: spec.bottom, height: h, opacity: spec.opacity, filter: spec.filter, zIndex: spec.z ?? 1, ...(spec.mask ? { maskImage: spec.mask, WebkitMaskImage: spec.mask } : {}) }}
     >
       <div ref={lane} className="mw-lane">
         {Array.from({ length: copies }).map((_, i) => (

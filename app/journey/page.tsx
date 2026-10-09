@@ -1275,7 +1275,9 @@ export default function JourneyPage() {
             key={`ground-${scene.id}`}
             src={scene.ground}
             speed={scene.groundSpeed ?? LAYER_SPEED.walkingGround}
-            zIndex={1}
+            // flowers resting on the verge: in front of it, trimmed above
+            zIndex={scene.groundOverVerge ? 3 : 1}
+            maskImage={scene.groundOverVerge ? `linear-gradient(to bottom, transparent ${(scene.groundOverVerge * 100).toFixed(2)}%, #000 ${(scene.groundOverVerge * 100).toFixed(2)}%)` : undefined}
             align="bottom"
             heightPct={scene.groundHeight ?? 1}
             bottom={scene.groundBottom}
@@ -1297,8 +1299,6 @@ export default function JourneyPage() {
               align="bottom"
               heightPct={scene.verge.heightPct}
               bottom={scene.verge.bottom}
-              // its straight lower edge melts into the flowers below
-              maskImage="linear-gradient(to bottom, #000 72%, transparent 100%)"
               seamOverlap={2}
             />
           )}

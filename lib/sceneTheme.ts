@@ -37,6 +37,9 @@ export type SceneTheme = {
   groundHeight?: number;
   /** a verge just below the path (the near side's leaf tips and flowers) */
   verge?: { src: string; heightPct: number; bottom: string };
+  /** the ground is drawn in front of the verge (its flowers rest on it),
+   *  trimmed above this row fraction of its image (its sparse top) */
+  groundOverVerge?: number;
   /** a solid colour behind the ground, from the bottom up to the path, so a
    *  backdrop never shows through gaps between its leaves */
   floorFill?: string;
@@ -135,14 +138,21 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     pathBottom: "calc(var(--walking-baseline) - 18.02%)",
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
-    // the one front layer: the forest floor's flowers, starting right at the
-    // clover's lower edge (row ~620 of 768 there) and running off the bottom
+    // (the forest floor itself stays behind the clover and the flowers)
     groundHeight: 1.04,
-    groundBottom: "calc(var(--walking-baseline) - 30.3%)",
+    groundBottom: "calc(var(--walking-baseline) - 29.75%)",
+    // the one front layer: the forest's flower bank (flowers and leaf tips on
+    // top, 2172×242) resting on the clover's lower half, down to the bottom
+    foreground: `${F}/meadow-strip-forest.webp`,
+    foregroundHeight: 0.224,
+    foregroundBottom: "0%",
     // the clover (2000×337, Jisoo's) comes up over the path's lower edge, so
     // Sísí walks on the path, not on a shelf: its full leaves (from row ~70)
     // stop just below her paws, only the tips reach the path
-    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.12, bottom: "calc(var(--walking-baseline) - 10.3%)" },
+    // like the pond's water: the clover is the whole band under the path, from
+    // just over its lower edge down to the bottom of the screen, so nothing
+    // shows between it and the flower bank resting in front of it
+    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.3, bottom: "calc(var(--walking-baseline) - 28.3%)" },
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
