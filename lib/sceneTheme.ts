@@ -152,7 +152,9 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     // like the pond's water: the clover is the whole band under the path, from
     // just over its lower edge down to the bottom of the screen, so nothing
     // shows between it and the flower bank resting in front of it
-    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.3, bottom: "calc(var(--walking-baseline) - 28.3%)" },
+    // its full leaves (from row ~70 of 337) begin under the path itself
+    // (1% above its lower edge, hidden by it): no gap between path and clover
+    verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.3, bottom: "calc(var(--walking-baseline) - 24.7%)" },
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
