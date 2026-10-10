@@ -97,12 +97,13 @@ export default function RootLayout({
       <body className="bg-paper overflow-x-hidden">
         <ServiceWorkerRegister />
         <BackgroundMusic />
-        {/* Phone-frame — 데스크탑에서만 폰 크기 constraint.
+        {/* Phone-frame — 데스크탑(마우스, 넓은 화면)에서만 폰 크기 constraint (globals.css .phone-frame).
+             폰·태블릿은 화면 폭이 몇이든 꽉 채움 (갤럭시처럼 430px보다 넓은 폰에서도 양옆이 비지 않게).
              - 모바일 (< 500px): 그냥 full width, transform 없음 (iOS 터치 이벤트 안전)
              - 데스크탑 (>= 500px): 430px 중앙, transform으로 fixed 요소들도 wrapper 안에 갇힘
              이렇게 media query로 나눠야 모바일에서 nav/버튼 터치 정상 작동.
              모바일에선 bg 투명 → 각 페이지가 body 색으로 safe area 채움. */}
-        <div className="phone-frame relative mx-auto min-h-dvh w-full max-w-[430px] md:bg-paper md:shadow-[0_0_80px_rgba(16,45,50,0.15)]">
+        <div className="phone-frame relative mx-auto min-h-dvh w-full">
           {children}
           {/* Overlays (modals, paper sheets, toasts) render here: outside every
               transformed world container, inside the phone frame on desktop. */}

@@ -591,3 +591,11 @@ html.tour-moments .ds-nav-tab--moments { border-radius: 16px; animation: tourGlo
 .first-kept-wish { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--font-ui); font-size: var(--text-meta); letter-spacing: 0.02em; color: var(--ink-60); }
 .first-kept-text { margin: var(--space-3) 0 var(--space-2); font-family: var(--font-editorial); font-size: var(--text-dialogue); line-height: var(--leading-dialogue); text-wrap: pretty; }
 .first-kept-meta { margin: 0 0 var(--space-5); font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); }
+
+/* The app's frame: on a phone or tablet it fills the screen, whatever its
+   width (many Galaxy phones are wider than 430px). Only on a computer (a fine
+   pointer and a wide window) does it become a phone-sized column. */
+.phone-frame { max-width: none; }
+@media (hover: hover) and (pointer: fine) and (min-width: 500px) {
+  .phone-frame { max-width: 430px; background: var(--sisi-paper, #f5efe6); box-shadow: 0 0 80px rgba(16, 45, 50, 0.15); }
+}
