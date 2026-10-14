@@ -111,10 +111,11 @@ export function EveningReflection({
         )}
       </div>
       <style jsx global>{`
-        .ev-body { text-align: center; }
+        /* left, as every paper in the app */
+        .ev-body { text-align: left; }
         .ev-title { margin: 4px 0 16px; }
         .ev-input { text-align: left; }
-        .ev-plus { display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title); margin: 0 0 8px; }
+        .ev-plus { display: flex; align-items: center; justify-content: flex-start; gap: 8px; font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-screen-title); margin: 0 0 8px; }
         .ev-plus img { width: 28px; height: 28px; }
       `}</style>
     </FocusPaper>
