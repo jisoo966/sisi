@@ -386,7 +386,7 @@ export function SatchelDrawer({
               if (draft) endPreview(); // a preview ends with any other tap
             }}
           >
-            <t.Icon size={24} />
+            <t.Icon size={28} />
           </button>
         ))}
       </div>
@@ -435,7 +435,7 @@ export function SatchelDrawer({
           ))}
         </div>
       )}
-      <div className="sd-foot">{bar}</div>
+      {bar && <div className="sd-foot">{bar}</div>}
       <style jsx global>{`
         /* the world rises while the sheet is up (see the lift effect) */
         .journey-stage-v2 .jw-group { transition: translate 460ms var(--ease-sisi); }
@@ -444,7 +444,7 @@ export function SatchelDrawer({
         .journey-stage-v2 .cc-root, .journey-stage-v2 .cc-head, .journey-stage-v2 .sisi-speak-lines { transition: translate 460ms var(--ease-sisi); }
         html.sd-lifting .journey-stage-v2 .cc-root, html.sd-lifting .journey-stage-v2 .cc-head, html.sd-lifting .journey-stage-v2 .sisi-speak-lines { translate: 0 calc(-1 * var(--sd-lift, 0px)); }
         /* a low sheet: Sísí and the world stay in view above it */
-        .sd-focus { max-height: min(54dvh, 440px) !important; }
+        .sd-focus { max-height: min(64dvh, 480px) !important; }
         .sd-focus .ds-focus-head { padding-top: 22px; }
         .sd-focus .ds-focus-body { padding: 14px 0 calc(var(--space-5) + var(--safe-bottom)); }
         .sd-title { margin: 0; font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-paper-title); line-height: 1.2; color: var(--sisi-ink); }
@@ -475,13 +475,13 @@ export function SatchelDrawer({
         .sd-row::-webkit-scrollbar { display: none; }
         .sd-row > li { flex: none; scroll-snap-align: center; }
         .sd-card {
-          display: flex; flex-direction: column; align-items: center; gap: 4px; width: 132px;
+          display: flex; flex-direction: column; align-items: center; gap: 4px; width: 148px;
           padding: 0; border: 0; background: none; color: var(--sisi-ink); font: inherit; cursor: pointer;
           -webkit-tap-highlight-color: transparent;
         }
         .sd-card[aria-disabled="true"] { cursor: default; }
         .sd-card-art {
-          position: relative; display: block; width: 132px; height: 112px; overflow: hidden;
+          position: relative; display: block; width: 148px; height: 128px; overflow: hidden;
           border-radius: 18px; background: var(--ink-08);
           transition: transform var(--motion-instant) ease;
         }
@@ -520,7 +520,9 @@ export function SatchelDrawer({
         .sd-card-note { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .sd-card.is-equipped .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         /* the four kinds of things, always in this order */
-        .sd-tabs { display: flex; gap: 6px; padding: 0 var(--focus-pad) 10px; }
+        /* the four kinds, spread across the sheet (big, easy to hit) */
+        .sd-tabs { display: flex; gap: 8px; padding: 0 var(--focus-pad) 12px; }
+        .sd-tabs .sd-tab { flex: 1; width: auto; height: 52px; }
         .sd-tabs::-webkit-scrollbar { display: none; }
         .sd-tabtext {
           flex: none; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
@@ -533,7 +535,7 @@ export function SatchelDrawer({
         .sd-card.is-on .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         .sd-card.is-away .sd-card-art { opacity: 0.45; }
         .sd-card.is-away .sd-card-name { color: var(--ink-60); }
-        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 112px; line-height: 1.25; }
+        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 140px; line-height: 1.25; }
         .sd-card-img.is-trees, .sd-card-img.is-lives { object-fit: contain; padding: 10px; box-sizing: border-box; }
         .sd-card-img.is-flowers { object-fit: cover; object-position: center bottom; }
         .sd-none { display: block; width: 100%; height: 100%; }
@@ -550,7 +552,7 @@ export function SatchelDrawer({
         .sd-colour.is-ivory .sd-dot { background: #f4ecd8; }
         .sd-colour.is-lavender .sd-dot { background: #c9b6dc; }
         /* the bar: what the tap would do, and the way back */
-        .sd-foot { min-height: 52px; padding: 10px var(--focus-pad) 0; display: flex; align-items: center; }
+        .sd-foot { padding: 12px var(--focus-pad) 0; display: flex; align-items: center; }
         .sd-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
         .sd-bar-end { display: inline-flex; align-items: center; gap: 10px; }
         .sd-bar-note, .sd-msg { font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
@@ -558,7 +560,6 @@ export function SatchelDrawer({
         .sd-msg.is-done { color: var(--sisi-ink); animation: sd-in 360ms var(--ease-sisi) both; }
         .sd-balance-n { animation: sd-in 420ms var(--ease-sisi) both; }
         @keyframes sd-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-        .sd-focus { max-height: min(62dvh, 480px) !important; }
       `}</style>
     </FocusPaper>
   );
