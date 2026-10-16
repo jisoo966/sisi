@@ -196,6 +196,13 @@ export function SatchelDrawer({
       <StarGlyph size={12} /> {it.price}
     </>
   );
+  // tried on but not enough yet: the card itself says how much more
+  const shortNote = (it: ShopItem) =>
+    d.focus === it.id && it.price > balance ? (
+      <span className="sd-short" role="status">
+        <StarGlyph size={12} /> {it.price - balance} more needed
+      </span>
+    ) : null;
   const img = (src: string, kind: ItemKind | "none") => (
     // eslint-disable-next-line @next/next/no-img-element
     <img className={`sd-card-img is-${kind}`} src={src} alt="" draggable={false} />
@@ -219,7 +226,7 @@ export function SatchelDrawer({
       on: on && !away,
       owned: mine,
       away,
-      note: away ? it.elsewhere : on && mine ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : priceNote(it),
+      note: away ? it.elsewhere : on && mine ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : shortNote(it) ?? priceNote(it),
       onPick: pick,
     };
   };
@@ -237,7 +244,7 @@ export function SatchelDrawer({
         art: img(WORLD_LOOK[w.id].preview, "place"),
         on: d.place === w.id,
         owned: mine,
-        note: applied.place === w.id ? "Walking here" : mine ? "Yours" : it ? priceNote(it) : "",
+        note: applied.place === w.id ? "Walking here" : mine ? "Yours" : it ? (shortNote(it) ?? priceNote(it)) : "",
         onPick: (el) => tapPlace(w.id, el),
       };
     });
@@ -294,7 +301,8 @@ export function SatchelDrawer({
       // paws are without any lift
       const sheetTop = window.innerHeight - sheet.offsetHeight;
       const current = el.classList.contains("sd-lifting") ? parseFloat(el.style.getPropertyValue("--sd-lift") || "0") : 0;
-      const lift = Math.max(0, Math.round(cat.bottom + current - (sheetTop - 14)));
+      // her paws rest a clear step above the sheet, so the place shows around her
+      const lift = Math.max(0, Math.round(cat.bottom + current - (sheetTop - 30)));
       el.style.setProperty("--sd-lift", `${lift}px`);
       el.classList.add("sd-lifting");
     };
@@ -319,25 +327,16 @@ export function SatchelDrawer({
 
   const showColours = tab === "lives" && d.look.butterflies !== null;
   // the bar shows only for what is being tried before buying (owned things change at once)
-  const bar = focusItem ? (
-    <div className="sd-bar">
-      <span className="sd-bar-note">{focusItem.name}</span>
-      {need > 0 ? (
-        <span className="sd-bar-note is-need" role="status">
-          {need} more Starlight needed
-        </span>
+  const bar = focusItem && need === 0 ? (
+    <PrimaryButton block loading={busy} disabled={busy || !ready} onClick={(e) => buy(e.currentTarget)}>
+      {focusItem.price > 0 ? (
+        <>
+          <StarGlyph size={14} /> {focusItem.price} · {focusItem.verb}
+        </>
       ) : (
-        <PrimaryButton loading={busy} disabled={busy || !ready} onClick={(e) => buy(e.currentTarget)}>
-          {focusItem.price > 0 ? (
-            <>
-              <StarGlyph size={14} /> {focusItem.price} · {focusItem.verb}
-            </>
-          ) : (
-            focusItem.verb
-          )}
-        </PrimaryButton>
+        focusItem.verb
       )}
-    </div>
+    </PrimaryButton>
   ) : done ? (
     <p className="sd-msg is-done" role="status">
       <IconCheck size={16} /> {done}
@@ -345,6 +344,14 @@ export function SatchelDrawer({
   ) : note ? (
     <p className="sd-msg" role="status">{note}</p>
   ) : null;
+
+  // the sheet grows or shrinks with the buy button: Sísí rises to stay above it
+  const hasBar = !!bar;
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
+    return () => clearTimeout(t);
+  }, [open, hasBar]);
 
   return (
     <FocusPaper
@@ -386,7 +393,7 @@ export function SatchelDrawer({
               if (draft) endPreview(); // a preview ends with any other tap
             }}
           >
-            <t.Icon size={28} />
+            <t.Icon size={26} />
           </button>
         ))}
       </div>
@@ -445,8 +452,8 @@ export function SatchelDrawer({
         html.sd-lifting .journey-stage-v2 .cc-root, html.sd-lifting .journey-stage-v2 .cc-head, html.sd-lifting .journey-stage-v2 .sisi-speak-lines { translate: 0 calc(-1 * var(--sd-lift, 0px)); }
         /* a low sheet: Sísí and the world stay in view above it */
         .sd-focus { max-height: min(64dvh, 480px) !important; }
-        .sd-focus .ds-focus-head { padding-top: 22px; }
-        .sd-focus .ds-focus-body { padding: 14px 0 calc(var(--space-5) + var(--safe-bottom)); }
+        .sd-focus .ds-focus-head { padding-top: 16px; }
+        .sd-focus .ds-focus-body { padding: 8px 0 calc(14px + var(--safe-bottom)); }
         .sd-title { margin: 0; font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-paper-title); line-height: 1.2; color: var(--sisi-ink); }
         .sd-soon { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--ink-35); }
         .sd-card.is-soon .sd-card-art { background: none; }
@@ -475,13 +482,13 @@ export function SatchelDrawer({
         .sd-row::-webkit-scrollbar { display: none; }
         .sd-row > li { flex: none; scroll-snap-align: center; }
         .sd-card {
-          display: flex; flex-direction: column; align-items: center; gap: 4px; width: 148px;
+          display: flex; flex-direction: column; align-items: center; gap: 2px; width: 128px;
           padding: 0; border: 0; background: none; color: var(--sisi-ink); font: inherit; cursor: pointer;
           -webkit-tap-highlight-color: transparent;
         }
         .sd-card[aria-disabled="true"] { cursor: default; }
         .sd-card-art {
-          position: relative; display: block; width: 148px; height: 128px; overflow: hidden;
+          position: relative; display: block; width: 128px; height: 104px; overflow: hidden;
           border-radius: 18px; background: var(--ink-08);
           transition: transform var(--motion-instant) ease;
         }
@@ -516,13 +523,13 @@ export function SatchelDrawer({
           width: 30px; height: 30px; border-radius: 50%; background: var(--sisi-paper); color: var(--sisi-ink);
           box-shadow: 0 1px 3px rgba(16, 45, 50, 0.18);
         }
-        .sd-card-name { margin-top: 6px; font-family: var(--font-editorial); font-size: 16px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
+        .sd-card-name { margin-top: 5px; font-family: var(--font-editorial); font-size: 16px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
         .sd-card-note { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .sd-card.is-equipped .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         /* the four kinds of things, always in this order */
         /* the four kinds, spread across the sheet (big, easy to hit) */
-        .sd-tabs { display: flex; gap: 8px; padding: 0 var(--focus-pad) 12px; }
-        .sd-tabs .sd-tab { flex: 1; width: auto; height: 52px; }
+        .sd-tabs { display: flex; gap: 8px; padding: 0 var(--focus-pad) 10px; }
+        .sd-tabs .sd-tab { flex: 1; width: auto; height: 44px; }
         .sd-tabs::-webkit-scrollbar { display: none; }
         .sd-tabtext {
           flex: none; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
@@ -535,7 +542,7 @@ export function SatchelDrawer({
         .sd-card.is-on .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         .sd-card.is-away .sd-card-art { opacity: 0.45; }
         .sd-card.is-away .sd-card-name { color: var(--ink-60); }
-        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 140px; line-height: 1.25; }
+        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 124px; line-height: 1.25; }
         .sd-card-img.is-trees, .sd-card-img.is-lives { object-fit: contain; padding: 10px; box-sizing: border-box; }
         .sd-card-img.is-flowers { object-fit: cover; object-position: center bottom; }
         .sd-none { display: block; width: 100%; height: 100%; }
@@ -552,7 +559,8 @@ export function SatchelDrawer({
         .sd-colour.is-ivory .sd-dot { background: #f4ecd8; }
         .sd-colour.is-lavender .sd-dot { background: #c9b6dc; }
         /* the bar: what the tap would do, and the way back */
-        .sd-foot { padding: 12px var(--focus-pad) 0; display: flex; align-items: center; }
+        .sd-short { display: inline-flex; align-items: center; gap: 4px; color: var(--sisi-ink); }
+        .sd-foot { padding: 10px var(--focus-pad) 0; display: flex; align-items: center; }
         .sd-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
         .sd-bar-end { display: inline-flex; align-items: center; gap: 10px; }
         .sd-bar-note, .sd-msg { font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
