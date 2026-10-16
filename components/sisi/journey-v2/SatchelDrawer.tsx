@@ -300,7 +300,11 @@ export function SatchelDrawer({
       // the sheet's resting top (it may still be sliding in) and where her
       // paws are without any lift
       const sheetTop = window.innerHeight - sheet.offsetHeight;
-      const current = el.classList.contains("sd-lifting") ? parseFloat(el.style.getPropertyValue("--sd-lift") || "0") : 0;
+      // how far the world is risen right now (it may be mid-way through its
+      // 460ms rise), so measuring twice never adds the lift twice
+      const g = document.querySelector<HTMLElement>(".journey-stage-v2 .jw-group");
+      const now = g ? parseFloat(getComputedStyle(g).translate.split(" ")[1] ?? "0") || 0 : 0;
+      const current = -now;
       // her paws rest a clear step above the sheet, so the place shows around her
       const lift = Math.max(0, Math.round(cat.bottom + current - (sheetTop - 30)));
       el.style.setProperty("--sd-lift", `${lift}px`);
@@ -454,7 +458,8 @@ export function SatchelDrawer({
         .sd-focus { max-height: min(64dvh, 480px) !important; }
         .sd-focus .ds-focus-head { padding-top: 16px; }
         .sd-focus .ds-focus-body { padding: 8px 0 calc(14px + var(--safe-bottom)); }
-        .sd-title { margin: 0; font-family: var(--font-editorial); font-weight: 400; font-size: var(--text-paper-title); line-height: 1.2; color: var(--sisi-ink); }
+        /* the sheet's name stays for screen readers only: the tabs say what it is */
+        .sd-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         .sd-soon { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: var(--ink-35); }
         .sd-card.is-soon .sd-card-art { background: none; }
         .sd-card.is-soon .sd-card-art::after { box-shadow: none; border: 1.5px dashed var(--ink-14); }
