@@ -3,36 +3,93 @@
 import { fxAnchorRef } from "@/lib/fxAnchors";
 import { softGlint } from "@/lib/fx";
 import { haptic } from "@/lib/haptics";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { onStarlight, starlightBalance } from "@/lib/starlight";
-import { PLACES_ALL_OPEN, WORLDS, WORLD_LOOK, equipWorld, placesGranted, useEquippedWorld } from "@/lib/worlds";
-import { FocusPaper, IconCheck, IconLock, StarGlyph } from "@/components/ds";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { WORLDS, WORLD_LOOK, equipWorld, useEquippedWorld } from "@/lib/worlds";
+import type { WorldId } from "@/lib/starlight";
+import { CATALOG, fitsPlace, itemById, type ItemKind, type ShopItem } from "@/lib/shopCatalog";
+import { purchase, useShop } from "@/lib/shop";
+import { effectiveLook, saveLook, setPreview, useLooks, type Look } from "@/lib/looks";
+import { FocusPaper, IconCheck, IconLock, PrimaryButton, StarGlyph, TextAction } from "@/components/ds";
 
 /**
- * SatchelDrawer — the Map: where you walk.
+ * SatchelDrawer — the Map: where you walk, and what walks with you.
  *
- * A low ivory sheet over the Journey. Nothing behind it dims or blurs, and
- * it stays short enough that Sísí and the world remain in view — so a new
- * place is seen live, the moment its card is tapped.
+ * A low ivory sheet over the Journey (nothing behind it dims), so whatever is
+ * tapped is seen at once on Sísí's own walk — a preview, until it is chosen.
  *
- *   cards   one row of large picture cards (the place itself: its path, its
- *           water or trees, Sísí walking), scrolling sideways; the name and
- *           its state below. Walking here = solid outline + check; open =
- *           plain; still to discover = dashed outline + lock
- *   the end "More places are on the way" — the Map keeps growing
- *   balance Starlight, upper right. Places open with cumulative Starlight —
- *           nothing is spent, there are no prices. (The sky is not chosen:
- *           it follows the real time of day, and the weather if asked.)
+ *   tabs    Places · Trees · Flowers · Little lives (always in this order)
+ *   cards   one row of picture cards for the tab. In use = solid outline +
+ *           check; yours = plain; not yet yours = dashed + its price; not for
+ *           this place = faint, with where it belongs ("Grows by the pond.")
+ *   bar     after a tap: "✦6 · Plant" (or "2 more Starlight needed"), or
+ *           Apply for what is already yours, and Cancel. Nothing is spent,
+ *           and nothing saved changes, until that button.
+ *
+ * Starlight (upper right) is gathered by time together and spent here; what
+ * you bring along is yours for good, and choosing among what you own is free.
+ * The sky is not chosen: it follows the real time of day (and the weather).
  */
+
+type Tab = "place" | "trees" | "flowers" | "lives";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "place", label: "Places" },
+  { id: "trees", label: "Trees" },
+  { id: "flowers", label: "Flowers" },
+  { id: "lives", label: "Little lives" },
+];
+
+type Draft = { place: WorldId; look: Look; /** the one not-yet-owned thing being tried */ focus: string | null };
+
+const sameLook = (a: Look, b: Look) =>
+  a.trees === b.trees && a.flowers === b.flowers && a.butterflies === b.butterflies && a.fish === b.fish && a.bird === b.bird;
+
+/** put one slot of a look back as it was (the slot an item belongs to) */
+function revertSlot(look: Look, itemId: string, to: Look): Look {
+  const it = itemById(itemId);
+  if (!it) return look;
+  if (it.kind === "trees") return { ...look, trees: to.trees };
+  if (it.kind === "flowers") return { ...look, flowers: to.flowers };
+  if (itemId === "lives:fish") return { ...look, fish: to.fish };
+  if (itemId === "lives:bird") return { ...look, bird: to.bird };
+  if (itemId === "lives:butterflies") return { ...look, butterflies: to.butterflies };
+  return look;
+}
+
+/** whether a look has this item on */
+function wears(look: Look, itemId: string): boolean {
+  if (itemId === "lives:fish") return look.fish;
+  if (itemId === "lives:bird") return look.bird;
+  if (itemId === "lives:butterflies") return look.butterflies !== null;
+  return look.trees === itemId || look.flowers === itemId;
+}
+
+/** what Sísí says when something new joins the walk (once, softly) */
+const REACTION: Record<string, string> = {
+  "place:bridge-pond": "Oh, water. Let’s cross slowly.",
+  "place:butterfly-forest": "Listen. The leaves are talking.",
+  "trees:teal": "They make the walk feel kinder.",
+  "trees:willow": "Willows. They always look like they’re listening.",
+  "trees:forest-big": "Such old trees. They’ve seen a lot of wishes.",
+  "flowers:pond-reeds": "The reeds are whispering.",
+  "flowers:forest": "It smells like spring here.",
+  "lives:butterflies": "They found us.",
+  "lives:fish": "Look, under the bridge.",
+  "lives:bird": "A new friend up there.",
+};
+export const SHOP_BOUGHT_EVENT = "sisi:shop-bought";
+
+const DONE: Record<ShopItem["verb"], string> = { Open: "Opened", Plant: "Planted", "Bring along": "Brought along" };
 
 type Card = {
   id: string;
   name: string;
   art: React.ReactNode;
-  state: "equipped" | "owned" | "locked" | "soon";
-  /** words under the name */
+  /** on = in this preview; owned / locked (a price) / away (not for this place) */
+  on: boolean;
+  owned: boolean;
+  away?: boolean;
   note: React.ReactNode;
-  onPick?: (el: HTMLElement) => void;
+  onPick: (el: HTMLElement) => void;
 };
 
 export function SatchelDrawer({
@@ -44,50 +101,202 @@ export function SatchelDrawer({
   /** @deprecated the place is applied through lib/worlds */
   onEquip?: (equipped: unknown) => void;
 }) {
-  const [balance, setBalance] = useState<number | null>(null);
-  const [granted, setGranted] = useState<string[]>([]);
-  const world = useEquippedWorld();
+  const { balance, owned, ready } = useShop();
+  const { saved } = useLooks();
+  const equipped = useEquippedWorld();
   const rowRef = useRef<HTMLUListElement>(null);
+  const balRef = useRef<HTMLSpanElement | null>(null);
+  const [tab, setTab] = useState<Tab>("place");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
 
+  // what the walk shows now (a place you don't own falls back to the meadow)
+  const place: WorldId = owned.has(`place:${equipped}`) ? equipped : "quiet-meadow";
+  const applied = useMemo(() => ({ place, look: effectiveLook(place, saved[place], owned) }), [place, saved, owned]);
+  const d: Draft = draft ?? { ...applied, focus: null };
+  const changed = d.place !== applied.place || !sameLook(d.look, applied.look);
+
+  // opening starts from what is in use; closing drops any preview
   useEffect(() => {
-    if (!open) return;
-    starlightBalance().then(setBalance);
-    setGranted(placesGranted());
-    return onStarlight((r) => setBalance(r.balance));
+    if (!open) {
+      setDraft(null);
+      setNote(null);
+      setDone(null);
+      setPreview(null);
+    }
   }, [open]);
+  useEffect(() => () => setPreview(null), []);
 
-  // only the very next place shows how far away it is; the rest simply wait
-  const isOpen = (id: string, threshold: number) =>
-    PLACES_ALL_OPEN || (balance ?? 0) >= threshold || granted.includes(id) || world === id;
-  const nextPlace = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => !isOpen(w.id, w.threshold));
-  const cards: Card[] = [
-    ...WORLDS.map((w): Card => {
-      const unlocked = isOpen(w.id, w.threshold);
-      const equipped = world === w.id;
-      const need = Math.max(0, w.threshold - (balance ?? 0));
+  const tryOn = (next: Draft) => {
+    setNote(null);
+    setDone(null);
+    setDraft(next);
+    const same = next.place === applied.place && sameLook(next.look, applied.look);
+    setPreview(same ? null : { place: next.place, look: next.look });
+  };
+
+  /** try a look change in this place; at most one not-yet-owned thing at a time */
+  const tryItem = (itemId: string | null, change: (l: Look) => Look) => {
+    const item = itemId ? itemById(itemId) : undefined;
+    if (item && !fitsPlace(item, d.place)) {
+      setNote(item.elsewhere ?? "Not for this place.");
+      return;
+    }
+    const unowned = !!item && !owned.has(item.id);
+    if (unowned && d.focus?.startsWith("place:")) {
+      setNote(`Open ${itemById(d.focus)?.name} first.`);
+      return;
+    }
+    let look = d.look;
+    if (unowned && d.focus && d.focus !== itemId) look = revertSlot(look, d.focus, applied.look);
+    look = change(look);
+    // a slot that was tried and is now set back lets go of it
+    const focus = unowned ? itemId : d.focus && wears(look, d.focus) ? d.focus : null;
+    tryOn({ place: d.place, look, focus });
+  };
+
+  const tryPlace = (p: WorldId) => {
+    if (p === d.place) return;
+    const look = p === applied.place ? applied.look : effectiveLook(p, saved[p], owned);
+    tryOn({ place: p, look, focus: owned.has(`place:${p}`) ? null : `place:${p}` });
+  };
+
+  const cancel = () => tryOn({ ...applied, focus: null });
+
+  /** keep what is tried on: the place walked, and its look */
+  const keep = (dr: Draft): boolean => {
+    try {
+      saveLook(dr.place, dr.look);
+    } catch {
+      setNote("That couldn’t be saved just now. Try once more.");
+      return false;
+    }
+    if (dr.place !== equipped) equipWorld(dr.place);
+    setPreview(null);
+    setDraft(null);
+    return true;
+  };
+
+  const focusItem = d.focus ? itemById(d.focus) : undefined;
+  const need = focusItem ? Math.max(0, focusItem.price - balance) : 0;
+
+  const buy = async (el: HTMLElement) => {
+    if (!focusItem || busyRef.current) return; // a second tap waits for the first
+    busyRef.current = true;
+    setBusy(true);
+    const dr = d;
+    const r = await purchase(focusItem.id);
+    busyRef.current = false;
+    setBusy(false);
+    if (!r.ok && r.reason !== "owned") {
+      setNote(r.reason === "short" ? `${r.need ?? need} more Starlight needed` : "That didn’t go through. Nothing was spent.");
+      if (r.reason !== "short") haptic("error", el);
+      return;
+    }
+    // bought (or already yours): it joins the walk now
+    if (!keep(dr)) return;
+    setDone(`${DONE[focusItem.verb]} · ${focusItem.name}`);
+    softGlint(balRef.current ?? el);
+    haptic("starlight", el);
+    window.dispatchEvent(new CustomEvent(SHOP_BOUGHT_EVENT, { detail: { id: focusItem.id, line: REACTION[focusItem.id] } }));
+  };
+
+  const apply = (el: HTMLElement) => {
+    if (!keep(d)) return;
+    softGlint(el);
+    haptic("select", el);
+  };
+
+  /* ── the cards for each tab ── */
+
+  const priceNote = (it: ShopItem) => (
+    <>
+      <StarGlyph size={12} /> {it.price}
+    </>
+  );
+  const img = (src: string, kind: ItemKind | "none") => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className={`sd-card-img is-${kind}`} src={src} alt="" draggable={false} />
+  );
+  const noneCard = (id: string, name: string, on: boolean, pick: () => void): Card => ({
+    id,
+    name,
+    art: <span className="sd-none" aria-hidden />,
+    on,
+    owned: true,
+    note: on && sameLook(d.look, applied.look) && d.place === applied.place ? "In use" : "Just the place",
+    onPick: pick,
+  });
+  const itemCard = (it: ShopItem, on: boolean, pick: () => void): Card => {
+    const away = !fitsPlace(it, d.place);
+    const mine = owned.has(it.id);
+    const inUse = on && !changed;
+    return {
+      id: it.id,
+      name: it.name,
+      art: img(it.preview, it.kind),
+      on: on && !away,
+      owned: mine,
+      away,
+      note: away ? it.elsewhere : inUse ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : priceNote(it),
+      onPick: pick,
+    };
+  };
+
+  const items = (k: ItemKind) => CATALOG.filter((i) => i.kind === k);
+  let cards: Card[] = [];
+  if (tab === "place") {
+    cards = WORLDS.map((w) => {
+      const id = `place:${w.id}`;
+      const mine = owned.has(id);
+      const it = itemById(id);
       return {
-        id: w.id,
+        id,
         name: w.name,
-        // eslint-disable-next-line @next/next/no-img-element
-        art: <img className="sd-card-img" src={WORLD_LOOK[w.id].preview} alt="" draggable={false} />,
-        state: equipped ? "equipped" : unlocked ? "owned" : "locked",
-        note: equipped ? (
-          "Walking here"
-        ) : unlocked ? (
-          "Tap to walk here"
-        ) : w.id === nextPlace?.id ? (
-          <>
-            <StarGlyph size={12} /> {need} more to unlock
-          </>
-        ) : (
-          "Still to discover"
-        ),
-        onPick: unlocked && !equipped ? (el) => { equipWorld(w.id); softGlint(el); haptic("select", el); } : undefined,
+        art: img(WORLD_LOOK[w.id].preview, "place"),
+        on: d.place === w.id,
+        owned: mine,
+        note: applied.place === w.id ? "Walking here" : mine ? "Yours" : it ? priceNote(it) : "",
+        onPick: () => tryPlace(w.id),
       };
-    }),
-    // the Map keeps growing
-    { id: "soon", name: "More places", art: <span className="sd-soon" aria-hidden><StarGlyph size={22} /></span>, state: "soon", note: "On the way" },
-  ];
+    });
+  } else if (tab === "trees") {
+    cards = [
+      noneCard("trees:none", "No trees", d.look.trees === null, () => tryItem(null, (l) => ({ ...l, trees: null }))),
+      ...items("trees").map((it) => itemCard(it, d.look.trees === it.id, () => tryItem(it.id, (l) => ({ ...l, trees: it.id })))),
+    ];
+  } else if (tab === "flowers") {
+    cards = [
+      noneCard("flowers:none", "No flowers", d.look.flowers === null, () => tryItem(null, (l) => ({ ...l, flowers: null }))),
+      ...items("flowers").map((it) => itemCard(it, d.look.flowers === it.id, () => tryItem(it.id, (l) => ({ ...l, flowers: it.id })))),
+    ];
+  } else {
+    // little lives: each comes along or not (more than one at once)
+    cards = items("lives").map((it) => {
+      const on = it.id === "lives:butterflies" ? d.look.butterflies !== null : it.id === "lives:fish" ? d.look.fish : d.look.bird;
+      return itemCard(it, on, () =>
+        tryItem(on ? null : it.id, (l) =>
+          it.id === "lives:butterflies"
+            ? { ...l, butterflies: on ? null : (applied.look.butterflies ?? "ivory") }
+            : it.id === "lives:fish"
+              ? { ...l, fish: !on }
+              : { ...l, bird: !on },
+        ),
+      );
+    });
+  }
+
+  // a tap on something that can't live here only says where it belongs
+  const pick = (c: Card, el: HTMLElement) => {
+    if (c.away) {
+      setNote((itemById(c.id)?.elsewhere as string) ?? null);
+      return;
+    }
+    c.onPick(el);
+  };
 
   // Keep Sísí in view: while the sheet is up, the whole world rises just
   // enough that her paws rest a little above the sheet's edge (and settles
@@ -119,13 +328,48 @@ export function SatchelDrawer({
     };
   }, [open]);
 
-  // open on the one in use, centred in the row
+
+  // the row opens on what is in use, centred
   useLayoutEffect(() => {
     if (!open) return;
     const row = rowRef.current;
-    const on = row?.querySelector<HTMLElement>(".sd-card.is-equipped");
-    if (row && on) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
-  }, [open, cards.length]);
+    const on = row?.querySelector<HTMLElement>(".sd-card.is-on");
+    if (row) row.scrollLeft = on ? on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2 : 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tab]);
+
+  const showColours = tab === "lives" && d.look.butterflies !== null;
+  const bar = done ? (
+    <p className="sd-msg is-done" role="status">
+      <IconCheck size={16} /> {done}
+    </p>
+  ) : note && !changed ? (
+    <p className="sd-msg" role="status">{note}</p>
+  ) : changed ? (
+    <div className="sd-bar">
+      <TextAction onClick={cancel}>Cancel</TextAction>
+      <span className="sd-bar-end">
+        {note && <span className="sd-bar-note" role="status">{note}</span>}
+        {!focusItem ? (
+          <PrimaryButton onClick={(e) => apply(e.currentTarget)}>Apply</PrimaryButton>
+        ) : need > 0 ? (
+          <span className="sd-bar-note" role="status">
+            {need} more Starlight needed
+          </span>
+        ) : (
+          <PrimaryButton loading={busy} disabled={busy || !ready} onClick={(e) => buy(e.currentTarget)}>
+            {focusItem.price > 0 ? (
+              <>
+                <StarGlyph size={14} /> {focusItem.price} · {focusItem.verb}
+              </>
+            ) : (
+              focusItem.verb
+            )}
+          </PrimaryButton>
+        )}
+      </span>
+    </div>
+  ) : null;
 
   return (
     <FocusPaper
@@ -135,30 +379,54 @@ export function SatchelDrawer({
       closeLabel="Close the Map"
       title={<h2 className="sd-title">Map</h2>}
       headerExtra={
-        <span className="sd-balance" ref={(el) => fxAnchorRef("starlightCounter", el)} aria-label={`${balance ?? 0} Starlight`}>
+        <span
+          className="sd-balance"
+          ref={(el) => {
+            balRef.current = el;
+            fxAnchorRef("starlightCounter", el);
+          }}
+          aria-label={`${balance} Starlight`}
+        >
           <StarGlyph size={16} />
-          <span className="sd-balance-n">{balance ?? "·"}</span>
+          <span key={balance} className="sd-balance-n">{ready ? balance : "·"}</span>
           <span className="sd-balance-word">Starlight</span>
         </span>
       }
       className="sd-focus"
     >
+      <div className="sd-tabs" role="tablist" aria-label="What to change">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`sd-tabtext${tab === t.id ? " is-on" : ""}`}
+            onClick={() => {
+              setTab(t.id);
+              setNote(null);
+              setDone(null);
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       {/* the sheet opens with focus here (quietly), not on a tab — so no focus ring shows by itself */}
-      <ul className="sd-row" ref={rowRef} tabIndex={-1} data-autofocus aria-label="Places">
+      <ul className="sd-row" ref={rowRef} tabIndex={-1} data-autofocus aria-label={TABS.find((t) => t.id === tab)?.label}>
         {cards.map((c) => (
           <li key={c.id}>
             <button
               type="button"
-              className={`sd-card is-${c.state}`}
-              aria-pressed={c.state === "equipped"}
-              aria-disabled={!c.onPick}
-              onClick={(e) => c.onPick?.(e.currentTarget)}
+              className={`sd-card${c.on ? " is-on" : ""}${c.owned ? "" : " is-locked"}${c.away ? " is-away" : ""}`}
+              aria-pressed={c.on}
+              onClick={(e) => pick(c, e.currentTarget)}
             >
               <span className="sd-card-art">
                 {c.art}
-                {(c.state === "equipped" || c.state === "locked") && (
+                {(c.on || !c.owned) && !c.away && (
                   <span className="sd-badge" aria-hidden>
-                    {c.state === "equipped" ? <IconCheck size={20} /> : <IconLock size={18} />}
+                    {c.on ? <IconCheck size={18} /> : <IconLock size={16} />}
                   </span>
                 )}
               </span>
@@ -168,7 +436,24 @@ export function SatchelDrawer({
           </li>
         ))}
       </ul>
-      {/* how Starlight grows: Sísí says it herself, once, above the sheet (Journey) */}
+      {showColours && (
+        <div className="sd-colours" role="radiogroup" aria-label="Butterflies' colour">
+          {(["ivory", "lavender"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={d.look.butterflies === c}
+              className={`sd-colour is-${c}${d.look.butterflies === c ? " is-on" : ""}`}
+              onClick={() => tryItem(null, (l) => ({ ...l, butterflies: c }))}
+            >
+              <span className="sd-dot" aria-hidden />
+              {c === "ivory" ? "Ivory" : "Lavender"}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="sd-foot">{bar}</div>
       <style jsx global>{`
         /* the world rises while the sheet is up (see the lift effect) */
         .journey-stage-v2 .jw-group { transition: translate 460ms var(--ease-sisi); }
@@ -252,6 +537,46 @@ export function SatchelDrawer({
         .sd-card-name { margin-top: 6px; font-family: var(--font-editorial); font-size: 16px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
         .sd-card-note { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .sd-card.is-equipped .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
+        /* the four kinds of things, always in this order */
+        .sd-tabs { display: flex; gap: 4px; padding: 0 var(--focus-pad) 10px; overflow-x: auto; scrollbar-width: none; }
+        .sd-tabs::-webkit-scrollbar { display: none; }
+        .sd-tabtext {
+          flex: none; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
+          background: transparent; color: var(--ink-60); font-family: var(--font-ui); font-size: 14px; letter-spacing: 0.005em;
+          -webkit-tap-highlight-color: transparent; transition: background var(--motion-instant) ease, color var(--motion-instant) ease;
+        }
+        .sd-tabtext.is-on { background: var(--ink-08); color: var(--sisi-ink); font-weight: 500; }
+        .sd-tabtext:focus-visible { outline: 2px solid var(--sisi-ink); outline-offset: 2px; }
+        .sd-card.is-on .sd-card-art::after { box-shadow: inset 0 0 0 2px var(--sisi-ink); }
+        .sd-card.is-on .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
+        .sd-card.is-away .sd-card-art { opacity: 0.45; }
+        .sd-card.is-away .sd-card-name { color: var(--ink-60); }
+        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 112px; line-height: 1.25; }
+        .sd-card-img.is-trees, .sd-card-img.is-lives { object-fit: contain; padding: 10px; box-sizing: border-box; }
+        .sd-card-img.is-flowers { object-fit: cover; object-position: center bottom; }
+        .sd-none { display: block; width: 100%; height: 100%; }
+        /* a quiet "nothing added": the frame alone, dashed */
+        .sd-card:not(.is-on) .sd-none + .sd-badge { display: none; }
+        .sd-colours { display: flex; gap: 8px; padding: 6px var(--focus-pad) 0; }
+        .sd-colour {
+          display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px 0 8px;
+          border: 1px solid var(--ink-14); border-radius: 999px; background: none; cursor: pointer;
+          color: var(--ink-60); font-family: var(--font-ui); font-size: 13px; -webkit-tap-highlight-color: transparent;
+        }
+        .sd-colour.is-on { border-color: var(--sisi-ink); color: var(--sisi-ink); }
+        .sd-dot { width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--ink-14); }
+        .sd-colour.is-ivory .sd-dot { background: #f4ecd8; }
+        .sd-colour.is-lavender .sd-dot { background: #c9b6dc; }
+        /* the bar: what the tap would do, and the way back */
+        .sd-foot { min-height: 52px; padding: 10px var(--focus-pad) 0; display: flex; align-items: center; }
+        .sd-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+        .sd-bar-end { display: inline-flex; align-items: center; gap: 10px; }
+        .sd-bar-note, .sd-msg { font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
+        .sd-msg { margin: 0; display: inline-flex; align-items: center; gap: 6px; }
+        .sd-msg.is-done { color: var(--sisi-ink); animation: sd-in 360ms var(--ease-sisi) both; }
+        .sd-balance-n { animation: sd-in 420ms var(--ease-sisi) both; }
+        @keyframes sd-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        .sd-focus { max-height: min(62dvh, 480px) !important; }
       `}</style>
     </FocusPaper>
   );

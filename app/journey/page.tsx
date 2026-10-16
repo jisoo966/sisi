@@ -55,7 +55,9 @@ import { CreateStarFlow } from "@/components/sisi/journey-v2/CreateStarFlow";
 import { EveningReflection, eveningDue } from "@/components/sisi/journey-v2/EveningReflection";
 import { awardStarlight, localDate } from "@/lib/starlight";
 import { LandscapeGate } from "@/components/sisi/journey-v2/LandscapeGate";
-import { useStarlightBalance } from "@/lib/useStarlight";
+import { useStarlightEarned } from "@/lib/useStarlight";
+import { SHOP_BOUGHT_EVENT } from "@/components/sisi/journey-v2/SatchelDrawer";
+import { bringButterflies } from "@/lib/shop";
 import { FIRST_STARLIGHT_LINE, markDiscoveryShown, onStarlight, pendingDiscovery } from "@/lib/starlight";
 import { markGiftShown, nextPathGift } from "@/lib/pathGifts";
 import { equipWorld } from "@/lib/worlds";
@@ -67,6 +69,7 @@ import { anchorElement } from "@/lib/fxAnchors";
 import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
 import { useSceneTheme } from "@/lib/sceneTheme";
+import { Birds } from "@/components/sisi/journey-v2/Birds";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
 import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
 import { envCoord } from "@/lib/journeyWorld";
@@ -284,8 +287,9 @@ export default function JourneyPage() {
   // the first experience, after the first wish:
   //   1 · ask: "What makes this wish matter to you?" (answered now, or maybe later)
   //   2 · what it became: your Star with its first moment, side by side
+  //   4 · a first gift: the butterflies come along (free, seen at once)
   //   3 · "That's enough for today." — the Journey is just to be in
-  const [tour, setTour] = useState<0 | 1 | 2 | 3>(0);
+  const [tour, setTour] = useState<0 | 1 | 2 | 3 | 4>(0);
   /** the first moment, kept during the tour (step 2 shows it on its Star) */
   const [tourKept, setTourKept] = useState<string | null>(null);
   const tourPending = useRef(false);
@@ -296,7 +300,7 @@ export default function JourneyPage() {
   useEffect(() => {
     const saved = Number(localStorage.getItem("sisi:tour") ?? 0);
     // (the result card can't come back after a reload: go on to her last line)
-    if (saved >= 1 && saved <= 3) setTour(saved === 2 ? 3 : (saved as 1 | 3));
+    if (saved >= 1 && saved <= 4) setTour(saved === 2 ? 4 : (saved as 1 | 3 | 4));
   }, []);
   useEffect(() => {
     if (tour > 0) localStorage.setItem("sisi:tour", String(tour));
@@ -380,6 +384,25 @@ export default function JourneyPage() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [satchelOpen]);
+  /** Sísí's few words when something new joins the walk (bought on the Map) */
+  const [boughtLine, setBoughtLine] = useState<{ id: number; text: string } | null>(null);
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const h = (e: Event) => {
+      const line = (e as CustomEvent<{ line?: string }>).detail?.line;
+      if (!line) return;
+      markHint("starlightTold");
+      setStarlightLine(false);
+      setBoughtLine({ id: Date.now(), text: line });
+      clearTimeout(t);
+      t = setTimeout(() => setBoughtLine(null), 4200);
+    };
+    window.addEventListener(SHOP_BOUGHT_EVENT, h);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener(SHOP_BOUGHT_EVENT, h);
+    };
+  }, []);
   // Camera → keep a Moment or Sign.
   const [momentOpen, setMomentOpen] = useState(false);
   // Create a Star (+ Vision Postcard).
@@ -739,7 +762,8 @@ export default function JourneyPage() {
   }, [isStarView]);
 
   // ── Starlight: the shared world grows with attention given to Stars ──
-  const starlight = useStarlightBalance();
+  // the sky glows with all the Starlight ever gathered (spending never dims it)
+  const starlight = useStarlightEarned();
   // A newly found World (or a fulfilled Star's flower) is revealed only on
   // the unobstructed Journey — never during writing, chat or a Star activity.
   const [reveal, setReveal] = useState<Reveal | null>(null);
@@ -1175,6 +1199,8 @@ export default function JourneyPage() {
             // eslint-disable-next-line @next/next/no-img-element
             <img key={scene.backdrop} className="jw-backdrop tod-grade" src={scene.backdrop} alt="" draggable={false} />
           )}
+          {/* a little bird crossing the sky now and then (the Map) */}
+          {scene.bird && <Birds />}
           {skyStar && (
             <SkyStarV2
               star={skyStar}
@@ -1204,10 +1230,11 @@ export default function JourneyPage() {
         <div className="jw-group jw-hills">
           {/* Far trees — 0.12–0.18×, faint, one every 2–4 widths of walking
               (not in a place with its own backdrop) */}
-          {!scene.backdrop && <PassingSprites
+          {!scene.backdrop && !!scene.farTrees?.length && <PassingSprites
+            key={`far-trees-${scene.farTrees.length}`}
             layer="far-trees"
             role="far"
-            art={scene.farTrees ?? FAR_TREES}
+            art={scene.farTrees}
             ratio={[0.12, 0.18]}
             every={[2, 4]}
             first={[0.8, 1.6]}
@@ -1236,7 +1263,7 @@ export default function JourneyPage() {
               bridge — between the far reeds and the bridge */}
           {scene.midTrees && (
             <PassingSprites
-              key={`mid-trees-${scene.id}`}
+              key={`mid-trees-${scene.id}-${scene.midTrees[0]?.src}`}
               layer="mid-trees"
               role="far"
               art={scene.midTrees}
@@ -1273,7 +1300,7 @@ export default function JourneyPage() {
           {scene.floorFill && <div className="jw-floor" style={{ background: scene.floorFill }} aria-hidden />}
           <ParallaxLayer
             // the pond's surface: a 1–2px ripple over ~20s (never a current)
-            className={scene.fish ? "tod-grade jw-pond-water" : "tod-grade"}
+            className={scene.water ? "tod-grade jw-pond-water" : "tod-grade"}
             key={`ground-${scene.id}`}
             src={scene.ground}
             speed={scene.groundSpeed ?? LAYER_SPEED.walkingGround}
@@ -1287,9 +1314,11 @@ export default function JourneyPage() {
             seamOverlap={2}
           />
           {/* the bridge's light on the water: a faint band that breathes */}
-          {scene.fish && <div className="jw-pond-light" aria-hidden />}
+          {scene.water && <div className="jw-pond-light" aria-hidden />}
           {/* the continuous time-of-day grass line, just behind the path */}
-          <MeadowStrip phase={tod?.phase ?? null} zIndex={2} override={scene.strip} speed={scene.stripSpeed} />
+          {scene.strip !== null && (
+            <MeadowStrip key={`strip-${scene.strip?.src ?? "meadow"}`} phase={tod?.phase ?? null} zIndex={2} override={scene.strip} speed={scene.stripSpeed} />
+          )}
           {/* the near verge (forest): bright leaf tips along the path's lower edge */}
           {scene.verge && (
             <ParallaxLayer
@@ -1308,7 +1337,7 @@ export default function JourneyPage() {
               covers their roots); crowns run off the top */}
           {scene.bigTrees && (
             <ParallaxLayer
-              key={`trees-${scene.id}`}
+              key={`trees-${scene.id}-${scene.bigTrees.src}`}
               className="tod-grade"
               src={scene.bigTrees.src}
               speed={LAYER_SPEED.walkingPath}
@@ -1347,6 +1376,7 @@ export default function JourneyPage() {
           )}
           {scene.foreground && (
             <ParallaxLayer
+              key={`fore-${scene.id}-${scene.foreground}`}
               className="tod-grade jw-pond-fore"
               src={scene.foreground}
               speed={scene.foregroundSpeed ?? LAYER_SPEED.walkingGround}
@@ -1371,7 +1401,7 @@ export default function JourneyPage() {
         <div className="jw-group jw-fore">
           {/* Grass accents — 1.15–1.35×, over the paws, changing often */}
           {/* (a pond has its own near bank: no meadow clumps over the water) */}
-          {!scene.foreground && !scene.backdrop && <PassingSprites
+          {scene.grassClumps && <PassingSprites
             layer="grass"
             role="flora"
             // coral flowers stay a rare accent
@@ -1391,7 +1421,7 @@ export default function JourneyPage() {
               passing, the trunk may cover Sísí for a moment */}
           {scene.frontTrees && (
           <PassingSprites
-            key={`front-trees-${scene.id}`}
+            key={`front-trees-${scene.id}-${scene.frontTrees[0]?.src}`}
             layer="front-trees"
             role="front"
             art={scene.frontTrees}
@@ -1455,7 +1485,7 @@ export default function JourneyPage() {
             the moving sky); faint and locked while the camera travels. */}
         {/* a busy near bank (pond, forest): a soft dark fade under the tabs so
             their names read — never an opaque bar */}
-        {(scene.foreground || scene.backdrop) && isWalking && <div className="jw-nav-scrim" aria-hidden />}
+        {(scene.foreground || scene.backdrop || scene.water) && isWalking && <div className="jw-nav-scrim" aria-hidden />}
         <div
           className={`journey-walk-ui journey-dock${panelOpen ? " is-hidden" : ""}${
             busy || leavingTo === "moments-down" ? " is-transit" : ""
@@ -1600,15 +1630,18 @@ export default function JourneyPage() {
           visible={
             (isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2) ||
             // Customize, the first time: her words about Starlight, above the sheet
-            (starlightLine && satchelOpen && isWalking)
+            (starlightLine && satchelOpen && isWalking) ||
+            (!!boughtLine && isWalking)
           }
           onTalk={(opening) => openChat(opening)}
           onSpeaking={setSpeaking}
           line={
-            starlightLine && satchelOpen
+            boughtLine && isWalking
+              ? { key: `bought-${boughtLine.id}`, text: boughtLine.text, onDismiss: () => setBoughtLine(null) }
+              : starlightLine && satchelOpen
               ? {
                   key: "starlight-told",
-                  text: "The more time we spend together, the more new worlds open.",
+                  text: "Time together gathers Starlight. Spend it here, on new places and little lives for our walk.",
                   onDismiss: () => {
                     markHint("starlightTold");
                     setStarlightLine(false);
@@ -1631,6 +1664,15 @@ export default function JourneyPage() {
                   text: "What makes this wish matter to you?",
                   actions: [
                     { label: "Write it", act: () => { primeKeyboard(); setNoteOpen(true); } },
+                    { label: "Maybe later", quiet: true, act: () => setTour(4) },
+                  ],
+                }
+              : tour === 4 && isWalking
+              ? {
+                  key: "tour-gift",
+                  text: "Some little friends wanted to walk with us. Shall we let them?",
+                  actions: [
+                    { label: "Bring them along", act: () => { bringButterflies().finally(() => setTour(3)); } },
                     { label: "Maybe later", quiet: true, act: () => setTour(3) },
                   ],
                 }
@@ -1777,7 +1819,7 @@ export default function JourneyPage() {
                 </p>
                 <p className="first-kept-text">“{tourKept}”</p>
                 <p className="first-kept-meta">1 moment along the way · also in Moments</p>
-                <button type="button" className="ds-btn ds-btn--primary ds-btn--block" onClick={() => setTour(3)}>
+                <button type="button" className="ds-btn ds-btn--primary ds-btn--block" onClick={() => setTour(4)}>
                   Keep walking
                 </button>
               </div>

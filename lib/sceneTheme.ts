@@ -3,6 +3,8 @@
 import type { SpriteArt } from "@/components/sisi/journey-v2/PassingSprites";
 import { useEquippedWorld, type WorldId } from "@/lib/worlds";
 import { FAR_TREES, TREES_FAR_V2, TREES_FRONT_V2, TREES_MID_V2 } from "@/lib/worldArt";
+import { effectiveLook, fitLook, useLooks, type Look } from "@/lib/looks";
+import { useShop } from "@/lib/shop";
 
 /**
  * lib/sceneTheme — the ground of each place on the Map (lib/worlds).
@@ -54,13 +56,19 @@ export type SceneTheme = {
   /** the near bank in front of the water */
   foregroundSpeed?: number;
   /** one grass line for every hour (else the time-of-day strips) */
-  strip?: { src: string; ih: number; bottom: number };
+  strip?: { src: string; ih: number; bottom: number } | null;
   /** the near bank, drawn in front of the fish: its art, height (fraction of
    *  the stage) and rest */
   foreground?: string;
   foregroundHeight?: number;
   foregroundBottom?: string;
   fish?: string[];
+  /** a place over water: the ripple and the light under the bridge */
+  water?: boolean;
+  /** the meadow's own grass clumps over the paws (the base meadow) */
+  grassClumps?: boolean;
+  /** a little bird crosses the sky now and then */
+  bird?: boolean;
   /** the theme's own bigger trees on the far shore, behind Sísí (a layer of
    *  depth between the far reeds and the bridge) */
   midTrees?: SpriteArt[];
@@ -82,27 +90,26 @@ export type SceneTheme = {
 const T = "/V2/themes/bridge-pond";
 const F = "/V2/themes/butterfly-forest";
 
-export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
-  "trail-plain": {
+
+/* ── each place's own ground (always there once the place is yours) ── */
+
+const PLACE_BASE: Record<WorldId, SceneTheme> = {
+  "quiet-meadow": {
     id: "trail-plain",
     midground: "/V2/parallax/journey-midground-vegetation.webp",
     ground: "/V2/parallax/journey-walking-ground.webp",
     path: "/V2/parallax/journey-walking-path.webp",
     // the path band's centre (row 409.5 of 768) on the baseline
     pathBottom: "calc(var(--walking-baseline) - 18.67%)",
-    // Jisoo's tree set, in depth: far (slender, faint, slowest) → mid (tiered,
-    // curved, dense; clear, taking turns behind Sísí — modest, so the sky stays
-    // the heart of this place) → near (drooping, now and then, fastest)
-    farTrees: [...FAR_TREES, ...TREES_FAR_V2],
-    midTrees: TREES_MID_V2,
-    // ~2.2–2.7× Sísí's height (she is ~17% of the stage)
-    midTreeHeight: [0.37, 0.46],
-    frontTrees: TREES_FRONT_V2,
+    // the faint far silhouettes belong to the meadow's sky
+    farTrees: FAR_TREES,
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
     groundBottom: "calc(var(--walking-baseline) - 1% - 26.95%)",
+    // the meadow's own grass: the time-of-day line behind the path, clumps over the paws
+    grassClumps: true,
   },
-  "trail-bridge-pond": {
+  "bridge-pond": {
     id: "trail-bridge-pond",
     midground: `${T}/journey-midground-pond.webp`,
     ground: `${T}/journey-walking-ground-pond.webp`,
@@ -112,37 +119,17 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     // raised (and a touch larger) so the reeds and willows show above the far bank
     midgroundHeight: 0.23,
     midgroundBottom: "calc(var(--walking-baseline) + 2.5%)",
-    // the water begins at row 500 of 768 (34.9% of the box): its top edge sits
-    // just under the deck, never showing above the far bank's plants
+    // the water begins at row 500 of 768: its top edge sits just under the deck
     groundBottom: "calc(var(--walking-baseline) - 34.4%)",
-    // speeds in step with the bridge (32 px/s, locked to Sísí's paws):
-    //   far reeds ⅓ · far bank ~0.8 · bridge 1 · near bank 1⅓
+    // speeds in step with the bridge (32 px/s): far reeds ⅓ · far bank ~0.8 · near bank 1⅓
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
-    // the water is calm: its surface moves at ~30% of a full flow (≈12 px/s
-    // while walking, 2 px/s of its own when Sísí stops) — never a strong
-    // current against her; a 1–2px ripple and a breathing light under the
-    // bridge keep it alive (PondFish, .jw-pond-*)
+    // calm water: ~30% of a full flow, 2 px/s of its own when Sísí stops
     groundSpeed: 10,
     groundDrift: 2,
-    // the pond's far bank, painted to its last row
-    strip: { src: `${T}/meadow-strip-pond.webp`, ih: 242, bottom: 241 },
-    // the near bank, as in the reference: the tall bank art (the same as the
-    // far bank, nearer and larger) along the bottom, so the water's lower edge
-    // is covered (pond-foreground.webp is not used). 15% of the stage: on a
-    // phone there is less room under the deck than in the wide reference, and
-    // a band of open water (and its fish) must stay in view
-    foreground: `${T}/meadow-strip-pond.webp`,
-    foregroundHeight: 0.15,
-    foregroundBottom: "0%",
-    fish: [`${T}/fish-coral.webp`, `${T}/fish-ivory.webp`],
-    // the two willows of this set's midground, cut out (willow-0x.webp) and
-    // drawn nearer and larger — only this theme's own art
-    midTrees: [
-      { src: `${T}/willow-01.webp`, iw: 366, ih: 358, box: [0, 0, 366, 358] },
-      { src: `${T}/willow-02.webp`, iw: 411, ih: 481, box: [0, 0, 411, 481] },
-    ],
+    water: true,
+    strip: null,
   },
   "butterfly-forest": {
     id: "butterfly-forest",
@@ -153,51 +140,86 @@ export const SCENE_THEMES: Record<SceneThemeId, SceneTheme> = {
     pathBottom: "calc(var(--walking-baseline) - 18.02%)",
     midgroundHeight: 0.18,
     midgroundBottom: "calc(var(--walking-baseline) - 1.5%)",
-    // (the forest floor itself stays behind the clover and the flowers)
     groundHeight: 1.04,
     groundBottom: "calc(var(--walking-baseline) - 29.75%)",
-    // the one front layer: the forest's flower bank (flowers and leaf tips on
-    // top, 2172×242) resting on the clover's lower half, down to the bottom
-    foreground: `${F}/meadow-strip-forest.webp`,
-    foregroundHeight: 0.224,
-    foregroundBottom: "0%",
-    // the clover (2000×337, Jisoo's) comes up over the path's lower edge, so
-    // Sísí walks on the path, not on a shelf: its full leaves (from row ~70)
-    // stop just below her paws, only the tips reach the path
-    // like the pond's water: the clover is the whole band under the path, from
-    // just over its lower edge down to the bottom of the screen, so nothing
-    // shows between it and the flower bank resting in front of it
-    // its full leaves (from row ~70 of 337) begin under the path itself
-    // (1% above its lower edge, hidden by it): no gap between path and clover
+    // the clover: the whole band under the path, from just under its lower
+    // edge to the bottom of the screen (its full leaves begin under the path)
     verge: { src: `${F}/forest-clover-verge.webp`, heightPct: 0.3, bottom: "calc(var(--walking-baseline) - 24.7%)" },
     midgroundSpeed: 11,
     stripSpeed: 26,
     foregroundSpeed: 43,
-    // the forest's own bank behind the path, painted to its last row
-    strip: { src: `${F}/meadow-strip-forest.webp`, ih: 242, bottom: 241 },
     backdrop: `${F}/forest-background.webp`,
-    // roots (row 638 of 768) on the baseline; the canvas ~0.9 of the stage tall,
-    // so the crowns run off the top: (768 − 638) / 768 × 89.8% = 15.2%
-    bigTrees: { src: `${F}/forest-main-trees.webp`, heightPct: 0.898, bottom: "calc(var(--walking-baseline) - 15.2%)" },
-    butterflies: [
-      [`${F}/butterfly-ivory-01.webp`, `${F}/butterfly-ivory-02.webp`, `${F}/butterfly-ivory-03.webp`],
-      [`${F}/butterfly-lavender-01.webp`, `${F}/butterfly-lavender-02.webp`, `${F}/butterfly-lavender-03.webp`],
-    ],
+    strip: null,
   },
 };
 
-/** each place on the Map, and the ground it walks on */
-export const PLACE_SCENE: Record<WorldId, SceneThemeId> = {
-  "quiet-meadow": "trail-plain",
-  "bridge-pond": "trail-bridge-pond",
-  "butterfly-forest": "butterfly-forest",
+/* ── what each choice adds (lib/shopCatalog names them) ────────────── */
+
+const WILLOWS: SpriteArt[] = [
+  { src: `${T}/willow-01.webp`, iw: 366, ih: 358, box: [0, 0, 366, 358] },
+  { src: `${T}/willow-02.webp`, iw: 411, ih: 481, box: [0, 0, 411, 481] },
+];
+
+/** trees: behind Sísí, and (where they fit) one near her now and then */
+function treesLayer(id: string | null, place: WorldId): Partial<SceneTheme> {
+  if (id === "trees:teal")
+    return {
+      // far (slender, faint) → mid (tiered, ~2.2–2.7× Sísí) → near (rare, fastest)
+      farTrees: place === "quiet-meadow" ? [...FAR_TREES, ...TREES_FAR_V2] : undefined,
+      midTrees: TREES_MID_V2,
+      midTreeHeight: [0.37, 0.46],
+      frontTrees: TREES_FRONT_V2,
+    };
+  if (id === "trees:willow") return { midTrees: WILLOWS };
+  // roots (row 638 of 768) on the baseline; the crowns run off the top
+  if (id === "trees:forest-big") return { bigTrees: { src: `${F}/forest-main-trees.webp`, heightPct: 0.898, bottom: "calc(var(--walking-baseline) - 15.2%)" } };
+  return {};
+}
+
+const FLOWER_ART: Record<string, string> = {
+  "flowers:pond-reeds": `${T}/meadow-strip-pond.webp`,
+  "flowers:forest": `${F}/meadow-strip-forest.webp`,
 };
+
+/** flowers: one set — the bank behind the path and the flowers in front */
+function flowersLayer(id: string | null, place: WorldId): Partial<SceneTheme> {
+  const src = id ? FLOWER_ART[id] : undefined;
+  if (!src) return {};
+  return {
+    strip: { src, ih: 242, bottom: 241 },
+    foreground: src,
+    // on the forest's clover the bank stands a little taller; elsewhere it stays
+    // low, so a band of water (and its fish) or the meadow stays in view
+    foregroundHeight: place === "butterfly-forest" ? 0.224 : 0.15,
+    foregroundBottom: "0%",
+    grassClumps: false,
+  };
+}
+
+const BUTTERFLY = (c: "ivory" | "lavender") => [1, 2, 3].map((n) => `${F}/butterfly-${c}-0${n}.webp`);
+
+/** a place dressed in a look (items it can't use, or not owned, are left out) */
+export function composeScene(place: WorldId, look: Look): SceneTheme {
+  const base = PLACE_BASE[place] ?? PLACE_BASE["quiet-meadow"];
+  return {
+    ...base,
+    ...treesLayer(look.trees, place),
+    ...flowersLayer(look.flowers, place),
+    butterflies: look.butterflies ? [BUTTERFLY(look.butterflies)] : undefined,
+    fish: look.fish && base.water ? [`${T}/fish-coral.webp`, `${T}/fish-ivory.webp`] : undefined,
+    bird: look.bird,
+  };
+}
 
 /** (kept for lib/satchel's old path slot; the Map decides now) */
 export const SCENE_THEME_EVENT = "sisi:scene-theme";
 
-/** the ground of the place chosen on the Map */
+/** the place chosen on the Map in its saved look — or what is being tried on */
 export function useSceneTheme(): SceneTheme {
-  const place = useEquippedWorld();
-  return SCENE_THEMES[PLACE_SCENE[place]] ?? SCENE_THEMES["trail-plain"];
+  const equipped = useEquippedWorld();
+  const { saved, preview } = useLooks();
+  const { owned } = useShop();
+  const place = preview?.place ?? (owned.has(`place:${equipped}`) ? equipped : "quiet-meadow");
+  const look = preview && preview.place === place ? preview.look : effectiveLook(place, saved[place], owned);
+  return composeScene(place, preview ? fitLook(place, look) : look);
 }

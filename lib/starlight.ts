@@ -32,7 +32,11 @@ export type StarlightSource =
   | "something_good_saved"
   | "small_step_saved"
   | "world_unlocked"
-  | "admin_adjustment";
+  | "admin_adjustment"
+  /** spent on an item or a place (negative amount; source_id = the item) */
+  | "purchase"
+  /** given without Starlight (amount 0; source_id = the item) */
+  | "grant";
 
 export const STARLIGHT_AMOUNT: Record<"picture_it_completed" | "walk_with_it_completed" | "something_good_saved" | "small_step_saved", number> = {
   picture_it_completed: 1,
@@ -154,7 +158,12 @@ async function withLock<T>(fn: () => T | Promise<T>): Promise<T> {
   return run;
 }
 
-const sum = (rows: LedgerRow[]) => rows.reduce((n, r) => n + Math.max(0, r.amount), 0);
+/** what can be spent: everything earned, less what was spent (never below 0) */
+const sum = (rows: LedgerRow[]) => Math.max(0, rows.reduce((n, r) => n + r.amount, 0));
+/** everything ever earned (the night sky grows with this, never with spending) */
+const earnedSum = (rows: LedgerRow[]) => rows.reduce((n, r) => n + Math.max(0, r.amount), 0);
+/** rows that count toward the day's maximum (earning, not spending or gifts) */
+const EARNING_EXCLUDED: StarlightSource[] = ["admin_adjustment", "world_unlocked", "purchase", "grant"];
 
 /* ── signed-in ledger ───────────────────────────────────────────────── */
 
@@ -174,10 +183,42 @@ export async function starlightBalance(): Promise<number> {
   const user = await signedInUser();
   if (user) {
     const { data, error } = await createClient().from("starlight_ledger").select("amount").eq("user_id", user);
-    if (!error && data) return data.reduce((n, r) => n + Math.max(0, r.amount as number), 0);
+    if (!error && data) return Math.max(0, data.reduce((n, r) => n + (r.amount as number), 0));
   }
   return sum(readLocal());
 }
+
+/** Everything ever earned (spending never lowers it): for the night sky. */
+export async function starlightEarned(): Promise<number> {
+  const user = await signedInUser();
+  if (user) {
+    const { data, error } = await createClient().from("starlight_ledger").select("amount").eq("user_id", user);
+    if (!error && data) return data.reduce((n, r) => n + Math.max(0, r.amount as number), 0);
+  }
+  return earnedSum(readLocal());
+}
+
+/**
+ * One read-modify-write of this device's ledger, serialized across tabs (the
+ * same lock the awards use). `fn` returns the rows to append (or none) and a
+ * result; the append and the result happen together or not at all.
+ */
+export async function ledgerTransaction<T>(fn: (rows: LedgerRow[]) => { append: LedgerRow[]; result: T }): Promise<T> {
+  const out = await withLock(() => {
+    const rows = readLocal();
+    const { append, result } = fn(rows);
+    if (append.length) {
+      const next = [...rows, ...append];
+      localStorage.setItem(KEY, JSON.stringify(next)); // throws on failure: nothing is half-written
+    }
+    return { result, balance: sum([...rows, ...append]), changed: append.length > 0 };
+  });
+  if (out.changed && typeof window !== "undefined")
+    window.dispatchEvent(new CustomEvent<AwardResult>(EVENT, { detail: { awarded: 0, capped: false, duplicate: true, balance: out.balance, unlocked: [], silent: true } }));
+  return out.result;
+}
+export const newLedgerId = () => uid();
+export const STARLIGHT_EVENT = EVENT;
 
 /** Everything earned for one Star (for gentle per-Star details). */
 export function starlightRows(): LedgerRow[] {
@@ -231,7 +272,7 @@ export async function awardStarlight(input: {
       return { awarded: 0, duplicate: true, capped: false, balance: balanceBefore, unlocked: [] } as AwardResult;
     }
     const earnedToday = rows
-      .filter((r) => r.earned_date_local === today && r.source_type !== "admin_adjustment" && r.source_type !== "world_unlocked")
+      .filter((r) => r.earned_date_local === today && !EARNING_EXCLUDED.includes(r.source_type))
       .reduce((n, r) => n + r.amount, 0);
     const amount = Math.max(0, Math.min(want, DAILY_MAX - earnedToday));
     if (amount === 0) return { awarded: 0, duplicate: false, capped: true, balance: balanceBefore, unlocked: [] } as AwardResult;
@@ -252,8 +293,9 @@ export async function awardStarlight(input: {
   return result;
 }
 
-function crossed(before: number, after: number): WorldId[] {
-  return WORLDS.filter((w) => w.threshold > 0 && before < w.threshold && after >= w.threshold).map((w) => w.id);
+/** Places are chosen and bought now (lib/shop); nothing opens by itself. */
+function crossed(_before: number, _after: number): WorldId[] {
+  return [];
 }
 
 function afterAward(r: AwardResult) {
@@ -265,7 +307,7 @@ function afterAward(r: AwardResult) {
 
 /** Starlight feedback: fired after each award attempt that earned (or hit the day's limit). */
 /** Sísí's one line the very first time Starlight is earned */
-export const FIRST_STARLIGHT_LINE = "This time together added a little Starlight. Gather a little more, and a new world opens.";
+export const FIRST_STARLIGHT_LINE = "This time together added a little Starlight. Gather some, and bring something new into our walk.";
 
 /** what was done, in a few words (the feedback names it) */
 export const STARLIGHT_FOR: Partial<Record<StarlightSource, string>> = {
@@ -275,10 +317,9 @@ export const STARLIGHT_FOR: Partial<Record<StarlightSource, string>> = {
   small_step_saved: "A small step kept",
 };
 
-/** the next World and how far along: "Cloud Garden · 7 / 12" (null once all are open) */
-export function nextWorldProgress(balance: number): { name: string; have: number; need: number } | null {
-  const next = [...WORLDS].sort((a, b) => a.threshold - b.threshold).find((w) => w.threshold > balance);
-  return next ? { name: next.name, have: balance, need: next.threshold } : null;
+/** @deprecated places are bought now; the feedback shows what there is to spend */
+export function nextWorldProgress(_balance: number): { name: string; have: number; need: number } | null {
+  return null;
 }
 
 export function onStarlight(fn: (r: AwardResult) => void): () => void {

@@ -23,6 +23,7 @@ import { BASE_H, STRIP } from "@/components/sisi/journey-v2/MeadowStrip";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
 import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
 import { useSceneTheme, type SceneTheme } from "@/lib/sceneTheme";
+import { Birds } from "@/components/sisi/journey-v2/Birds";
 import type { SkyPhase } from "@/lib/timeOfDay";
 
 /**
@@ -703,6 +704,7 @@ export const MomentsWorld = forwardRef<
           // eslint-disable-next-line @next/next/no-img-element
           <img key={scene.backdrop} className="jw-backdrop tod-grade" src={scene.backdrop} alt="" aria-hidden draggable={false} />
         )}
+        {scene.bird && <Birds />}
       </div>
 
       {/* Cloud Gate (arriving from the Stars): the same painted banks as the ascent */}
@@ -722,7 +724,7 @@ export const MomentsWorld = forwardRef<
               {/* the Journey's time-of-day grass line, just behind the path,
                   so the meadow is the same on both pages (nothing appears or
                   disappears when they hand over) */}
-              {tod && <BandLayer key={`strip-${tod.phase}-${scene.id}`} spec={stripBand(tod.phase, scene.strip)} H={H} W={W} register={register} />}
+              {tod && scene.strip !== null && <BandLayer key={`strip-${tod.phase}-${scene.id}-${scene.strip?.src ?? ""}`} spec={stripBand(tod.phase, scene.strip ?? undefined)} H={H} W={W} register={register} />}
               {scene.verge && (
                 <BandLayer
                   key={`verge-${scene.id}`}
@@ -735,7 +737,7 @@ export const MomentsWorld = forwardRef<
               {/* the forest's big trees, behind the path (as on the Journey) */}
               {scene.bigTrees && (
                 <BandLayer
-                  key={`trees-${scene.id}`}
+                  key={`trees-${scene.id}-${scene.bigTrees.src}`}
                   spec={{ kind: "band", key: "big-trees", src: scene.bigTrees.src, ratio: 1, heightPct: scene.bigTrees.heightPct, bottom: scene.bigTrees.bottom, filter: TOD_GRADE, seam: 2 }}
                   H={H}
                   W={W}
@@ -748,7 +750,7 @@ export const MomentsWorld = forwardRef<
               {scene.fish && <PondFish srcs={scene.fish} bottom={GROUND_BAND_BOTTOM} waterSpeed={scene.groundSpeed ?? 32} waterDrift={scene.groundDrift ?? 0} />}
               {scene.foreground && (
                 <BandLayer
-                  key={`fore-${scene.id}`}
+                  key={`fore-${scene.id}-${scene.foreground}`}
                   spec={{ kind: "band", key: "pond-fore", src: scene.foreground, ratio: 1, heightPct: scene.foregroundHeight ?? 1, bottom: scene.foregroundBottom ?? GROUND_BAND_BOTTOM, filter: TOD_GRADE, seam: 2 }}
                   H={H}
                   W={W}
@@ -889,7 +891,7 @@ export const MomentsWorld = forwardRef<
       </div>
 
       {/* a busy near bank (pond, forest): the soft fade under the tabs, as on the Journey */}
-      {(scene.foreground || scene.backdrop) && <div className="jw-nav-scrim" style={{ zIndex: 9 }} aria-hidden />}
+      {(scene.foreground || scene.backdrop || scene.water) && <div className="jw-nav-scrim" style={{ zIndex: 9 }} aria-hidden />}
       {!gateDone && (
         <div ref={frontRef} className="mw-gate mw-gate--front" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}

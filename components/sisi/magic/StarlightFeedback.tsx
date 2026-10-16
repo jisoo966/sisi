@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { STARLIGHT_FOR, nextWorldProgress, onStarlight, type AwardResult } from "@/lib/starlight";
+import { STARLIGHT_FOR, onStarlight, type AwardResult } from "@/lib/starlight";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -15,8 +15,8 @@ import { haptic } from "@/lib/haptics";
  *   release  the mark floats up a little and fades
  *
  * It says what earned it and where it leads: "✦ +1 · A moment kept", and
- * under it "Cloud Garden · 7 / 12". No confetti. Starlight is time spent
- * with Sísí (it opens Worlds) and stays apart from any one wish, so nothing
+ * under it "8 Starlight to spend on the Map". No confetti. Starlight is time
+ * spent with Sísí (spent on the Map) and stays apart from any one wish, so nothing
  * flies to or from a Star. When today's light is already full, what you did
  * is still acknowledged (without a number): "A moment kept · Today’s
  * Starlight is full".
@@ -46,8 +46,7 @@ export function StarlightFeedback() {
       if (r.awarded <= 0 && !r.capped) return;
       const id = ++seq.current;
       const what = (r.source && STARLIGHT_FOR[r.source]) ?? null;
-      const next = nextWorldProgress(r.balance);
-      const toward = r.awarded <= 0 ? "Today’s Starlight is full" : next ? `${next.name} · ${next.have} / ${next.need}` : null;
+      const toward = r.awarded <= 0 ? "Today’s Starlight is full" : `${r.balance} Starlight to spend on the Map`;
       // let the saved paper settle first
       setTimeout(() => setGain({ id, n: r.awarded, what, toward }), 450);
       // the moment the light lands
