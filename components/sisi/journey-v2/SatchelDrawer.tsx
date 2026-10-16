@@ -9,7 +9,7 @@ import type { WorldId } from "@/lib/starlight";
 import { CATALOG, fitsPlace, itemById, type ItemKind, type ShopItem } from "@/lib/shopCatalog";
 import { purchase, useShop } from "@/lib/shop";
 import { effectiveLook, saveLook, setPreview, useLooks, type Look } from "@/lib/looks";
-import { FocusPaper, IconCheck, IconLock, PrimaryButton, StarGlyph, TextAction } from "@/components/ds";
+import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLock, IconTree, PrimaryButton, StarGlyph, TextAction } from "@/components/ds";
 
 /**
  * SatchelDrawer — the Map: where you walk, and what walks with you.
@@ -31,11 +31,11 @@ import { FocusPaper, IconCheck, IconLock, PrimaryButton, StarGlyph, TextAction }
  */
 
 type Tab = "place" | "trees" | "flowers" | "lives";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "place", label: "Places" },
-  { id: "trees", label: "Trees" },
-  { id: "flowers", label: "Flowers" },
-  { id: "lives", label: "Little lives" },
+const TABS: { id: Tab; label: string; Icon: (p: { size?: number }) => React.ReactNode }[] = [
+  { id: "place", label: "Places", Icon: IconLandscape },
+  { id: "trees", label: "Trees", Icon: IconTree },
+  { id: "flowers", label: "Flowers", Icon: IconFlower },
+  { id: "lives", label: "Little lives", Icon: IconButterfly },
 ];
 
 type Draft = { place: WorldId; look: Look; /** the one not-yet-owned thing being tried */ focus: string | null };
@@ -401,14 +401,16 @@ export function SatchelDrawer({
             type="button"
             role="tab"
             aria-selected={tab === t.id}
-            className={`sd-tabtext${tab === t.id ? " is-on" : ""}`}
+            aria-label={t.label}
+            title={t.label}
+            className={`sd-tab${tab === t.id ? " is-on" : ""}`}
             onClick={() => {
               setTab(t.id);
               setNote(null);
               setDone(null);
             }}
           >
-            {t.label}
+            <t.Icon size={24} />
           </button>
         ))}
       </div>
@@ -538,7 +540,7 @@ export function SatchelDrawer({
         .sd-card-note { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .sd-card.is-equipped .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         /* the four kinds of things, always in this order */
-        .sd-tabs { display: flex; gap: 4px; padding: 0 var(--focus-pad) 10px; overflow-x: auto; scrollbar-width: none; }
+        .sd-tabs { display: flex; gap: 6px; padding: 0 var(--focus-pad) 10px; }
         .sd-tabs::-webkit-scrollbar { display: none; }
         .sd-tabtext {
           flex: none; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
