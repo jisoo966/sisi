@@ -9,7 +9,7 @@ import type { WorldId } from "@/lib/starlight";
 import { CATALOG, fitsPlace, itemById, type ItemKind, type ShopItem } from "@/lib/shopCatalog";
 import { purchase, useShop } from "@/lib/shop";
 import { effectiveLook, saveLook, setPreview, useLooks, type Look } from "@/lib/looks";
-import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLock, IconTree, PrimaryButton, StarGlyph, TextAction } from "@/components/ds";
+import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLock, IconTree, PrimaryButton, StarGlyph } from "@/components/ds";
 
 /**
  * SatchelDrawer — the Map: where you walk, and what walks with you.
@@ -21,9 +21,12 @@ import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLo
  *   cards   one row of picture cards for the tab. In use = solid outline +
  *           check; yours = plain; not yet yours = dashed + its price; not for
  *           this place = faint, with where it belongs ("Grows by the pond.")
- *   bar     after a tap: "✦6 · Plant" (or "2 more Starlight needed"), or
- *           Apply for what is already yours, and Cancel. Nothing is spent,
- *           and nothing saved changes, until that button.
+ *   taps    what you own changes at once and is kept (tap a little life
+ *           again to let it go; a butterfly colour at once too). What you
+ *           don't own yet is only tried on: the bar shows "✦6 · Plant" (or
+ *           "2 more Starlight needed"). Any other tap, or closing, ends the
+ *           preview — back to the last kept look. Starlight is only ever
+ *           spent by that button.
  *
  * Starlight (upper right) is gathered by time together and spent here; what
  * you bring along is yours for good, and choosing among what you own is free.
@@ -39,29 +42,6 @@ const TABS: { id: Tab; label: string; Icon: (p: { size?: number }) => React.Reac
 ];
 
 type Draft = { place: WorldId; look: Look; /** the one not-yet-owned thing being tried */ focus: string | null };
-
-const sameLook = (a: Look, b: Look) =>
-  a.trees === b.trees && a.flowers === b.flowers && a.butterflies === b.butterflies && a.fish === b.fish && a.bird === b.bird;
-
-/** put one slot of a look back as it was (the slot an item belongs to) */
-function revertSlot(look: Look, itemId: string, to: Look): Look {
-  const it = itemById(itemId);
-  if (!it) return look;
-  if (it.kind === "trees") return { ...look, trees: to.trees };
-  if (it.kind === "flowers") return { ...look, flowers: to.flowers };
-  if (itemId === "lives:fish") return { ...look, fish: to.fish };
-  if (itemId === "lives:bird") return { ...look, bird: to.bird };
-  if (itemId === "lives:butterflies") return { ...look, butterflies: to.butterflies };
-  return look;
-}
-
-/** whether a look has this item on */
-function wears(look: Look, itemId: string): boolean {
-  if (itemId === "lives:fish") return look.fish;
-  if (itemId === "lives:bird") return look.bird;
-  if (itemId === "lives:butterflies") return look.butterflies !== null;
-  return look.trees === itemId || look.flowers === itemId;
-}
 
 /** what Sísí says when something new joins the walk (once, softly) */
 const REACTION: Record<string, string> = {
@@ -117,7 +97,6 @@ export function SatchelDrawer({
   const place: WorldId = owned.has(`place:${equipped}`) ? equipped : "quiet-meadow";
   const applied = useMemo(() => ({ place, look: effectiveLook(place, saved[place], owned) }), [place, saved, owned]);
   const d: Draft = draft ?? { ...applied, focus: null };
-  const changed = d.place !== applied.place || !sameLook(d.look, applied.look);
 
   // opening starts from what is in use; closing drops any preview
   useEffect(() => {
@@ -130,44 +109,22 @@ export function SatchelDrawer({
   }, [open]);
   useEffect(() => () => setPreview(null), []);
 
+  /** end any preview: back to the last saved look */
+  const endPreview = () => {
+    setDraft(null);
+    setPreview(null);
+  };
+
+  /** show something not yet owned on the walk (nothing is saved or spent) */
   const tryOn = (next: Draft) => {
     setNote(null);
     setDone(null);
     setDraft(next);
-    const same = next.place === applied.place && sameLook(next.look, applied.look);
-    setPreview(same ? null : { place: next.place, look: next.look });
+    setPreview({ place: next.place, look: next.look });
   };
 
-  /** try a look change in this place; at most one not-yet-owned thing at a time */
-  const tryItem = (itemId: string | null, change: (l: Look) => Look) => {
-    const item = itemId ? itemById(itemId) : undefined;
-    if (item && !fitsPlace(item, d.place)) {
-      setNote(item.elsewhere ?? "Not for this place.");
-      return;
-    }
-    const unowned = !!item && !owned.has(item.id);
-    if (unowned && d.focus?.startsWith("place:")) {
-      setNote(`Open ${itemById(d.focus)?.name} first.`);
-      return;
-    }
-    let look = d.look;
-    if (unowned && d.focus && d.focus !== itemId) look = revertSlot(look, d.focus, applied.look);
-    look = change(look);
-    // a slot that was tried and is now set back lets go of it
-    const focus = unowned ? itemId : d.focus && wears(look, d.focus) ? d.focus : null;
-    tryOn({ place: d.place, look, focus });
-  };
-
-  const tryPlace = (p: WorldId) => {
-    if (p === d.place) return;
-    const look = p === applied.place ? applied.look : effectiveLook(p, saved[p], owned);
-    tryOn({ place: p, look, focus: owned.has(`place:${p}`) ? null : `place:${p}` });
-  };
-
-  const cancel = () => tryOn({ ...applied, focus: null });
-
-  /** keep what is tried on: the place walked, and its look */
-  const keep = (dr: Draft): boolean => {
+  /** keep a look at once: the place walked, and its look (owned things only) */
+  const keep = (dr: { place: WorldId; look: Look }, el?: HTMLElement | null): boolean => {
     try {
       saveLook(dr.place, dr.look);
     } catch {
@@ -175,9 +132,37 @@ export function SatchelDrawer({
       return false;
     }
     if (dr.place !== equipped) equipWorld(dr.place);
-    setPreview(null);
-    setDraft(null);
+    endPreview();
+    setNote(null);
+    setDone(null);
+    if (el) haptic("select", el);
     return true;
+  };
+
+  /**
+   * A tap on a trees / flowers / little-lives card. Owned: changes at once
+   * and is saved. Not yet owned: a preview with its price. Any tap ends the
+   * preview before it (back to the saved look first).
+   */
+  const tapItem = (itemId: string | null, change: (l: Look) => Look, el: HTMLElement) => {
+    if (itemId && d.focus === itemId) return endPreview(); // a second tap: back
+    const item = itemId ? itemById(itemId) : undefined;
+    if (item && !fitsPlace(item, applied.place)) {
+      setNote(item.elsewhere ?? "Not for this place.");
+      return;
+    }
+    const look = change(applied.look);
+    if (item && !owned.has(item.id)) tryOn({ place: applied.place, look, focus: item.id });
+    else keep({ place: applied.place, look }, el);
+  };
+
+  const tapPlace = (p: WorldId, el: HTMLElement) => {
+    if (owned.has(`place:${p}`)) {
+      if (p !== applied.place || draft) keep({ place: p, look: p === applied.place ? applied.look : effectiveLook(p, saved[p], owned) }, el);
+      return;
+    }
+    if (d.focus === `place:${p}`) return endPreview(); // a second tap: back
+    tryOn({ place: p, look: effectiveLook(p, saved[p], owned), focus: `place:${p}` });
   };
 
   const focusItem = d.focus ? itemById(d.focus) : undefined;
@@ -204,12 +189,6 @@ export function SatchelDrawer({
     window.dispatchEvent(new CustomEvent(SHOP_BOUGHT_EVENT, { detail: { id: focusItem.id, line: REACTION[focusItem.id] } }));
   };
 
-  const apply = (el: HTMLElement) => {
-    if (!keep(d)) return;
-    softGlint(el);
-    haptic("select", el);
-  };
-
   /* ── the cards for each tab ── */
 
   const priceNote = (it: ShopItem) => (
@@ -221,19 +200,18 @@ export function SatchelDrawer({
     // eslint-disable-next-line @next/next/no-img-element
     <img className={`sd-card-img is-${kind}`} src={src} alt="" draggable={false} />
   );
-  const noneCard = (id: string, name: string, on: boolean, pick: () => void): Card => ({
+  const noneCard = (id: string, name: string, on: boolean, pick: (el: HTMLElement) => void): Card => ({
     id,
     name,
     art: <span className="sd-none" aria-hidden />,
     on,
     owned: true,
-    note: on && sameLook(d.look, applied.look) && d.place === applied.place ? "In use" : "Just the place",
+    note: on && !draft ? "In use" : "Just the place",
     onPick: pick,
   });
-  const itemCard = (it: ShopItem, on: boolean, pick: () => void): Card => {
-    const away = !fitsPlace(it, d.place);
+  const itemCard = (it: ShopItem, on: boolean, pick: (el: HTMLElement) => void): Card => {
+    const away = !fitsPlace(it, applied.place);
     const mine = owned.has(it.id);
-    const inUse = on && !changed;
     return {
       id: it.id,
       name: it.name,
@@ -241,7 +219,7 @@ export function SatchelDrawer({
       on: on && !away,
       owned: mine,
       away,
-      note: away ? it.elsewhere : inUse ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : priceNote(it),
+      note: away ? it.elsewhere : on && mine ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : priceNote(it),
       onPick: pick,
     };
   };
@@ -260,31 +238,32 @@ export function SatchelDrawer({
         on: d.place === w.id,
         owned: mine,
         note: applied.place === w.id ? "Walking here" : mine ? "Yours" : it ? priceNote(it) : "",
-        onPick: () => tryPlace(w.id),
+        onPick: (el) => tapPlace(w.id, el),
       };
     });
   } else if (tab === "trees") {
     cards = [
-      noneCard("trees:none", "No trees", d.look.trees === null, () => tryItem(null, (l) => ({ ...l, trees: null }))),
-      ...items("trees").map((it) => itemCard(it, d.look.trees === it.id, () => tryItem(it.id, (l) => ({ ...l, trees: it.id })))),
+      noneCard("trees:none", "No trees", d.look.trees === null, (el) => tapItem(null, (l) => ({ ...l, trees: null }), el)),
+      ...items("trees").map((it) => itemCard(it, d.look.trees === it.id, (el) => tapItem(it.id, (l) => ({ ...l, trees: it.id }), el))),
     ];
   } else if (tab === "flowers") {
     cards = [
-      noneCard("flowers:none", "No flowers", d.look.flowers === null, () => tryItem(null, (l) => ({ ...l, flowers: null }))),
-      ...items("flowers").map((it) => itemCard(it, d.look.flowers === it.id, () => tryItem(it.id, (l) => ({ ...l, flowers: it.id })))),
+      noneCard("flowers:none", "No flowers", d.look.flowers === null, (el) => tapItem(null, (l) => ({ ...l, flowers: null }), el)),
+      ...items("flowers").map((it) => itemCard(it, d.look.flowers === it.id, (el) => tapItem(it.id, (l) => ({ ...l, flowers: it.id }), el))),
     ];
   } else {
-    // little lives: each comes along or not (more than one at once)
+    // little lives: each tap brings one along or lets it go (more than one at once)
+    const has = (l: Look, id: string) => (id === "lives:butterflies" ? l.butterflies !== null : id === "lives:fish" ? l.fish : l.bird);
     cards = items("lives").map((it) => {
-      const on = it.id === "lives:butterflies" ? d.look.butterflies !== null : it.id === "lives:fish" ? d.look.fish : d.look.bird;
-      return itemCard(it, on, () =>
-        tryItem(on ? null : it.id, (l) =>
+      const along = has(applied.look, it.id);
+      return itemCard(it, has(d.look, it.id), (el) =>
+        tapItem(along ? null : it.id, (l) =>
           it.id === "lives:butterflies"
-            ? { ...l, butterflies: on ? null : (applied.look.butterflies ?? "ivory") }
+            ? { ...l, butterflies: along ? null : "ivory" }
             : it.id === "lives:fish"
-              ? { ...l, fish: !on }
-              : { ...l, bird: !on },
-        ),
+              ? { ...l, fish: !along }
+              : { ...l, bird: !along },
+        el),
       );
     });
   }
@@ -339,36 +318,32 @@ export function SatchelDrawer({
   }, [open, tab]);
 
   const showColours = tab === "lives" && d.look.butterflies !== null;
-  const bar = done ? (
+  // the bar shows only for what is being tried before buying (owned things change at once)
+  const bar = focusItem ? (
+    <div className="sd-bar">
+      <span className="sd-bar-note">{focusItem.name}</span>
+      {need > 0 ? (
+        <span className="sd-bar-note is-need" role="status">
+          {need} more Starlight needed
+        </span>
+      ) : (
+        <PrimaryButton loading={busy} disabled={busy || !ready} onClick={(e) => buy(e.currentTarget)}>
+          {focusItem.price > 0 ? (
+            <>
+              <StarGlyph size={14} /> {focusItem.price} · {focusItem.verb}
+            </>
+          ) : (
+            focusItem.verb
+          )}
+        </PrimaryButton>
+      )}
+    </div>
+  ) : done ? (
     <p className="sd-msg is-done" role="status">
       <IconCheck size={16} /> {done}
     </p>
-  ) : note && !changed ? (
+  ) : note ? (
     <p className="sd-msg" role="status">{note}</p>
-  ) : changed ? (
-    <div className="sd-bar">
-      <TextAction onClick={cancel}>Cancel</TextAction>
-      <span className="sd-bar-end">
-        {note && <span className="sd-bar-note" role="status">{note}</span>}
-        {!focusItem ? (
-          <PrimaryButton onClick={(e) => apply(e.currentTarget)}>Apply</PrimaryButton>
-        ) : need > 0 ? (
-          <span className="sd-bar-note" role="status">
-            {need} more Starlight needed
-          </span>
-        ) : (
-          <PrimaryButton loading={busy} disabled={busy || !ready} onClick={(e) => buy(e.currentTarget)}>
-            {focusItem.price > 0 ? (
-              <>
-                <StarGlyph size={14} /> {focusItem.price} · {focusItem.verb}
-              </>
-            ) : (
-              focusItem.verb
-            )}
-          </PrimaryButton>
-        )}
-      </span>
-    </div>
   ) : null;
 
   return (
@@ -408,6 +383,7 @@ export function SatchelDrawer({
               setTab(t.id);
               setNote(null);
               setDone(null);
+              if (draft) endPreview(); // a preview ends with any other tap
             }}
           >
             <t.Icon size={24} />
@@ -447,7 +423,11 @@ export function SatchelDrawer({
               role="radio"
               aria-checked={d.look.butterflies === c}
               className={`sd-colour is-${c}${d.look.butterflies === c ? " is-on" : ""}`}
-              onClick={() => tryItem(null, (l) => ({ ...l, butterflies: c }))}
+              onClick={(e) =>
+                d.focus === "lives:butterflies"
+                  ? tryOn({ ...d, look: { ...d.look, butterflies: c } })
+                  : keep({ place: applied.place, look: { ...applied.look, butterflies: c } }, e.currentTarget)
+              }
             >
               <span className="sd-dot" aria-hidden />
               {c === "ivory" ? "Ivory" : "Lavender"}

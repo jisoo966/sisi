@@ -62,6 +62,7 @@ export function seedLook(place: WorldId, look: Look) {
   all[place] = look;
   try {
     localStorage.setItem(KEY, JSON.stringify(all));
+    window.dispatchEvent(new CustomEvent(EVENT));
   } catch {
     // ignore
   }
