@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { IconButton, IconLandscape, IconMenu } from "@/components/ds";
+import { IconButton, IconMenu, IconScenery } from "@/components/ds";
 import { markHint } from "@/lib/hints";
 
 /**
@@ -78,7 +78,7 @@ export function JourneyHeader({
               }}
             >
               {/* the Map: where you walk */}
-              <IconLandscape />
+              <IconScenery />
             </IconButton>
           </span>
         )}
