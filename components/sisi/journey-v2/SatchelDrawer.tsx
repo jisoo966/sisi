@@ -378,7 +378,6 @@ export function SatchelDrawer({
           >
             <StarGlyph size={16} />
             <span key={balance} className="sd-balance-n">{ready ? balance : "·"}</span>
-            <span className="sd-balance-word">Starlight</span>
           </span>
         </>
       }
@@ -479,9 +478,12 @@ export function SatchelDrawer({
         .sd-tab:active { transform: scale(0.94); }
         .sd-tab.is-on { background: var(--ink-08); color: var(--sisi-ink); }
         .sd-tab:focus-visible { outline: 2px solid var(--sisi-ink); outline-offset: 2px; }
-        .sd-balance { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; color: var(--sisi-ink); }
-        .sd-balance-n { font-family: var(--font-editorial); font-size: 20px; }
-        .sd-balance-word { font-family: var(--font-ui); font-size: 13px; color: var(--ink-60); letter-spacing: 0.01em; }
+        /* Starlight as a chip: the star and what there is, in one quiet pill */
+        .sd-balance {
+          flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 11px;
+          border-radius: 999px; background: var(--ink-08); color: var(--sisi-ink);
+        }
+        .sd-balance-n { font-family: var(--font-ui); font-size: 15px; font-weight: 600; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
 
         /* one row of big cards that bleeds to the sheet's edges */
         .sd-row {
