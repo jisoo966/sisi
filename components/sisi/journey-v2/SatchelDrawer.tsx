@@ -492,13 +492,13 @@ export function SatchelDrawer({
         .sd-row::-webkit-scrollbar { display: none; }
         .sd-row > li { flex: none; scroll-snap-align: center; }
         .sd-card {
-          display: flex; flex-direction: column; align-items: center; gap: 2px; width: 108px;
+          display: flex; flex-direction: column; align-items: center; gap: 2px; width: 116px;
           padding: 0; border: 0; background: none; color: var(--sisi-ink); font: inherit; cursor: pointer;
           -webkit-tap-highlight-color: transparent;
         }
         .sd-card[aria-disabled="true"] { cursor: default; }
         .sd-card-art {
-          position: relative; display: block; width: 108px; height: 135px; overflow: hidden;
+          position: relative; display: block; width: 116px; height: 116px; overflow: hidden;
           border-radius: 18px; background: var(--ink-08);
           transition: transform var(--motion-instant) ease;
         }
@@ -552,7 +552,7 @@ export function SatchelDrawer({
         .sd-card.is-on .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         .sd-card.is-away .sd-card-art { opacity: 0.45; }
         .sd-card.is-away .sd-card-name { color: var(--ink-60); }
-        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 106px; line-height: 1.25; }
+        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 114px; line-height: 1.25; }
         .sd-card-img.is-trees, .sd-card-img.is-lives { object-fit: contain; padding: 10px; box-sizing: border-box; }
         .sd-card-img.is-flowers { object-fit: cover; object-position: center bottom; }
         .sd-none { display: block; width: 100%; height: 100%; }
