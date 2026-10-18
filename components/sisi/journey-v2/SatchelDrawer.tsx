@@ -4,7 +4,7 @@ import { fxAnchorRef } from "@/lib/fxAnchors";
 import { softGlint } from "@/lib/fx";
 import { haptic } from "@/lib/haptics";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { WORLDS, WORLD_LOOK, equipWorld, useEquippedWorld } from "@/lib/worlds";
+import { WORLDS, equipWorld, useEquippedWorld } from "@/lib/worlds";
 import type { WorldId } from "@/lib/starlight";
 import { CATALOG, fitsPlace, itemById, type ItemKind, type ShopItem } from "@/lib/shopCatalog";
 import { purchase, useShop } from "@/lib/shop";
@@ -241,7 +241,8 @@ export function SatchelDrawer({
       return {
         id,
         name: w.name,
-        art: img(WORLD_LOOK[w.id].preview, "place"),
+        // the place itself, without Sísí: its sky, its trees, its path
+        art: img(`/V2/themes/cards/${w.id}.webp`, "place"),
         on: d.place === w.id,
         owned: mine,
         note: applied.place === w.id ? "Walking here" : mine ? "Yours" : it ? (shortNote(it) ?? priceNote(it)) : "",
@@ -363,20 +364,23 @@ export function SatchelDrawer({
       onClose={onClose}
       live
       closeLabel="Close the Map"
-      title={<h2 className="sd-title">Map</h2>}
-      headerExtra={
-        <span
-          className="sd-balance"
-          ref={(el) => {
-            balRef.current = el;
-            fxAnchorRef("starlightCounter", el);
-          }}
-          aria-label={`${balance} Starlight`}
-        >
-          <StarGlyph size={16} />
-          <span key={balance} className="sd-balance-n">{ready ? balance : "·"}</span>
-          <span className="sd-balance-word">Starlight</span>
-        </span>
+      title={
+        <>
+          <h2 className="sd-title">Map</h2>
+          {/* what there is to spend, where the eye starts */}
+          <span
+            className="sd-balance"
+            ref={(el) => {
+              balRef.current = el;
+              fxAnchorRef("starlightCounter", el);
+            }}
+            aria-label={`${balance} Starlight`}
+          >
+            <StarGlyph size={16} />
+            <span key={balance} className="sd-balance-n">{ready ? balance : "·"}</span>
+            <span className="sd-balance-word">Starlight</span>
+          </span>
+        </>
       }
       className="sd-focus"
     >
@@ -456,7 +460,8 @@ export function SatchelDrawer({
         html.sd-lifting .journey-stage-v2 .cc-root, html.sd-lifting .journey-stage-v2 .cc-head, html.sd-lifting .journey-stage-v2 .sisi-speak-lines { translate: 0 calc(-1 * var(--sd-lift, 0px)); }
         /* a low sheet: Sísí and the world stay in view above it */
         .sd-focus { max-height: min(64dvh, 480px) !important; }
-        .sd-focus .ds-focus-head { padding-top: 16px; }
+        .sd-focus .ds-focus-head { padding-top: 12px; }
+        .sd-focus .ds-focus-title { display: flex; align-items: center; }
         .sd-focus .ds-focus-body { padding: 8px 0 calc(14px + var(--safe-bottom)); }
         /* the sheet's name stays for screen readers only: the tabs say what it is */
         .sd-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -474,8 +479,8 @@ export function SatchelDrawer({
         .sd-tab:active { transform: scale(0.94); }
         .sd-tab.is-on { background: var(--ink-08); color: var(--sisi-ink); }
         .sd-tab:focus-visible { outline: 2px solid var(--sisi-ink); outline-offset: 2px; }
-        .sd-balance { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 6px; color: var(--sisi-ink); }
-        .sd-balance-n { font-family: var(--font-editorial); font-size: 17px; }
+        .sd-balance { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0; color: var(--sisi-ink); }
+        .sd-balance-n { font-family: var(--font-editorial); font-size: 20px; }
         .sd-balance-word { font-family: var(--font-ui); font-size: 13px; color: var(--ink-60); letter-spacing: 0.01em; }
 
         /* one row of big cards that bleeds to the sheet's edges */
@@ -487,13 +492,13 @@ export function SatchelDrawer({
         .sd-row::-webkit-scrollbar { display: none; }
         .sd-row > li { flex: none; scroll-snap-align: center; }
         .sd-card {
-          display: flex; flex-direction: column; align-items: center; gap: 2px; width: 128px;
+          display: flex; flex-direction: column; align-items: center; gap: 2px; width: 108px;
           padding: 0; border: 0; background: none; color: var(--sisi-ink); font: inherit; cursor: pointer;
           -webkit-tap-highlight-color: transparent;
         }
         .sd-card[aria-disabled="true"] { cursor: default; }
         .sd-card-art {
-          position: relative; display: block; width: 128px; height: 104px; overflow: hidden;
+          position: relative; display: block; width: 108px; height: 135px; overflow: hidden;
           border-radius: 18px; background: var(--ink-08);
           transition: transform var(--motion-instant) ease;
         }
@@ -528,7 +533,7 @@ export function SatchelDrawer({
           width: 30px; height: 30px; border-radius: 50%; background: var(--sisi-paper); color: var(--sisi-ink);
           box-shadow: 0 1px 3px rgba(16, 45, 50, 0.18);
         }
-        .sd-card-name { margin-top: 5px; font-family: var(--font-editorial); font-size: 16px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
+        .sd-card-name { margin-top: 5px; font-family: var(--font-editorial); font-size: 15px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
         .sd-card-note { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-ui); font-size: var(--text-meta); color: var(--ink-60); letter-spacing: 0.005em; }
         .sd-card.is-equipped .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         /* the four kinds of things, always in this order */
@@ -547,7 +552,7 @@ export function SatchelDrawer({
         .sd-card.is-on .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         .sd-card.is-away .sd-card-art { opacity: 0.45; }
         .sd-card.is-away .sd-card-name { color: var(--ink-60); }
-        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 124px; line-height: 1.25; }
+        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 106px; line-height: 1.25; }
         .sd-card-img.is-trees, .sd-card-img.is-lives { object-fit: contain; padding: 10px; box-sizing: border-box; }
         .sd-card-img.is-flowers { object-fit: cover; object-position: center bottom; }
         .sd-none { display: block; width: 100%; height: 100%; }
