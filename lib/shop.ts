@@ -10,9 +10,9 @@
  * Otherwise (today: a guest's Starlight lives on this device): the same rules
  * run under the ledger's cross-tab lock, and a purchase is one appended row.
  *
- * Existing walkers keep everything: on first run, the places they had opened
- * and the decorations their places already showed are given to them, and
- * each place keeps the look it had (runs once; safe to run again).
+ * Existing walkers keep everything: on first run, every place is opened for
+ * them with the decorations it already showed, and each place keeps the look
+ * it had (runs once; safe to run again). Their Starlight stays theirs to spend.
  */
 
 import { useEffect, useState } from "react";
@@ -25,11 +25,10 @@ import {
   localDate,
   newLedgerId,
   starlightBalance,
-  starlightEarned,
   starlightRows,
   type WorldId,
 } from "@/lib/starlight";
-import { PLACES_ALL_OPEN, equippedWorldLocal, placesGranted } from "@/lib/worlds";
+import { PLACES_ALL_OPEN, equippedWorldLocal } from "@/lib/worlds";
 import { CATALOG, itemById } from "@/lib/shopCatalog";
 import { balanceOf, ownedOf, planGrant, planPurchase } from "@/lib/shopCore";
 import { effectiveLook, saveLook, savedLooks, seedLook, type Look } from "@/lib/looks";
@@ -136,11 +135,10 @@ export async function migrateShop(): Promise<void> {
       localStorage.setItem(MIGRATED, "1"); // a new walker: starts with the meadow
       return;
     }
-    // the places they had opened before (by the old cumulative rule, a gift, or in use)
-    const earned = await starlightEarned();
-    const granted = placesGranted();
-    const using = equippedWorldLocal();
-    const opened = WORLDS.filter((w) => w.threshold === 0 || earned >= w.threshold || granted.includes(w.id) || using === w.id).map((w) => w.id);
+    // everyone who walked with Sísí before the shop keeps every place open
+    // (while places were all open for showing them, they could visit any of
+    // them — none is taken back), each with the look it had
+    const opened = WORLDS.map((w) => w.id);
     const gifts = new Set<string>(["lives:butterflies"]);
     for (const p of opened) {
       if (p !== "quiet-meadow") gifts.add(`place:${p}`);

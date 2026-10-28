@@ -184,17 +184,15 @@ alter table public.world_looks enable row level security;
 create policy "world_looks: own" on public.world_looks
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- 7 · existing walkers keep what they had: every place their gathered
---     Starlight had opened (12 → the pond, 25 → the forest, by the old
---     cumulative rule) and the decorations those places showed. Once only.
+-- 7 · existing walkers keep everything: every place opened for them, with the
+--     decorations those places showed (places were all open for a while, so
+--     none is taken back). Once only.
 insert into public.starlight_ledger (user_id, source_type, source_id, amount, earned_date_local)
 select e.user_id, 'grant', g.item, 0, (now() at time zone 'utc')::date
-  from (select user_id, sum(amount) filter (where amount > 0) as earned
-          from public.starlight_ledger group by user_id) e
-  cross join lateral (values
-    (0,  'trees:teal'), (0, 'lives:butterflies'),
-    (12, 'place:bridge-pond'), (12, 'trees:willow'), (12, 'flowers:pond-reeds'), (12, 'lives:fish'),
-    (25, 'place:butterfly-forest'), (25, 'trees:forest-big'), (25, 'flowers:forest')
-  ) as g(threshold, item)
- where coalesce(e.earned, 0) >= g.threshold
+  from (select distinct user_id from public.starlight_ledger) e
+  cross join (values
+    ('trees:teal'), ('lives:butterflies'),
+    ('place:bridge-pond'), ('trees:willow'), ('flowers:pond-reeds'), ('lives:fish'),
+    ('place:butterfly-forest'), ('trees:forest-big'), ('flowers:forest')
+  ) as g(item)
 on conflict (user_id, source_type, source_id) do nothing;

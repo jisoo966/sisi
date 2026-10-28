@@ -124,7 +124,7 @@ describe("the device ledger", () => {
     expect(await s.starlightBalance()).toBe(10);
   });
 
-  it("existing walkers keep their places and decorations (and running it twice changes nothing)", async () => {
+  it("existing walkers get every place, with its decorations (and running it twice changes nothing)", async () => {
     store.set("sisi:guest-onboarded", "true");
     store.set("sisi:starlight-v1", JSON.stringify([earn(14, "old", "2026-10-01")]));
     const shop = await import("@/lib/shop");
@@ -135,7 +135,7 @@ describe("the device ledger", () => {
     const owned = ownedOf(s.starlightRows());
     expect(owned.has("place:bridge-pond")).toBe(true);
     expect(owned.has("trees:willow") && owned.has("lives:fish") && owned.has("trees:teal")).toBe(true);
-    expect(owned.has("place:butterfly-forest")).toBe(false);
+    expect(owned.has("place:butterfly-forest") && owned.has("trees:forest-big") && owned.has("flowers:forest")).toBe(true);
     expect(s.starlightRows().filter((r) => r.source_id === "place:bridge-pond").length).toBe(1);
     expect(await s.starlightBalance()).toBe(14); // still all theirs to spend
     const looks = JSON.parse(store.get("sisi:looks-v1")!);
