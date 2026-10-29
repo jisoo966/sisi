@@ -1273,7 +1273,7 @@ export default function JourneyPage() {
               first={[0.6, 1.2]}
               startInView
               height={scene.midTreeHeight ?? [0.32, 0.42]}
-              base={[0.5, 2.5]}
+              base={scene.midTreeBase ?? [0.5, 2.5]}
               max={2}
               filter={TOD_GRADE}
               zIndex={3}

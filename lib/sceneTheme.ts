@@ -75,6 +75,9 @@ export type SceneTheme = {
   midTrees?: SpriteArt[];
   /** their painted height, a fraction of the stage (default 0.32–0.42) */
   midTreeHeight?: [number, number];
+  /** where their painted bottom rests, % of the stage from the baseline
+   *  (default 0.5–2.5; lower sinks their foot into the far bank's grass) */
+  midTreeBase?: [number, number];
   /** the faint far trees (default: the meadow's) */
   farTrees?: SpriteArt[];
   /** near trees passing in front of Sísí, now and then (none if absent) */
@@ -171,7 +174,8 @@ function treesLayer(id: string | null, place: WorldId): Partial<SceneTheme> {
       midTreeHeight: [0.37, 0.46],
       frontTrees: TREES_FRONT_V2,
     };
-  if (id === "trees:willow") return { midTrees: WILLOWS };
+  // the willows' own bushes at their foot sit down in the far bank's grass, never above it
+  if (id === "trees:willow") return { midTrees: WILLOWS, midTreeBase: [-5, -3.5] };
   // roots (row 638 of 768) on the baseline; the crowns run off the top
   if (id === "trees:forest-big") return { bigTrees: { src: `${F}/forest-main-trees.webp`, heightPct: 0.898, bottom: "calc(var(--walking-baseline) - 15.2%)" } };
   return {};
