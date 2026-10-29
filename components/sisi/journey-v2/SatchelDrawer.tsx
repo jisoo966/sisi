@@ -555,8 +555,6 @@ export function SatchelDrawer({
         .sd-card.is-away .sd-card-art { opacity: 0.45; }
         .sd-card.is-away .sd-card-name { color: var(--ink-60); }
         .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 114px; line-height: 1.25; }
-        .sd-card-img.is-trees, .sd-card-img.is-lives { object-fit: contain; padding: 10px; box-sizing: border-box; }
-        .sd-card-img.is-flowers { object-fit: cover; object-position: center bottom; }
         .sd-none { display: block; width: 100%; height: 100%; }
         /* a quiet "nothing added": the frame alone, dashed */
         .sd-card:not(.is-on) .sd-none + .sd-badge { display: none; }
