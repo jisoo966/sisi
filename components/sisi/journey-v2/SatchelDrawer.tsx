@@ -20,7 +20,7 @@ import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLo
  *   tabs    Places · Trees · Flowers · Little lives (always in this order)
  *   cards   one row of picture cards for the tab. In use = solid outline +
  *           check; yours = plain; not yet yours = dashed + its price; not for
- *           this place = faint, with where it belongs ("Grows by the pond.")
+ *           this place = faint, with where it belongs ("By the pond")
  *   taps    what you own changes at once and is kept (tap a little life
  *           again to let it go; a butterfly colour at once too). What you
  *           don't own yet is only tried on: the bar shows "✦6 · Plant" (or
@@ -226,7 +226,7 @@ export function SatchelDrawer({
       on: on && !away,
       owned: mine,
       away,
-      note: away ? it.elsewhere : on && mine ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : shortNote(it) ?? priceNote(it),
+      note: away ? it.home : on && mine ? "In use" : mine ? "Yours" : it.price === 0 ? "A gift" : shortNote(it) ?? priceNote(it),
       onPick: pick,
     };
   };
@@ -554,7 +554,9 @@ export function SatchelDrawer({
         .sd-card.is-on .sd-card-note { color: var(--sisi-ink); font-weight: 500; }
         .sd-card.is-away .sd-card-art { opacity: 0.45; }
         .sd-card.is-away .sd-card-name { color: var(--ink-60); }
-        .sd-card.is-away .sd-card-note { white-space: normal; text-align: center; max-width: 114px; line-height: 1.25; }
+        /* every card keeps the same height (one line of name, one of note), so
+           the sheet never rises or sinks as the tabs change */
+        .sd-card-name, .sd-card-note { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sd-none { display: block; width: 100%; height: 100%; }
         /* a quiet "nothing added": the frame alone, dashed */
         .sd-card:not(.is-on) .sd-none + .sd-badge { display: none; }

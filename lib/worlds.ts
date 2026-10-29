@@ -12,7 +12,7 @@
  * breaks the Journey — its gentle grade and cloud density still apply.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import { WORLDS, type WorldId } from "@/lib/starlight";
@@ -117,9 +117,18 @@ export async function equipWorld(id: WorldId): Promise<void> {
   }
 }
 
+// the place last read on this page, so a screen that mounts later (the Moments
+// Trail, the Journey again) starts in it instead of flashing the meadow
+let knownWorld: WorldId | null = null;
+
+// runs before the first paint in the browser (a plain effect on the server), so
+// the walk never paints the meadow for a frame before the chosen place
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function useEquippedWorld(): WorldId {
-  const [w, setW] = useState<WorldId>(DEFAULT_WORLD);
-  useEffect(() => {
+  const [w, setWorld] = useState<WorldId>(knownWorld ?? DEFAULT_WORLD);
+  useBeforePaint(() => {
+    const setW = (id: WorldId) => setWorld((knownWorld = id));
     setW(equippedWorldLocal());
     loadEquippedWorld().then(setW);
     const h = (e: Event) => setW((e as CustomEvent<WorldId>).detail);

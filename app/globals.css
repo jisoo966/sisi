@@ -133,6 +133,11 @@
 .jw-group > * { pointer-events: none; }
 .journey-stage-v2.phase-star-view .jw-group { will-change: transform, opacity; }
 
+/* until the page has read the chosen place, its layers stay hidden (the sky
+ * and Sísí show), so the meadow never flashes before a pond or a forest */
+.scene-pending :is(.jw-hills, .jw-meadow, .jw-fore) :is(.parallax-layer, .passing-sprites, .jw-strip, .jw-floor, .jw-pond-light),
+.scene-pending .jw-backdrop { visibility: hidden; }
+
 /* Day sky texture — horizontally static; extends above the screen so the
  * 0.15× drift during the ascent never uncovers an edge. */
 .journey-sky-fixed {

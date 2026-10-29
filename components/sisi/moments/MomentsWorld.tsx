@@ -22,7 +22,7 @@ import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
 import { BASE_H, STRIP } from "@/components/sisi/journey-v2/MeadowStrip";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
 import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
-import { useSceneTheme, type SceneTheme } from "@/lib/sceneTheme";
+import { useSceneReady, useSceneTheme, type SceneTheme } from "@/lib/sceneTheme";
 import { Birds } from "@/components/sisi/journey-v2/Birds";
 import type { SkyPhase } from "@/lib/timeOfDay";
 
@@ -651,6 +651,7 @@ export const MomentsWorld = forwardRef<
 
   // the same ground as the Journey (Customize → the path): its art, its path line
   const scene = useSceneTheme();
+  const sceneReady = useSceneReady();
   const sceneLayers = useMemo(
     () =>
       MOMENTS_SCENE.map((L) =>
@@ -674,7 +675,7 @@ export const MomentsWorld = forwardRef<
       ),
     [scene],
   );
-  const rootClass = `mw-root${veiled ? " mw-veiled" : ""}${revealing ? " mw-revealing" : ""}${phase === "leaving" ? " mw-leaving" : ""}`;
+  const rootClass = `mw-root${sceneReady ? "" : " mw-scene-pending"}${veiled ? " mw-veiled" : ""}${revealing ? " mw-revealing" : ""}${phase === "leaving" ? " mw-leaving" : ""}`;
 
   return (
     <div
@@ -939,6 +940,8 @@ export const MomentsWorld = forwardRef<
         .mw-gate--front { z-index: 9; }
         .mw-group--sky, .mw-group--land { will-change: transform; }
         .mw-band, .mw-scatter { position: absolute; left: 0; right: 0; pointer-events: none; overflow: visible; }
+        /* the place's layers wait until the chosen place is read (no meadow flash) */
+        .mw-scene-pending .mw-band, .mw-scene-pending .mw-scatter { visibility: hidden; }
         .mw-lane { position: absolute; left: 0; top: 0; height: 100%; display: flex; will-change: transform; }
         .mw-lane img { height: 100%; width: auto; max-width: none; flex: 0 0 auto; display: block; }
         .mw-scatter img { position: absolute; max-width: none; height: auto; }

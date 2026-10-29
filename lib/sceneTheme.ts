@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { SpriteArt } from "@/components/sisi/journey-v2/PassingSprites";
 import { useEquippedWorld, type WorldId } from "@/lib/worlds";
 import { FAR_TREES, TREES_FAR_V2, TREES_FRONT_V2, TREES_MID_V2 } from "@/lib/worldArt";
@@ -222,4 +223,19 @@ export function useSceneTheme(): SceneTheme {
   const place = preview?.place ?? (owned.has(`place:${equipped}`) ? equipped : "quiet-meadow");
   const look = preview && preview.place === place ? preview.look : effectiveLook(place, saved[place], owned);
   return composeScene(place, preview ? fitLook(place, look) : look);
+}
+
+// false only until this page has read the chosen place (its first paint after
+// the server's HTML); the walk keeps the place's layers hidden till then, so it
+// never shows the meadow for a moment before a pond or a forest
+let sceneKnown = false;
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+export function useSceneReady(): boolean {
+  const [ready, setReady] = useState(sceneKnown);
+  useBeforePaint(() => {
+    sceneKnown = true;
+    setReady(true);
+  }, []);
+  return ready;
 }

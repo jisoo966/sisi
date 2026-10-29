@@ -68,7 +68,7 @@ import { glintPoint, softGlint } from "@/lib/fx";
 import { anchorElement } from "@/lib/fxAnchors";
 import { useWeather, weatherLine, type Weather, type WeatherState } from "@/lib/weather";
 import { useEquippedWorld, WORLD_LOOK } from "@/lib/worlds";
-import { useSceneTheme } from "@/lib/sceneTheme";
+import { useSceneReady, useSceneTheme } from "@/lib/sceneTheme";
 import { Birds } from "@/components/sisi/journey-v2/Birds";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
 import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
@@ -802,6 +802,7 @@ export default function JourneyPage() {
   const world = useEquippedWorld();
   /** the ground Sísí walks on (Customize → the path) */
   const scene = useSceneTheme();
+  const sceneReady = useSceneReady();
   const liveWeather = useWeather();
   // The time and the weather change only on the unobstructed Journey —
   // never while a sheet, a conversation, writing or a Star ceremony is open.
@@ -1153,7 +1154,7 @@ export default function JourneyPage() {
 
   return (
     <JourneyStage
-      phaseClass={`${stageClass}${arrival ? " jl-arrived" : ""}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""} world-${world}${wx ? ` wx-state-${wx}` : ""}`}
+      phaseClass={`${stageClass}${arrival ? " jl-arrived" : ""}${handoffFx ? " jl-handoff" : ""}${quiet || leavingTo ? " jl-quiet" : ""} world-${world}${wx ? ` wx-state-${wx}` : ""}${sceneReady ? "" : " scene-pending"}`}
     >
       {/* ── WORLD LAYER — separate depth groups; each moves at its own
           parallax rate during the Journey → Stars camera move. ── */}

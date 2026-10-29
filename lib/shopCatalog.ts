@@ -27,7 +27,9 @@ export type ShopItem = {
   places?: WorldId[];
   /** shown when it can't be used here: "Meet it at the pond." */
   elsewhere?: string;
-  /** the card picture: the item in a place it suits (square, public/V2/themes/cards) */
+  /** the same, short enough for one line under its card: "By the pond" */
+  home?: string;
+  /** the card picture: the item alone, no scenery (square, transparent; public/V2/themes/cards/items) */
   preview: string;
   /** for a place item: which place it opens */
   place?: WorldId;
@@ -41,15 +43,15 @@ export const CATALOG: ShopItem[] = [
   { id: "place:bridge-pond", kind: "place", name: "Bridge & Pond", price: 15, verb: "Open", place: "bridge-pond", preview: `${T}preview.webp` },
   { id: "place:butterfly-forest", kind: "place", name: "Butterfly Forest", price: 25, verb: "Open", place: "butterfly-forest", preview: `${F}preview.webp` },
 
-  { id: "trees:teal", kind: "trees", name: "Teal trees", price: 6, verb: "Plant", places: ["quiet-meadow", "butterfly-forest"], elsewhere: "Grows in the meadow or the forest.", preview: `${C}trees-teal.webp` },
-  { id: "trees:willow", kind: "trees", name: "Willows", price: 6, verb: "Plant", places: ["bridge-pond"], elsewhere: "Grows by the pond.", preview: `${C}trees-willow.webp` },
-  { id: "trees:forest-big", kind: "trees", name: "Great forest trees", price: 6, verb: "Plant", places: ["butterfly-forest"], elsewhere: "Grows in the forest.", preview: `${C}trees-forest-big.webp` },
+  { id: "trees:teal", kind: "trees", name: "Teal trees", price: 6, verb: "Plant", places: ["quiet-meadow", "butterfly-forest"], elsewhere: "Grows in the meadow or the forest.", home: "Meadow or forest", preview: `${C}trees-teal.webp` },
+  { id: "trees:willow", kind: "trees", name: "Willows", price: 6, verb: "Plant", places: ["bridge-pond"], elsewhere: "Grows by the pond.", home: "By the pond", preview: `${C}trees-willow.webp` },
+  { id: "trees:forest-big", kind: "trees", name: "Great trees", price: 6, verb: "Plant", places: ["butterfly-forest"], elsewhere: "Grows in the forest.", home: "In the forest", preview: `${C}trees-forest-big.webp` },
 
   { id: "flowers:pond-reeds", kind: "flowers", name: "Pond reeds", price: 6, verb: "Plant", preview: `${C}flowers-pond-reeds.webp` },
   { id: "flowers:forest", kind: "flowers", name: "Forest flowers", price: 6, verb: "Plant", preview: `${C}flowers-forest.webp` },
 
   { id: "lives:butterflies", kind: "lives", name: "Butterflies", price: 0, verb: "Bring along", preview: `${C}lives-butterflies.webp` },
-  { id: "lives:fish", kind: "lives", name: "Fish", price: 4, verb: "Bring along", places: ["bridge-pond"], elsewhere: "Swims at the pond.", preview: `${C}lives-fish.webp` },
+  { id: "lives:fish", kind: "lives", name: "Fish", price: 4, verb: "Bring along", places: ["bridge-pond"], elsewhere: "Swims at the pond.", home: "At the pond", preview: `${C}lives-fish.webp` },
   { id: "lives:bird", kind: "lives", name: "A little bird", price: 6, verb: "Bring along", preview: `${C}lives-bird.webp` },
 ];
 

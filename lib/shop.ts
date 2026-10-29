@@ -15,7 +15,7 @@
  * it had (runs once; safe to run again). Their Starlight stays theirs to spend.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LOCAL_ONLY } from "@/lib/dataMode";
 import {
@@ -167,14 +167,25 @@ export async function migrateShop(): Promise<void> {
 /* ── hook ──────────────────────────────────────────────────────────── */
 
 /** balance to spend and what is owned, kept current */
-export function useShop(): { balance: number; owned: Set<string>; ready: boolean } {
-  const [state, setState] = useState<{ balance: number; owned: Set<string>; ready: boolean }>({ balance: 0, owned: new Set(["place:quiet-meadow"]), ready: false });
+type ShopState = { balance: number; owned: Set<string>; ready: boolean };
+// what was last read on this page: a screen that mounts later starts from it
+let knownShop: ShopState | null = null;
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+export function useShop(): ShopState {
+  const [state, setState] = useState<ShopState>(knownShop ?? { balance: 0, owned: new Set(["place:quiet-meadow"]), ready: false });
+  // what this device already holds, before the first paint (the full sync,
+  // with the migration and the server's balance, follows)
+  useBeforePaint(() => {
+    if (!knownShop) setState({ balance: balanceOf(starlightRows()), owned: ownedNow(), ready: false });
+  }, []);
   useEffect(() => {
     let alive = true;
     const sync = async () => {
       await migrateShop();
       const balance = await starlightBalance();
-      if (alive) setState({ balance, owned: ownedNow(), ready: true });
+      knownShop = { balance, owned: ownedNow(), ready: true };
+      if (alive) setState(knownShop);
     };
     sync();
     window.addEventListener(STARLIGHT_EVENT, sync);

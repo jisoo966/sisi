@@ -10,7 +10,7 @@
  * it. Nothing saved changes until a look is applied.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { WorldId } from "@/lib/starlight";
 import { CATALOG, fitsPlace, itemById } from "@/lib/shopCatalog";
 
@@ -122,9 +122,17 @@ export function setPreview(p: Preview) {
 export const currentPreview = () => preview;
 
 /** the saved looks and the live preview, kept current */
+let lookedOnce = false;
+
+// runs before the first paint in the browser (a plain effect on the server), so
+// the walk never paints the meadow for a frame before the chosen place
+const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function useLooks(): { saved: Saved; preview: Preview } {
-  const [state, setState] = useState<{ saved: Saved; preview: Preview }>({ saved: {}, preview: null });
-  useEffect(() => {
+  // after the first read on this page, a screen that mounts later starts with the saved looks
+  const [state, setState] = useState<{ saved: Saved; preview: Preview }>(() => ({ saved: lookedOnce ? read() : {}, preview }));
+  useBeforePaint(() => {
+    lookedOnce = true;
     const sync = () => setState({ saved: read(), preview });
     sync();
     window.addEventListener(EVENT, sync);
