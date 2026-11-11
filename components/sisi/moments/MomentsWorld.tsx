@@ -19,6 +19,7 @@ import { TimeOfDaySky } from "@/components/sisi/journey-v2/TimeOfDaySky";
 import { useTimeOfDay } from "@/lib/timeOfDay";
 import { TOD_GRADE } from "@/lib/worldArt";
 import { SisiSpeechBubble } from "@/components/sisi/SisiSpeechBubble";
+import { IconChevronRight } from "@/components/ds/icons";
 import { BASE_H, STRIP } from "@/components/sisi/journey-v2/MeadowStrip";
 import { PondFish } from "@/components/sisi/journey-v2/PondFish";
 import { Butterflies } from "@/components/sisi/journey-v2/Butterflies";
@@ -916,8 +917,10 @@ export const MomentsWorld = forwardRef<
       )}
 
       {showToday && (
-        <button type="button" className="mw-today" onClick={goToday}>
+        // the same chip as the tools above it (a hand-drawn outline on the sky); the arrow points to today
+        <button type="button" className="ds-chip ds-filter ds-on-sky mw-today" onClick={goToday}>
           Today
+          <IconChevronRight size={14} />
         </button>
       )}
 
@@ -1025,10 +1028,7 @@ export const MomentsWorld = forwardRef<
           /* just under the title's row of tools (Trail · List · search · filter: title + 12px + 44px), never over them */
           position: absolute; z-index: 8; right: var(--stage-padding);
           top: calc(var(--header-top) + var(--text-screen-title) * 1.2 + var(--space-3) + 44px + var(--space-3));
-          min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
-          background: var(--sisi-paper) var(--grain-speech) 0 0 / var(--grain-size) repeat; background-blend-mode: multiply;
-          color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12), inset 0 0 10px rgba(16, 45, 50, 0.05);
-          font-family: var(--font-editorial); font-weight: 500; font-size: var(--text-button);
+          gap: 2px; padding-right: 8px;
           animation: mw-hint-in var(--motion-bubble) var(--ease-sisi) both;
         }
         @media (prefers-reduced-motion: reduce) {
