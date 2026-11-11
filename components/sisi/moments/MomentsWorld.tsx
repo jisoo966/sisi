@@ -1022,7 +1022,9 @@ export const MomentsWorld = forwardRef<
           84%, 100% { transform: translateX(84px); opacity: 0; }
         }
         .mw-today {
-          position: absolute; z-index: 8; right: var(--stage-padding); top: calc(var(--header-top) + 58px);
+          /* just under the title's row of tools (Trail · List · search · filter: title + 12px + 44px), never over them */
+          position: absolute; z-index: 8; right: var(--stage-padding);
+          top: calc(var(--header-top) + var(--text-screen-title) * 1.2 + var(--space-3) + 44px + var(--space-3));
           min-height: 44px; min-width: 44px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer;
           background: var(--sisi-paper) var(--grain-speech) 0 0 / var(--grain-size) repeat; background-blend-mode: multiply;
           color: var(--sisi-ink); box-shadow: 0 2px 6px rgba(16, 45, 50, 0.12), inset 0 0 10px rgba(16, 45, 50, 0.05);
