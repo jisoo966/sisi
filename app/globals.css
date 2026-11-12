@@ -373,7 +373,8 @@ body {
    Moments, and fade back in when she returns. Sky, meadow, the grass line,
    the walking path (Moments draws the same ones) and Sísí stay exactly
    where they are
-   (lib/worldHandoff.ts). */
+   (lib/worldHandoff.ts). A place's own backdrop (the forest) and the bird
+   live in the sky group but Moments draws them too, so they stay as well. */
 .journey-stage-v2.jl-handoff { animation: none; }
 /* arrived from Moments: the world is already on screen — never replay the
    soft arrival (it would dip to 35% once the handoff class comes off) */
@@ -381,7 +382,7 @@ body {
 .journey-stage-v2.jl-quiet .jw-fore,
 .journey-stage-v2.jl-quiet .passing-trees,
 .journey-stage-v2.jl-quiet .jl-fade,
-.journey-stage-v2.jl-quiet .jw-day > :not(.journey-sky-fixed) {
+.journey-stage-v2.jl-quiet .jw-day > :not(.journey-sky-fixed):not(.jw-backdrop):not(.bd-box) {
   opacity: 0 !important;
   transition: opacity 380ms ease !important;
 }
@@ -390,7 +391,7 @@ body {
 .journey-stage-v2.jl-handoff .jw-fore,
 .journey-stage-v2.jl-handoff .passing-trees,
 .journey-stage-v2.jl-handoff .jl-fade,
-.journey-stage-v2.jl-handoff .jw-day > :not(.journey-sky-fixed) {
+.journey-stage-v2.jl-handoff .jw-day > :not(.journey-sky-fixed):not(.jw-backdrop):not(.bd-box) {
   transition: opacity 460ms ease 60ms !important;
 }
 
