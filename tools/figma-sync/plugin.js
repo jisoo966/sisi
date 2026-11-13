@@ -197,7 +197,8 @@ async function syncIcons(page, C) {
   const made = [];
   for (const name of Object.keys(DATA.icons)) {
     const gold = name === "star-glyph";
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="' + DATA.icons[name] + '" fill="#102D32"/></svg>';
+    const paths = [].concat(DATA.icons[name]);
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' + paths.map((d) => '<path d="' + d + '" fill="#102D32"/>').join("") + '</svg>';
     const node = figma.createNodeFromSvg(svg);
     const v = gold ? C.gold : C.icon;
     let comp = byName[name];
@@ -229,7 +230,10 @@ async function syncIcons(page, C) {
       made.push(name);
     }
     comp.fills = [];
-    for (const n of comp.findAll((x) => "fills" in x)) if (Array.isArray(n.fills) && n.fills.length) fill(n, v);
+    // star-glyph: gold fill, then the deeper-gold outline on top
+    const tones = gold ? [C.gold, C.goldDeep || C.gold] : [v];
+    let i = 0;
+    for (const n of comp.findAll((x) => "fills" in x)) if (Array.isArray(n.fills) && n.fills.length) fill(n, tones[Math.min(i++, tones.length - 1)]);
     ICONS[name] = comp;
   }
   for (const c of comps) if (!ICONS[c.name.slice(5)]) ICONS[c.name.slice(5)] = c;
@@ -310,6 +314,7 @@ async function buildComponents(page, C) {
   const made = [], skipped = [];
   const btnSet = findSet("Button"), iconBtnSet = findSet("IconButton");
   const variant = (set, name) => (set ? set.children.find((c) => c.name === name) : null);
+  const tv0 = variant(btnSet, "Variant=Text, Surface=Paper, State=Default"), lk0 = btnSet ? propKey(btnSet, "Label") : null;
 
   // MenuItem + OverflowMenu
   let menuItemSet = findSet("MenuItem");
@@ -509,6 +514,158 @@ async function buildComponents(page, C) {
     row.appendChild(c); made.push("FocusPaper");
   } else skipped.push("FocusPaper");
 
+  // ── Talk with Sísí (CompanionSheet) ──
+  const blue20 = V("blue-20"), ink08 = V("ink-08");
+  const bubbleFill = (n) => (blue20 ? fill(n, blue20) : fill(n, C.blue, 0.2));
+  const sendButton = (dim) => {
+    const b = auto("HORIZONTAL", "Send"); b.resize(44, 44); b.primaryAxisSizingMode = "FIXED"; b.counterAxisSizingMode = "FIXED";
+    b.primaryAxisAlignItems = "CENTER"; b.counterAxisAlignItems = "CENTER"; b.cornerRadius = 999; fill(b, C.ink);
+    const i = iconInst("send", 20, C.paper); if (i) b.appendChild(i);
+    if (dim) b.opacity = 0.45;
+    return b;
+  };
+
+  if (!exists("ChatInput")) {
+    const row = await block("chat input", "CompanionSheet footer (.cs-input-row) — a round hand-drawn field (\"Share anything…\") and the ink Send button. Send is dim until there are words, and while Sísí is answering.");
+    const vs = [];
+    for (const state of ["Empty", "Typing", "Sending"]) {
+      const c = figma.createComponent(); c.name = "State=" + state;
+      c.layoutMode = "HORIZONTAL"; c.counterAxisAlignItems = "CENTER"; gap(c, 8); hugWidth(c, 342); c.fills = [];
+      const box = auto("HORIZONTAL", "Field"); box.counterAxisAlignItems = "CENTER"; pad(box, 12, 18, 12, 18); box.cornerRadius = 999; box.minHeight = 48;
+      c.appendChild(box); box.layoutSizingHorizontal = "FILL";
+      stroke(box, C.ink, state === "Typing" ? 1.6 : 1, state === "Typing" ? 1 : 0.35);
+      const typed = state === "Typing";
+      const t = await text(typed ? "I keep thinking about the move" : "Share anything…", "editorial/body", C.ink, typed ? 1 : 0.35);
+      t.fontSize = 16; box.appendChild(t); t.layoutSizingHorizontal = "FILL";
+      if (state === "Sending") box.opacity = 0.6;
+      c.appendChild(sendButton(state !== "Typing"));
+      vs.push(c);
+    }
+    const set = figma.combineAsVariants(vs, row); set.name = "ChatInput";
+    set.addComponentProperty("Text", "TEXT", "Share anything…");
+    for (const v of set.children) v.findOne((n) => n.type === "TEXT").componentPropertyReferences = { characters: propKey(set, "Text") };
+    layoutSet(set, 1); set.description = "Chat input (components/sisi/journey-v2/CompanionSheet.tsx · .cs-input-row). Field = .ds-field with radius 999, padding 0 18; Send = IconButton on ink.";
+    made.push("ChatInput");
+  } else skipped.push("ChatInput");
+
+  if (!exists("ChatMessage")) {
+    const row = await block("chat messages", "Sísí speaks in the editorial voice straight onto the paper (.cs-sisi, left, max 92%). Your words are a soft blue note on the right (.cs-user, radius 14 14 4 14). Kept = a small centred line with a tick (.cs-saved).");
+    const vs = [];
+    for (const from of ["Sísí", "You", "Kept"]) {
+      const c = figma.createComponent(); c.name = "From=" + from;
+      c.layoutMode = "VERTICAL"; hugWidth(c, 342); c.fills = [];
+      if (from === "Sísí") {
+        c.counterAxisAlignItems = "MIN";
+        const t = await text("That sounds like a lot to carry. What part of it feels heaviest today?", "editorial/dialogue", C.ink);
+        t.resize(315, t.height); t.textAutoResize = "HEIGHT"; c.appendChild(t);
+      } else if (from === "You") {
+        c.counterAxisAlignItems = "MAX";
+        const b = auto("HORIZONTAL", "Note"); pad(b, 10, 14, 10, 14); radius(b, [14, 14, 14, 4]); bubbleFill(b);
+        c.appendChild(b);
+        const t = await text("I keep thinking about the move", "editorial/body", C.ink);
+        b.appendChild(t);
+      } else {
+        c.counterAxisAlignItems = "CENTER";
+        const r = auto("HORIZONTAL", "Kept"); r.counterAxisAlignItems = "CENTER"; gap(r, 8); c.appendChild(r);
+        const i = iconInst("check", 16, C.ink, 0.8); if (i) r.appendChild(i);
+        r.appendChild(await text("Kept in Moments", "ui/meta", C.ink, 0.8));
+      }
+      vs.push(c);
+    }
+    const set = figma.combineAsVariants(vs, row); set.name = "ChatMessage";
+    set.addComponentProperty("Text", "TEXT", "That sounds like a lot to carry. What part of it feels heaviest today?");
+    for (const v of set.children) { const t = v.findOne((n) => n.type === "TEXT"); if (t) t.componentPropertyReferences = { characters: propKey(set, "Text") }; }
+    layoutSet(set, 1); set.description = "One line of the talk (CompanionSheet .cs-thread). Tap your own note → a 'Keep this as a moment' text action appears under it.";
+    made.push("ChatMessage");
+  } else skipped.push("ChatMessage");
+
+  if (!exists("ChatSuggestion")) {
+    const row = await block("chat suggestion", "Only Sísí's newest note carries a choice (.cs-suggest): one Primary, at most one Text action, and the lock line when something could be kept. Otherwise quick replies = ReplyChip.");
+    const c = figma.createComponent(); c.name = "ChatSuggestion";
+    c.layoutMode = "HORIZONTAL"; c.layoutWrap = "WRAP"; c.counterAxisAlignItems = "CENTER"; gap(c, 12); c.counterAxisSpacing = 8; hugWidth(c, 342); c.fills = [];
+    const pv = variant(btnSet, "Variant=Primary, Surface=Paper, State=Default");
+    const tv = variant(btnSet, "Variant=Text, Surface=Paper, State=Default");
+    const lk = btnSet ? propKey(btnSet, "Label") : null;
+    if (pv) { const b = pv.createInstance(); if (lk) b.setProperties({ [lk]: "Keep this in Moments" }); c.appendChild(b); }
+    if (tv) { const b = tv.createInstance(); if (lk) b.setProperties({ [lk]: "Add to a Star" }); c.appendChild(b); }
+    const lock = auto("HORIZONTAL", "Lock"); lock.counterAxisAlignItems = "CENTER"; gap(lock, 6); c.appendChild(lock); lock.layoutSizingHorizontal = "FILL";
+    const li = iconInst("lock", 12, C.ink, 0.6); if (li) lock.appendChild(li);
+    lock.appendChild(await text("Nothing is saved unless you choose.", "ui/helper", C.ink, 0.6));
+    c.addComponentProperty("Show lock", "BOOLEAN", true);
+    lock.componentPropertyReferences = { visible: propKey(c, "Show lock") };
+    c.description = "ChatSuggestion (.cs-suggest). Swap the button labels: 'Walk with me', 'Find one small step together', 'Visit “…”'.";
+    row.appendChild(c); made.push("ChatSuggestion");
+  } else skipped.push("ChatSuggestion");
+
+  if (!exists("SearchField")) {
+    const row = await block("search field", "Moments search (.mm-search): a 44px hand-drawn field with the search mark, a small clear button once there are words, and 'Cancel' as words.");
+    const vs = [];
+    for (const state of ["Empty", "Typing"]) {
+      const c = figma.createComponent(); c.name = "State=" + state;
+      c.layoutMode = "HORIZONTAL"; c.counterAxisAlignItems = "CENTER"; gap(c, 2); hugWidth(c, 358); c.fills = [];
+      const box = auto("HORIZONTAL", "Field"); box.counterAxisAlignItems = "CENTER"; gap(box, 8); pad(box, 0, 6, 0, 14); box.cornerRadius = 14;
+      c.appendChild(box); box.layoutSizingHorizontal = "FILL"; box.minHeight = 44;
+      stroke(box, C.ink, state === "Typing" ? 1.6 : 1, state === "Typing" ? 1 : 0.35);
+      const si = iconInst("search", 18, C.ink, 0.6); if (si) box.appendChild(si);
+      const typed = state === "Typing";
+      const t = await text(typed ? "meadow" : "Search your moments", "editorial/body", C.ink, typed ? 1 : 0.35);
+      t.fontSize = 16; box.appendChild(t); t.layoutSizingHorizontal = "FILL";
+      if (typed) {
+        const cl = auto("HORIZONTAL", "Clear"); cl.resize(28, 28); cl.primaryAxisSizingMode = "FIXED"; cl.counterAxisSizingMode = "FIXED";
+        cl.primaryAxisAlignItems = "CENTER"; cl.counterAxisAlignItems = "CENTER"; cl.cornerRadius = 999;
+        if (ink08) fill(cl, ink08); else fill(cl, C.ink, 0.08);
+        const x = iconInst("close", 14, C.ink, 0.8); if (x) cl.appendChild(x);
+        box.appendChild(cl);
+      }
+      if (tv0) { const b = tv0.createInstance(); if (lk0) b.setProperties({ [lk0]: "Cancel" }); c.appendChild(b); }
+      vs.push(c);
+    }
+    const set = figma.combineAsVariants(vs, row); set.name = "SearchField";
+    layoutSet(set, 1); set.description = "SearchField (components/sisi/moments/MomentsScreen.tsx · .mm-search).";
+    made.push("SearchField");
+  } else skipped.push("SearchField");
+
+  if (!exists("FieldMessage")) {
+    const row = await block("field message", "Under a field: .ds-helper (ink 60%) for a hint, .ds-error (coral) when something went wrong. Both UI type, meta size.");
+    const vs = [];
+    for (const kind of ["Helper", "Error"]) {
+      const c = figma.createComponent(); c.name = "Kind=" + kind;
+      c.layoutMode = "HORIZONTAL"; c.primaryAxisSizingMode = "AUTO"; c.counterAxisSizingMode = "AUTO"; c.fills = [];
+      c.appendChild(await text(kind === "Error" ? "That link has expired. Ask for a new one." : "We'll send a link to this email.", "ui/helper", kind === "Error" ? C.coral : C.ink, kind === "Error" ? 1 : 0.6));
+      vs.push(c);
+    }
+    const set = figma.combineAsVariants(vs, row); set.name = "FieldMessage";
+    set.addComponentProperty("Text", "TEXT", "We'll send a link to this email.");
+    for (const v of set.children) v.findOne((n) => n.type === "TEXT").componentPropertyReferences = { characters: propKey(set, "Text") };
+    layoutSet(set, 2); made.push("FieldMessage");
+  } else skipped.push("FieldMessage");
+
+  // a worked example: the whole talk, from instances
+  const EX = "Example / Talk with Sísí (synced)";
+  if (!page.findOne((n) => n.type === "FRAME" && n.name === EX)) {
+    const fp = page.findOne((n) => n.type === "COMPONENT" && n.name === "FocusPaper");
+    const cm = findSet("ChatMessage"), ci = findSet("ChatInput"), cs = page.findOne((n) => n.type === "COMPONENT" && n.name === "ChatSuggestion");
+    const rc = findSet("ReplyChip");
+    const ex = auto("VERTICAL", EX); hugWidth(ex, 390); fill(ex, C.paper); radius(ex, [20, 18, 0, 0]); pad(ex, 24, 24, 16, 24); gap(ex, 12);
+    await ex.setEffectStyleIdAsync(ES["shadow/sheet"].id);
+    const greet = auto("VERTICAL", "Greeting"); greet.counterAxisAlignItems = "CENTER"; gap(greet, 6); ex.appendChild(greet); greet.layoutSizingHorizontal = "FILL";
+    greet.appendChild(await text("I’m here.", "editorial/screen-title", C.ink));
+    greet.appendChild(await text("What’s on your mind?", "editorial/dialogue", C.ink));
+    if (rc) {
+      const chips = auto("HORIZONTAL", "Ways to begin"); chips.layoutWrap = "WRAP"; gap(chips, 8); chips.counterAxisSpacing = 8; ex.appendChild(chips); chips.layoutSizingHorizontal = "FILL";
+      const rck = propKey(rc, "Label") || Object.keys(rc.componentPropertyDefinitions).find((k) => rc.componentPropertyDefinitions[k].type === "TEXT");
+      for (const l of ["I feel stuck", "Help me with a Star", "Something good happened"]) { const i = (rc.defaultVariant || rc.children[0]).createInstance(); if (rck) i.setProperties({ [rck]: l }); chips.appendChild(i); }
+    }
+    const msg = (from, str) => { if (!cm) return; const i = cm.children.find((v) => v.name === "From=" + from).createInstance(); const k = propKey(cm, "Text"); if (k && str) i.setProperties({ [k]: str }); ex.appendChild(i); i.layoutSizingHorizontal = "FILL"; };
+    msg("You", "I keep thinking about the move");
+    msg("Sísí", "That sounds like a lot to carry. Would you like to keep this feeling somewhere, so you can look back on it?");
+    if (cs) { const i = cs.createInstance(); ex.appendChild(i); i.layoutSizingHorizontal = "FILL"; }
+    msg("Kept", "Kept in Moments");
+    if (ci) { const i = ci.children.find((v) => v.name === "State=Typing").createInstance(); ex.appendChild(i); i.layoutSizingHorizontal = "FILL"; }
+    page.appendChild(ex); ex.x = host.x + host.width + 120; ex.y = 0;
+    made.push("Example / Talk with Sísí");
+  }
+
   note("components: " + (made.length ? made.length + " new (" + made.join(", ") + ")" : "nothing new") + (skipped.length ? " · already there: " + skipped.join(", ") : ""));
 }
 
@@ -584,6 +741,7 @@ async function main() {
     paper: (await byId("2:46")) || V("sisi-paper"),
     icon: (await byId("2:60")) || V("sisi-ink"),
     gold: (await byId("2:74")) || V("sisi-gold"),
+    goldDeep: V("sisi-gold-deep"),
     coral: V("sisi-coral"),
     blue: V("sisi-blue"),
     rMenu: (await byId("2:92")),

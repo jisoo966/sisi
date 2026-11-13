@@ -18,7 +18,7 @@ Each run reads the code and brings the Figma file up to date:
 | `design-system/typography.css` | Text styles `editorial/*` and `ui/*`, sized as on a 390-wide phone. Uses Sentient if it is installed, otherwise Newsreader as a stand-in. |
 | shadows in `ds.css` | Effect styles `shadow/*` |
 | `components/ds/icons.tsx` | `icon/*` components are redrawn in place, so instances update. Missing icons get a new cell. |
-| `components/ds/*` | StatusChip is restyled to match the code. New: MenuItem, OverflowMenu, TextField, StarConnectionRow, MemoryPaper, ConfirmationDialog, ModalBackdrop, FocusPaper. |
+| `components/ds/*` | StatusChip is restyled to match the code. New: MenuItem, OverflowMenu, TextField, StarConnectionRow, MemoryPaper, ConfirmationDialog, ModalBackdrop, FocusPaper, ChatInput, ChatMessage, ChatSuggestion, SearchField, FieldMessage, plus an "Example / Talk with Sísí" frame built from instances. |
 | everything | "Foundations / Code tokens (synced)", a frame that is rebuilt on every run. Its "this sync" box is the log. |
 
 It is safe to run again:

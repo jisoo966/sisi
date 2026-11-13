@@ -63,8 +63,9 @@ for (const m of iconsTsx.matchAll(/export const Icon(\w+) = \(p: IconProps\) => 
   const kebab = m[1].replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
   icons[kebab] = m[2];
 }
-const glyph = iconsTsx.match(/export function StarGlyph[\s\S]*?<path d="([^"]+)"/);
-if (glyph) icons["star-glyph"] = glyph[1];
+// the Star glyph has two paths: the gold fill, then the deeper-gold outline
+const glyphFn = iconsTsx.match(/export function StarGlyph[\s\S]*?\n}\n/);
+if (glyphFn) icons["star-glyph"] = [...glyphFn[0].matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
 
 const data = { builtAt: new Date().toISOString().slice(0, 10), colors, sizes, ms, z, textSizes, leading, icons };
 const tpl = readFileSync(join(here, "plugin.js"), "utf8");
