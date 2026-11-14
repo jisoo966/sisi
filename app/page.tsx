@@ -15,7 +15,9 @@ export default function Home() {
     // begin as a guest on this device (keeping it safe on every device comes later)
     if (!document.cookie.includes("sisi_guest=1")) document.cookie = `sisi_guest=1; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     localStorage.setItem("sisi:guest", "true");
-    router.replace("/journey");
+    // the very first time: the onboarding (under the night sky), then the meadow
+    const begun = localStorage.getItem("sisi:guest-onboarded") === "true" || !!localStorage.getItem("sisi:guest-name");
+    router.replace(begun ? "/journey" : "/onboarding");
   }, [router]);
   return <main style={{ minHeight: "100dvh", background: "var(--sisi-paper)" }} />;
 }

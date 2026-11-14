@@ -11,6 +11,7 @@ import { EffectsHost } from "@/components/sisi/effects/EffectsHost";
 import { DevKeyboard } from "@/components/sisi/DevKeyboard";
 import { CloudSave } from "@/components/sisi/CloudSave";
 import { UndoDelete } from "@/components/sisi/UndoDelete";
+import { CloudVeil } from "@/components/sisi/CloudVeil";
 
 // Inter — functional metadata only (dates, statuses, helpers, chips).
 const inter = Inter({
@@ -110,6 +111,8 @@ export default function RootLayout({
           <div id="sisi-overlay-root" />
           <EffectsHost />
           <UndoDelete />
+          {/* the onboarding → Journey descent (lives through the page change) */}
+          <CloudVeil />
           {/* development only, on a computer: an iPhone-sized test keyboard */}
           <DevKeyboard />
           <CloudSave />

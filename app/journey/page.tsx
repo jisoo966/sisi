@@ -81,6 +81,8 @@ import type { StarEntry } from "@/components/sisi/journey-v2/StarMemoryCard";
 import { IconPlus, SecondaryButton, StarGlyph } from "@/components/ds";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
+import { MapWelcome, mapWelcomePending } from "@/components/sisi/journey-v2/MapWelcome";
+import { liftClouds, veilState } from "@/lib/cloudVeil";
 
 import { MenuSheet } from "@/components/sisi/MenuSheet";
 import { PostcardOptionsSheet } from "@/components/sisi/PostcardOptionsSheet";
@@ -330,8 +332,18 @@ export default function JourneyPage() {
     setFirst("walk");
   };
   useEffect(() => {
-    if (localStorage.getItem("sisi:guest-onboarded") !== "true" && !localStorage.getItem("sisi:guest-name")) setFirst("hello");
+    // the beginning lives in /onboarding now (the in-meadow "hello" stays for reference)
+    if (localStorage.getItem("sisi:guest-onboarded") !== "true" && !localStorage.getItem("sisi:guest-name")) router.replace("/onboarding");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // arriving from the onboarding: the clouds it rose into carry on up and leave
+  useEffect(() => {
+    const s = veilState();
+    if (s !== "covered" && s !== "covering") return;
+    const t = setTimeout(liftClouds, 600); // once the meadow is drawn beneath them
+    return () => clearTimeout(t);
   }, []);
+  // ── the Map, the first time (once, after the onboarding's landing) ──
+  const [mapWelcome, setMapWelcome] = useState(false);
   useEffect(() => {
     if (first !== "walk") return;
     // a few steps together, then she looks up — but never stopping behind a
@@ -352,9 +364,9 @@ export default function JourneyPage() {
   // the tabs step aside until the first Star is born (one thing at a time)
   useEffect(() => {
     const el = document.documentElement;
-    el.classList.toggle("first-run", first !== null);
+    el.classList.toggle("first-run", first !== null || mapWelcome);
     return () => el.classList.remove("first-run");
-  }, [first]);
+  }, [first, mapWelcome]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
@@ -469,6 +481,12 @@ export default function JourneyPage() {
   // Journey → Stars camera move (see lib/useStarAscent.ts). `busy` locks
   // input from the tap until the arrival (or the return) has settled.
   const { busy, env, starRevealed, landing, descendToGate } = useStarAscent(isStarView);
+  // the Map unfolds once the clouds have gone and she is walking on the meadow
+  useEffect(() => {
+    if (mapWelcome || !isWalking || busy || !mapWelcomePending()) return;
+    const t = setTimeout(() => setMapWelcome(true), 2600);
+    return () => clearTimeout(t);
+  }, [mapWelcome, isWalking, busy]);
   const leavingRef = useRef(false);
   const goToStars = () => {
     if (busy || !isWalking || ascentPending) return;
@@ -1629,10 +1647,11 @@ export default function JourneyPage() {
         <CompanionCues
           // the first-time words are said whatever the hour
           visible={
-            (isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2) ||
+            !mapWelcome &&
+            ((isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2) ||
             // Customize, the first time: her words about Starlight, above the sheet
             (starlightLine && satchelOpen && isWalking) ||
-            (!!boughtLine && isWalking)
+            (!!boughtLine && isWalking))
           }
           onTalk={(opening) => openChat(opening)}
           onSpeaking={setSpeaking}
@@ -1829,6 +1848,15 @@ export default function JourneyPage() {
         </AnimatePresence>
         {/* the first time: your name, in the meadow */}
         <FirstHello open={first === "hello" && isWalking && !busy} value={draftName} onChange={setDraftName} onSubmit={keepName} />
+        {/* the Map, the first time: a welcome gift */}
+        <MapWelcome
+          open={mapWelcome && isWalking}
+          onDone={(brought) => {
+            setMapWelcome(false);
+            markHint("starlightTold"); // she has said how Starlight grows
+            if (brought) bringButterflies().finally(() => setMeadowToast("A butterfly joined your walk."));
+          }}
+        />
         {/* the first Star is born: walk with it, down in the same meadow */}
         <AnimatePresence>
           {firstBorn && isStarView && (

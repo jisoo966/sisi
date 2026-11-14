@@ -536,6 +536,7 @@ html.tod-ready .cf-cloud { transition: filter 15s ease; }
 /* one thing at a time: the tabs and tools step aside until the first Star is born */
 html.first-run .ds-nav, html.first-run .journey-header .right-col, html.first-run .journey-header .left-col { opacity: 0 !important; pointer-events: none !important; transition: opacity 320ms ease; }
 html.first-run .ds-nav-tab { pointer-events: none !important; }
+html.first-run .capture-fab { opacity: 0 !important; pointer-events: none !important; transition: opacity 320ms ease; }
 /* the first Star is born: Walk with it, at the bottom of the night */
 .first-walk {
   position: fixed; z-index: var(--z-modal); left: 0; right: 0; margin: 0 auto;
@@ -605,3 +606,40 @@ html.tour-moments .ds-nav-tab--moments { border-radius: 16px; animation: tourGlo
 @media (hover: hover) and (pointer: fine) and (min-width: 500px) {
   .phone-frame { max-width: 430px; background: var(--sisi-paper, #f5efe6); box-shadow: 0 0 80px rgba(16, 45, 50, 0.15); }
 }
+
+/* ── The cloud veil: onboarding → Journey descent (lib/cloudVeil.ts) ──
+ * Same banks as the Stars ⇄ Journey move. The front bank's dense core
+ * (28–90% of its 280% height) fills the screen while top ≈ -80%. */
+.cloud-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  pointer-events: auto; /* nothing is tapped through the clouds */
+}
+.cloud-veil .cv-bank {
+  position: absolute;
+  left: 50%;
+  width: auto;
+  max-width: none;
+  min-width: 100%;
+  transform: translateX(-50%);
+  user-select: none;
+}
+.cloud-veil .cv-rear { height: 100%; top: -5%; }
+.cloud-veil .cv-front { height: 280%; top: -80%; }
+.cloud-veil.is-covering .cv-rear { animation: cv-rear-in 1300ms cubic-bezier(0.45, 0, 0.55, 1) both; }
+.cloud-veil.is-covering .cv-front { animation: cv-front-in 1400ms cubic-bezier(0.5, 0, 0.6, 1) 300ms both; }
+.cloud-veil.is-lifting { pointer-events: none; }
+.cloud-veil.is-lifting .cv-rear { animation: cv-rear-out 1300ms cubic-bezier(0.3, 0, 0.4, 1) both; }
+.cloud-veil.is-lifting .cv-front { animation: cv-front-out 1800ms cubic-bezier(0.25, 0, 0.35, 1) both; }
+@keyframes cv-rear-in { from { top: 100%; } to { top: -5%; } }
+@keyframes cv-front-in { from { top: 100%; } to { top: -80%; } }
+@keyframes cv-rear-out { from { top: -5%; } to { top: -120%; } }
+@keyframes cv-front-out { from { top: -80%; } to { top: -290%; } }
+@media (prefers-reduced-motion: reduce) {
+  .cloud-veil.is-covering .cv-bank { animation: cv-fade-in 600ms ease both; }
+  .cloud-veil.is-lifting .cv-bank { animation: cv-fade-out 600ms ease both; }
+}
+@keyframes cv-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cv-fade-out { from { opacity: 1; } to { opacity: 0; } }
