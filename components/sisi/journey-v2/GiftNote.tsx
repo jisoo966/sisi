@@ -94,20 +94,20 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               <motion.img
                 src={FERN}
                 alt={opened ? "Fern, a little poodle" : ""}
-                className="gn-fern"
+                className={`gn-fern${step === "note" ? "" : " is-in-box"}`}
                 draggable={false}
                 initial={false}
                 animate={
                   step === "note"
                     ? { y: ["0%", "-14%", "0%"], opacity: 1 }
                     : opened
-                      ? { y: "0%", opacity: 1 }
-                      : { y: "100%", opacity: 0 }
+                      ? { y: ["75%", "-24%", "0%"], opacity: [0, 1, 1], scaleY: [0.9, 1.06, 1] }
+                      : { y: "75%", opacity: 0 }
                 }
                 transition={
                   step === "note"
                     ? { duration: 0.8, times: [0, 0.45, 1], ease: "easeInOut" }
-                    : { delay: opened ? 0.35 : 0, duration: 0.7, ease: EASE }
+                    : { delay: opened ? 0.3 : 0, duration: 0.75, times: [0, 0.55, 1], ease: "easeOut" }
                 }
               />
             </div>
@@ -125,6 +125,9 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     onClick={() => setStep("opening")}
                     exit={{ y: 40, opacity: 0, transition: { duration: 0.45, ease: "easeIn" } }}
                   >
+                    {/* the open inside sits behind Fern; the front faces (gn-body) in front of her */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${ART}gift-inside.webp`} alt="" className="gn-inside" draggable={false} />
                     {/* the lid (with its bow): sways, then lifts off */}
                     <motion.img
                       src={`${ART}gift-lid.webp`}
@@ -139,7 +142,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                       }
                     />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`${ART}gift-body-open.webp`} alt="" className="gn-body" draggable={false} />
+                    <img src={`${ART}gift-front.webp`} alt="" className="gn-body" draggable={false} />
                   </motion.button>
                 ) : (
                   <motion.div
@@ -221,6 +224,9 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-stage { position: relative; z-index: 1; pointer-events: none; width: 100%; height: 190px; display: flex; justify-content: center; }
             .gn-fern { position: absolute; bottom: -6px; height: 196px; width: auto; z-index: 1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2)); }
             .gn-stage.is-on-note { z-index: 3; }
+            /* in the box: her lower half stays behind the box's front faces */
+            .gn-fern { transition: bottom 0.5s var(--ease-sisi, ease); }
+            .gn-fern.is-in-box { bottom: -62px; }
             .gn-glow {
               position: absolute;
               bottom: -40px;
@@ -230,7 +236,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               background: radial-gradient(circle, rgba(255, 236, 170, 0.75), rgba(255, 220, 140, 0.25) 45%, transparent 70%);
               z-index: 0;
             }
-            .gn-below { position: relative; width: 100%; display: flex; justify-content: center; z-index: 2; }
+            /* no stacking context here: the box's layers sit around Fern (inside 0 · Fern 1 · front 2 · lid 3) */
+            .gn-below { position: relative; width: 100%; display: flex; justify-content: center; }
             .gn-box {
               position: relative;
               width: 190px;
@@ -244,8 +251,9 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             }
             .gn-box:disabled { cursor: default; }
             /* lid and body are cut from one painting: same canvas, stacked */
-            .gn-lid { position: absolute; inset: 0; width: 100%; z-index: 2; }
-            .gn-body { display: block; width: 190px; }
+            .gn-lid { position: absolute; inset: 0; width: 100%; z-index: 3; }
+            .gn-body { display: block; width: 190px; position: relative; z-index: 2; }
+            .gn-inside { position: absolute; inset: 0; width: 100%; z-index: 0; }
             /* the letter: lined paper, deckled, half out of a rose envelope */
             .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 62px; }
             /* the envelope: painted paper with a crayon outline (back + open flap, front pocket with a gold seal) */
