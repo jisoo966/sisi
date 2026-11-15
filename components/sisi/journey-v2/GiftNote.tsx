@@ -260,25 +260,27 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-letter {
               position: relative;
               z-index: 1;
-              margin: 0 10px;
-              padding: 22px 22px 40px;
+              /* well inside the envelope's painted edges */
+              margin: 0 28px;
+              padding: 20px 18px 40px;
               --paper-grain-layer: var(--grain-memory);
               color: var(--sisi-ink);
               line-height: 34px;
-              font-size: 25px;
+              font-size: 22px;
+              word-break: keep-all; /* Korean wraps between words */
             }
             .gn-letter p { margin: 0; }
             /* writing lines under each line of the letter */
             .gn-ruled { background: repeating-linear-gradient(to bottom, transparent 0 33px, rgba(16, 45, 50, 0.12) 33px 34px); }
-            .gn-to { font-size: 26px; margin-bottom: 4px !important; }
+            .gn-to { font-size: 24px; margin-bottom: 10px !important; padding-right: 44px; }
             .gn-line { padding-left: 2px; }
             .gn-from { text-align: right; margin-top: 8px !important; }
             .gn-stamp {
               position: absolute;
-              top: 14px;
-              right: 14px;
-              width: 46px;
-              height: 54px;
+              top: 12px;
+              right: 12px;
+              width: 36px;
+              height: 42px;
               display: grid;
               place-items: center;
               background: #2f4c7a;
@@ -288,7 +290,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               box-shadow: 0 0 0 2px var(--sisi-paper), 0 1px 3px rgba(0, 0, 0, 0.2);
               transform: rotate(4deg);
             }
-            .gn-stamp img { width: 34px; }
+            .gn-stamp img { width: 26px; }
             .gn-foot { position: absolute; left: 24px; right: 24px; bottom: calc(var(--safe-bottom, 0px) + 40px); display: flex; justify-content: center; }
             .gn-foot-in { width: 100%; }
           `}</style>
