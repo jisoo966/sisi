@@ -20,11 +20,7 @@ const NOTES: Record<string, GiftNote> = {
   // Won — the one who has walked with Sísí the most (Oct–Nov 2026)
   "34698d85a20d1563679ae9b6b64ff2db6b8118c199f813ac5f4856b0ea3ac8d2": {
     gift: "fern",
-    body: [
-      "Won, you’ve walked here more than anyone.",
-      "Every moment you kept made this place a little warmer. Thank you.",
-      "So here’s a friend for the road.",
-    ],
+    body: ["많이 이용해주셔서 감사합니다, 원님.", "원님에게만 특별한 선물을 드려요."],
     from: "Jisoo & Sísí",
   },
 };
