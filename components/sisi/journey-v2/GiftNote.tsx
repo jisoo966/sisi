@@ -385,19 +385,19 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               /* well inside the envelope's painted edges */
               margin: 0 28px;
               /* the paper runs on below the writing, down into the envelope (the tucked part) */
-              padding: 20px 18px calc((100% + 12px) * ${ENV_RATIO * TUCK} + 12px);
+              padding: 14px 18px calc((100% + 12px) * ${ENV_RATIO * TUCK} - 14px);
               --paper-grain-layer: var(--grain-memory);
               color: var(--sisi-ink);
-              line-height: 34px;
+              line-height: 31px;
               font-size: 22px;
               word-break: keep-all; /* Korean wraps between words */
             }
             .gn-letter p { margin: 0; }
             /* writing lines under each line of the letter */
-            .gn-ruled { background: repeating-linear-gradient(to bottom, transparent 0 33px, rgba(16, 45, 50, 0.12) 33px 34px); }
-            .gn-to { font-size: 24px; margin-bottom: 10px !important; padding-right: 44px; }
+            .gn-ruled { background: repeating-linear-gradient(to bottom, transparent 0 30px, rgba(16, 45, 50, 0.12) 30px 31px); }
+            .gn-to { font-size: 24px; margin-bottom: 6px !important; padding-right: 44px; }
             .gn-line { padding-left: 2px; }
-            .gn-from { text-align: right; margin-top: 8px !important; }
+            .gn-from { text-align: right; margin-top: 4px !important; padding-right: 12px; }
             .gn-stamp {
               position: absolute;
               top: 12px;
