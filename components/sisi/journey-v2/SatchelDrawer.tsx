@@ -9,7 +9,8 @@ import type { WorldId } from "@/lib/starlight";
 import { CATALOG, fitsPlace, itemById, type ItemKind, type ShopItem } from "@/lib/shopCatalog";
 import { purchase, useShop } from "@/lib/shop";
 import { effectiveLook, saveLook, setPreview, useLooks, type Look } from "@/lib/looks";
-import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLock, IconTree, PrimaryButton, StarGlyph } from "@/components/ds";
+import { COMPANIONS, setCompanionId, useCompanion } from "@/lib/companion";
+import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconFox, IconLandscape, IconLock, IconTree, PrimaryButton, StarGlyph } from "@/components/ds";
 
 /**
  * SatchelDrawer — the Map: where you walk, and what walks with you.
@@ -17,7 +18,8 @@ import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLo
  * A low ivory sheet over the Journey (nothing behind it dims), so whatever is
  * tapped is seen at once on Sísí's own walk — a preview, until it is chosen.
  *
- *   tabs    Places · Trees · Flowers · Little lives (always in this order)
+ *   tabs    Sísí · Places · Trees · Flowers · Little lives (always in this order)
+ *           who walks with you: Sísí (the cat) or Fern (the poodle) (free, changes at once)
  *   cards   one row of picture cards for the tab. In use = solid outline +
  *           check; yours = plain; not yet yours = dashed + its price; not for
  *           this place = faint, with where it belongs ("By the pond")
@@ -33,8 +35,9 @@ import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconLandscape, IconLo
  * The sky is not chosen: it follows the real time of day (and the weather).
  */
 
-type Tab = "place" | "trees" | "flowers" | "lives";
+type Tab = "sisi" | "place" | "trees" | "flowers" | "lives";
 const TABS: { id: Tab; label: string; Icon: (p: { size?: number }) => React.ReactNode }[] = [
+  { id: "sisi", label: "Who walks with you", Icon: IconFox },
   { id: "place", label: "Places", Icon: IconLandscape },
   { id: "trees", label: "Trees", Icon: IconTree },
   { id: "flowers", label: "Flowers", Icon: IconFlower },
@@ -87,6 +90,7 @@ export function SatchelDrawer({
   const rowRef = useRef<HTMLUListElement>(null);
   const balRef = useRef<HTMLSpanElement | null>(null);
   const [tab, setTab] = useState<Tab>("place");
+  const companion = useCompanion();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -233,7 +237,22 @@ export function SatchelDrawer({
 
   const items = (k: ItemKind) => CATALOG.filter((i) => i.kind === k);
   let cards: Card[] = [];
-  if (tab === "place") {
+  if (tab === "sisi") {
+    // who walks with you — both are yours; a tap changes her at once
+    cards = Object.values(COMPANIONS).map((c) => ({
+      id: `sisi:${c.id}`,
+      name: c.label,
+      art: img(c.idle, "sisi" as ItemKind),
+      on: companion.id === c.id,
+      owned: true,
+      note: companion.id === c.id ? "Walking with you" : "Yours",
+      onPick: (el) => {
+        if (companion.id === c.id) return;
+        setCompanionId(c.id);
+        haptic("select", el);
+      },
+    }));
+  } else if (tab === "place") {
     cards = WORLDS.map((w) => {
       const id = `place:${w.id}`;
       const mine = owned.has(id);

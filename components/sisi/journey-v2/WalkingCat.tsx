@@ -136,7 +136,7 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
     <button
       type="button"
       onClick={onTap}
-      aria-label="Sísí"
+      aria-label={companion.label}
       className="walking-cat"
       // the Starlight Trail arrives at her chest; ambient magic keeps clear of her face
       ref={(el) => fxAnchorRef("sisi", el, { fx: facing === "left" ? 0.34 : 0.66, fy: 0.56 })}

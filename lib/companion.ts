@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * Which companion walks with you — Sísí as the white cat (default) or as the
- * poodle. Chosen in the Menu; stored on this device ("sisi:companion").
+ * Which companion walks with you — Sísí, the white cat (default), or Fern,
+ * the poodle. Chosen on the Map (first tab); stored on this device ("sisi:companion").
  *
  * Every companion has the same art layout, so the walking code doesn't change:
  *   sheet    6×5 = 30 frames, one 3.6s pass = 8 steps
@@ -27,14 +27,14 @@ export type Companion = {
 export const COMPANIONS: Record<CompanionId, Companion> = {
   cat: {
     id: "cat",
-    label: "Cat",
+    label: "Sísí",
     idle: "/V2/fox-walk/fox-walk-preview.webp",
     sheet: "/V2/fox-walk/fox-walk-sprite30-full.webp",
     sheetSmall: "/V2/fox-walk/fox-walk-sprite30.webp",
   },
   poodle: {
     id: "poodle",
-    label: "Poodle",
+    label: "Fern",
     idle: "/V2/poodle-walk/poodle-walk-preview.webp",
     sheet: "/V2/poodle-walk/poodle-walk-sprite30-full.webp",
     sheetSmall: "/V2/poodle-walk/poodle-walk-sprite30.webp",

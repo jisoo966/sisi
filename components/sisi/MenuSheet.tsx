@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { FocusPaper, IconChevronRight, SecondaryButton } from "@/components/ds";
 import { WeatherSettingRow } from "@/components/sisi/weather/WeatherSetting";
 import { createClient } from "@/lib/supabase/client";
-import { COMPANIONS, setCompanionId, useCompanion } from "@/lib/companion";
 
 /**
  * MenuSheet — account & settings on the shared FocusPaper
@@ -128,7 +127,6 @@ export function MenuSheet({
           </span>
           <Toggle on={vibOn && vibSupported} />
         </button>
-        <CompanionRow />
         <WeatherSettingRow />
         <Link href="/privacy" onClick={onClose} className="menu-row">
           <span className="menu-row-label">Privacy policy</span>
@@ -167,53 +165,12 @@ export function MenuSheet({
         .menu-row:disabled { cursor: default; opacity: 0.7; }
         .menu-list + .ds-actions { margin-top: var(--space-6); }
         .menu-keep { border-bottom: 0; margin-top: var(--space-2); }
-        .menu-companion { padding: 14px 0 16px; border-bottom: 1px solid var(--ink-08); }
-        .menu-companion-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .menu-companion-choice {
-          display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px 8px;
-          border: 1.5px solid var(--ink-08); border-radius: 16px; background: var(--paper-90, transparent);
-          color: var(--ink-80); font-family: var(--font-ui); font-size: var(--text-meta); cursor: pointer;
-          transition: border-color var(--motion-instant) ease;
-        }
-        .menu-companion-choice img { width: 84%; height: auto; display: block; pointer-events: none; }
-        .menu-companion-choice[aria-checked="true"] { border-color: var(--sisi-blue); color: var(--sisi-ink); }
         .menu-toggle { position: relative; flex: none; width: 44px; height: 26px; border-radius: 999px; background: var(--ink-14); transition: background var(--motion-instant) ease; }
         .menu-toggle.is-on { background: var(--sisi-blue); }
         .menu-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--sisi-paper); box-shadow: 0 1px 2px rgba(16, 45, 50, 0.2); transition: transform var(--motion-bubble) var(--ease-sisi); }
         .menu-toggle.is-on .menu-toggle-knob { transform: translateX(18px); }
       `}</style>
     </FocusPaper>
-  );
-}
-
-/** Who walks with you: Sísí as the cat or the poodle (lib/companion.ts). */
-function CompanionRow() {
-  const current = useCompanion();
-  return (
-    <div className="menu-companion">
-      <span className="menu-row-label menu-row" style={{ minHeight: 0, padding: 0, border: 0, cursor: "default" }}>
-        Who walks with you
-      </span>
-      <div className="menu-companion-choices" role="radiogroup" aria-label="Who walks with you">
-        {Object.values(COMPANIONS).map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            role="radio"
-            aria-checked={current.id === c.id}
-            className="menu-companion-choice"
-            onClick={() => {
-              setCompanionId(c.id);
-              haptic("select");
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={c.idle} alt="" draggable={false} />
-            {c.label}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
