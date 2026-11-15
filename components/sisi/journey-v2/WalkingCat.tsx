@@ -3,6 +3,7 @@
 import { fxAnchorRef } from "@/lib/fxAnchors";
 import { useEffect, useRef, useState } from "react";
 import { worldClock } from "@/lib/worldMotion";
+import { useCompanion } from "@/lib/companion";
 
 /**
  * WalkingCat — the companion. Horizontally anchored; the world moves.
@@ -21,8 +22,7 @@ import { worldClock } from "@/lib/worldMotion";
  *   bob      2–3px lift synced to each step, fading with the speed
  */
 
-const SPRITE = "/V2/fox-walk/fox-walk-sprite30-full.webp";
-const IDLE_SRC = "/V2/fox-walk/fox-walk-preview.webp";
+// the art (cat or poodle) comes from the chosen companion — lib/companion.ts
 const COLS = 6;
 const ROWS = 5;
 const FRAMES = 30;
@@ -64,11 +64,13 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
   restRef.current = rest;
   const bobRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
+  const companion = useCompanion();
+  const SPRITE = companion.sheet;
 
   useEffect(() => {
     const c = new Image(); // the walk sheet, ready before the first step
     c.src = SPRITE;
-  }, []);
+  }, [SPRITE]);
 
   useEffect(() => {
     let phase = 0; // 0…1 through the sheet (8 steps)
@@ -128,7 +130,7 @@ export function WalkingCat({ onTap, lookingUp = false, lookingAtYou = false, fac
     });
   }, []);
 
-  const idleSrc = IDLE_SRC;
+  const idleSrc = companion.idle;
 
   return (
     <button

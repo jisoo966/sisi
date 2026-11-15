@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Star } from "@/lib/myStars";
 import { loadSignsForStar } from "@/lib/myStars";
 import { STAR_CARD_DELAY_S } from "@/lib/useStarAscent";
+import { useCompanion } from "@/lib/companion";
 
 /**
  * StarView — storyboard frame 6: above the clouds, under the star, a small
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function StarView({ star, onBack, placeholder = false }: Props) {
+  const companion = useCompanion();
   // The postcard rises in once the camera has arrived in the star world
   // (reduced motion: right after the 250ms crossfade).
   const [CARD_DELAY] = useState(() =>
@@ -92,7 +94,7 @@ export function StarView({ star, onBack, placeholder = false }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="p-path" src="/V2/parallax/journey-walking-path.webp" alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="p-fox" src="/V2/fox-walk/fox-walk-preview.webp" alt="" />
+            <img className="p-fox" src={companion.idle} alt="" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="p-star" src="/assets/sisi-star-mark-painted-512.webp" alt="" />
           </div>

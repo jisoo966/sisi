@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { SpeakLines } from "@/components/sisi/SpeakLines";
+import { useCompanion } from "@/lib/companion";
 
 /**
  * TrailFox — Sísí on the Memory Trail, driven by the timeline's velocity
@@ -18,8 +19,7 @@ import { SpeakLines } from "@/components/sisi/SpeakLines";
  *            slides while idle, and never idles while the world moves
  */
 
-const SPRITE = "/V2/fox-walk/fox-walk-sprite30.webp";
-const IDLE = "/V2/fox-walk/fox-walk-preview.webp";
+// the art (cat or poodle) comes from the chosen companion — lib/companion.ts
 const COLS = 6;
 const ROWS = 5;
 const FRAMES = 30;
@@ -53,6 +53,9 @@ export const TrailFox = forwardRef<
   const bobRef = useRef<HTMLDivElement>(null);
   const spriteRef = useRef<HTMLDivElement>(null);
   const idleRef = useRef<HTMLImageElement>(null);
+  const companion = useCompanion();
+  const SPRITE = companion.sheetSmall;
+  const IDLE = companion.idle;
   const s = useRef({ phase: 0, walking: false, finishing: false, facing: -1 as -1 | 1, frame: -1 });
   const [facing, setFacing] = useState<"left" | "right">("left");
   const sayRef = useRef<HTMLDivElement>(null);
