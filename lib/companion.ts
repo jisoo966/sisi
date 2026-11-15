@@ -22,6 +22,9 @@ export type Companion = {
   sheet: string;
   /** half-resolution walk sheet (Memory Trail) */
   sheetSmall: string;
+  /** where the speak lines start, in front of the mouth — from the walker's
+   *  centre and paw line, as a share of its width (facing right) */
+  mouth: { x: number; y: number };
 };
 
 export const COMPANIONS: Record<CompanionId, Companion> = {
@@ -31,6 +34,7 @@ export const COMPANIONS: Record<CompanionId, Companion> = {
     idle: "/V2/fox-walk/fox-walk-preview.webp",
     sheet: "/V2/fox-walk/fox-walk-sprite30-full.webp",
     sheetSmall: "/V2/fox-walk/fox-walk-sprite30.webp",
+    mouth: { x: 0.45, y: 0.6 },
   },
   poodle: {
     id: "poodle",
@@ -38,6 +42,8 @@ export const COMPANIONS: Record<CompanionId, Companion> = {
     idle: "/V2/poodle-walk/poodle-walk-preview.webp",
     sheet: "/V2/poodle-walk/poodle-walk-sprite30-full.webp",
     sheetSmall: "/V2/poodle-walk/poodle-walk-sprite30.webp",
+    // her face is lower and rounder than Sísí's: the lines sit by her mouth
+    mouth: { x: 0.42, y: 0.49 },
   },
 };
 

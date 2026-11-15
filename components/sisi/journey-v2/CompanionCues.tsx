@@ -4,6 +4,7 @@ import { IconButton, IconClose } from "@/components/ds";
 import { SpeakLines as SharedSpeakLines } from "@/components/sisi/SpeakLines";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useCompanion } from "@/lib/companion";
 import { createMoment } from "@/lib/momentStore";
 import { hintDone, markHint } from "@/lib/hints";
 import { bySentence, SisiSpeechBubble, aimTail } from "@/components/sisi/SisiSpeechBubble";
@@ -49,13 +50,14 @@ export async function keepThought(t: Thought): Promise<void> {
 
 /** three short strokes beside Sísí's face — she is saying this (shared) */
 function SpeakLines({ delay }: { delay: number }) {
+  const { mouth } = useCompanion();
   return (
     <SharedSpeakLines
       delay={delay}
       // just in front of her face (she faces right), on the sky
       style={{
-        left: "calc(var(--companion-x, 37%) + var(--cat-width) * 0.45)",
-        bottom: "calc(var(--walking-baseline) + var(--cat-width) * 0.6)",
+        left: `calc(var(--companion-x, 37%) + var(--cat-width) * ${mouth.x})`,
+        bottom: `calc(var(--walking-baseline) + var(--cat-width) * ${mouth.y})`,
         zIndex: 6,
       }}
     />

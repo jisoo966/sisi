@@ -166,6 +166,7 @@ export const TrailFox = forwardRef<
       ref={rootRef}
       className="tf-root"
       data-facing="left"
+      data-companion={companion.id}
       onClick={onTap}
       aria-hidden
       style={initialOffset ? { transform: `translate3d(${initialOffset}px,0,0)` } : undefined}
@@ -208,6 +209,9 @@ export const TrailFox = forwardRef<
         /* the three speaking strokes, just in front of her face */
         .tf-lines { z-index: 1; bottom: 66%; left: 6%; }
         .tf-root[data-facing="right"] .tf-lines { left: 94%; }
+        /* Fern's mouth is lower than Sísí's */
+        .tf-root[data-companion="poodle"] .tf-lines { bottom: 55%; left: 9%; }
+        .tf-root[data-companion="poodle"][data-facing="right"] .tf-lines { left: 91%; }
         .tf-idle { display: block; width: 100%; height: auto; user-select: none; }
         .tf-sprite {
           position: absolute;
