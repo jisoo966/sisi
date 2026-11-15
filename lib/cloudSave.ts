@@ -41,6 +41,8 @@ const KEPT = [
   "sisi:hints-v1",
   "sisi:conversation",
   "sisi:thoughts-kept",
+  "sisi:companion",
+  "sisi:gifts",
   "sisi:moment-links",
   "sisi:haptics-pref",
   "sisi:weather-settings",

@@ -82,6 +82,7 @@ import { IconPlus, SecondaryButton, StarGlyph } from "@/components/ds";
 import { BottomNavV2 } from "@/components/sisi/journey-v2/BottomNavV2";
 import { CompanionSheet } from "@/components/sisi/journey-v2/CompanionSheet";
 import { MapWelcome, mapWelcomePending } from "@/components/sisi/journey-v2/MapWelcome";
+import { GiftNote, usePendingGift } from "@/components/sisi/journey-v2/GiftNote";
 import { liftClouds, veilState } from "@/lib/cloudVeil";
 
 import { MenuSheet } from "@/components/sisi/MenuSheet";
@@ -344,6 +345,9 @@ export default function JourneyPage() {
   }, []);
   // ── the Map, the first time (once, after the onboarding's landing) ──
   const [mapWelcome, setMapWelcome] = useState(false);
+  // a thank-you gift for one person (Fern), shown once on the walk
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [satchelTab, setSatchelTab] = useState<"sisi" | undefined>(undefined);
   useEffect(() => {
     if (first !== "walk") return;
     // a few steps together, then she looks up — but never stopping behind a
@@ -364,9 +368,9 @@ export default function JourneyPage() {
   // the tabs step aside until the first Star is born (one thing at a time)
   useEffect(() => {
     const el = document.documentElement;
-    el.classList.toggle("first-run", first !== null || mapWelcome);
+    el.classList.toggle("first-run", first !== null || mapWelcome || giftOpen);
     return () => el.classList.remove("first-run");
-  }, [first, mapWelcome]);
+  }, [first, mapWelcome, giftOpen]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [postcardSheetOpen, setPostcardSheetOpen] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
@@ -487,6 +491,13 @@ export default function JourneyPage() {
     const t = setTimeout(() => setMapWelcome(true), 2600);
     return () => clearTimeout(t);
   }, [mapWelcome, isWalking, busy]);
+  const gift = usePendingGift(first === null && !mapWelcomePending());
+  useEffect(() => {
+    if (!gift || giftOpen || mapWelcome || !isWalking || busy) return;
+    const t = setTimeout(() => setGiftOpen(true), 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gift, mapWelcome, isWalking, busy]);
   const leavingRef = useRef(false);
   const goToStars = () => {
     if (busy || !isWalking || ascentPending) return;
@@ -1647,7 +1658,7 @@ export default function JourneyPage() {
         <CompanionCues
           // the first-time words are said whatever the hour
           visible={
-            !mapWelcome &&
+            !mapWelcome && !giftOpen &&
             ((isWalking && !busy && !panelOpen && !chatOpen && !leavingTo && (env === "day" || first !== null) && !quiet && tour !== 2) ||
             // Customize, the first time: her words about Starlight, above the sheet
             (starlightLine && satchelOpen && isWalking) ||
@@ -1857,6 +1868,16 @@ export default function JourneyPage() {
             if (brought) bringButterflies().finally(() => setMeadowToast("A butterfly joined your walk."));
           }}
         />
+        {/* a thank-you gift: Fern, then the Map opens on "Who walks with you" */}
+        <GiftNote
+          gift={gift}
+          open={giftOpen && isWalking}
+          onOpenMap={() => {
+            setGiftOpen(false);
+            setSatchelTab("sisi");
+            setSatchelOpen(true);
+          }}
+        />
         {/* the first Star is born: walk with it, down in the same meadow */}
         <AnimatePresence>
           {firstBorn && isStarView && (
@@ -1937,7 +1958,14 @@ export default function JourneyPage() {
           }}
         />
 
-        <SatchelDrawer open={satchelOpen && isWalking} onClose={() => setSatchelOpen(false)} />
+        <SatchelDrawer
+          open={satchelOpen && isWalking}
+          initialTab={satchelTab}
+          onClose={() => {
+            setSatchelOpen(false);
+            setSatchelTab(undefined);
+          }}
+        />
         <MomentCapture
           open={momentOpen && isWalking}
           star={featuredStar}

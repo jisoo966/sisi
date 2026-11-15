@@ -10,6 +10,7 @@ import { CATALOG, fitsPlace, itemById, type ItemKind, type ShopItem } from "@/li
 import { purchase, useShop } from "@/lib/shop";
 import { effectiveLook, saveLook, setPreview, useLooks, type Look } from "@/lib/looks";
 import { COMPANIONS, setCompanionId, useCompanion } from "@/lib/companion";
+import { GIFTS_EVENT, hasGift } from "@/lib/gifts";
 import { FocusPaper, IconButterfly, IconCheck, IconFlower, IconFox, IconLandscape, IconLock, IconTree, PrimaryButton, StarGlyph } from "@/components/ds";
 
 /**
@@ -78,9 +79,12 @@ type Card = {
 export function SatchelDrawer({
   open,
   onClose,
+  initialTab,
 }: {
   open: boolean;
   onClose: () => void;
+  /** open on this tab (e.g. "sisi" right after a new companion is given) */
+  initialTab?: "sisi";
   /** @deprecated the place is applied through lib/worlds */
   onEquip?: (equipped: unknown) => void;
 }) {
@@ -91,6 +95,17 @@ export function SatchelDrawer({
   const balRef = useRef<HTMLSpanElement | null>(null);
   const [tab, setTab] = useState<Tab>("place");
   const companion = useCompanion();
+  // Fern is a gift (lib/gifts): her card shows only once she has been given
+  const [fernGiven, setFernGiven] = useState(false);
+  useEffect(() => {
+    const read = () => setFernGiven(hasGift("fern"));
+    read();
+    window.addEventListener(GIFTS_EVENT, read);
+    return () => window.removeEventListener(GIFTS_EVENT, read);
+  }, []);
+  useEffect(() => {
+    if (open && initialTab) setTab(initialTab);
+  }, [open, initialTab]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -239,7 +254,9 @@ export function SatchelDrawer({
   let cards: Card[] = [];
   if (tab === "sisi") {
     // who walks with you — both are yours; a tap changes her at once
-    cards = Object.values(COMPANIONS).map((c) => ({
+    cards = Object.values(COMPANIONS)
+      .filter((c) => c.id !== "poodle" || fernGiven || companion.id === "poodle")
+      .map((c) => ({
       id: `sisi:${c.id}`,
       name: c.label,
       art: img(c.idle, "sisi" as ItemKind),
