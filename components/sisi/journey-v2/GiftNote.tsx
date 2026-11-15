@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { PrimaryButton, StatusChip } from "@/components/ds";
@@ -16,9 +16,10 @@ const hand = Nanum_Pen_Script({ weight: "400", subsets: ["latin"], preload: fals
  * Once, on the Journey:
  *   box      a wrapped blue box with a red bow sways · "Tap to open"
  *   opening  the lid lifts off, a little light, Fern rises out of the box
- *   letter   the box gives way to an envelope; a handwritten letter slides
- *            out of it (lined paper, a stamp) and Fern hops onto its top
- *            edge · "You unlocked a new character" · "Open the Map"
+ *   letter   the box gives way to a sealed envelope and Fern hops onto it;
+ *            the flap opens, and the handwritten letter (lined paper, a
+ *            stamp) slides out, lifting Fern on its top edge ·
+ *            "You unlocked a new character" · "Open the Map"
  * "Open the Map" unlocks Fern and opens the Map on "Who walks with you".
  */
 export type Gift = { gift: "fern"; body: string[]; from: string };
@@ -45,15 +46,37 @@ export function usePendingGift(enabled: boolean): Gift | null {
 const ART = "/V2/gift/";
 const FERN = "/V2/poodle-walk/fern-sit.webp";
 const EASE = [0.22, 1, 0.36, 1] as const;
+/** how far the envelope reaches below the letter once it is out (px) */
+const LETTER_DROP = 62;
 
 export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: boolean; onOpenMap: () => void }) {
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<"box" | "opening" | "note">("box");
+  // the envelope: arrives sealed → the flap opens → the letter comes out
+  const [env, setEnv] = useState<"sealed" | "open" | "out">("sealed");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const letterRef = useRef<HTMLElement>(null);
+  // how far down the letter sits while inside (its top at the envelope's mouth)
+  const [lift, setLift] = useState(200);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (step !== "opening") return;
     const t = setTimeout(() => setStep("note"), 1500);
     return () => clearTimeout(t);
+  }, [step]);
+  useEffect(() => {
+    if (step !== "note") return;
+    const a = setTimeout(() => setEnv("open"), 900);
+    const b = setTimeout(() => setEnv("out"), 1400);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, [step]);
+  useLayoutEffect(() => {
+    if (step !== "note" || !wrapRef.current || !letterRef.current) return;
+    const bodyH = ((wrapRef.current.offsetWidth + 12) * 118) / 352;
+    setLift(Math.round(letterRef.current.offsetHeight + LETTER_DROP - bodyH));
   }, [step]);
   if (!mounted || !gift) return null;
   const opened = step !== "box";
@@ -91,6 +114,12 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                   transition={{ duration: 1.1, ease: "easeOut" }}
                 />
               )}
+              <motion.div
+                className="gn-ride"
+                initial={false}
+                animate={{ y: step === "note" && env !== "out" ? lift : 0 }}
+                transition={env === "out" ? { duration: 0.8, ease: EASE } : { duration: 0.5, ease: EASE }}
+              >
               <motion.img
                 src={FERN}
                 alt={opened ? "Fern, a little poodle" : ""}
@@ -110,6 +139,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     : { delay: opened ? 0.3 : 0, duration: 0.75, times: [0, 0.55, 1], ease: "easeOut" }
                 }
               />
+              </motion.div>
             </div>
 
             {/* below Fern: the box, then the note */}
@@ -147,36 +177,62 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                 ) : (
                   <motion.div
                     key="note"
+                    ref={wrapRef}
                     className="gn-letter-wrap"
                     initial={{ y: 70, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.5, ease: EASE }}
                   >
-                    {/* the envelope's back, then the letter, then its front pocket */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="gn-env-back" src={`${ART}envelope-back.webp`} alt="" aria-hidden draggable={false} />
-                    <motion.article
-                      className={`ds-deckle gn-letter ${hand.className}`}
-                      initial={{ y: 120 }}
-                      animate={{ y: 0 }}
-                      transition={{ delay: 0.35, duration: 0.75, ease: EASE }}
-                    >
-                      <span className="gn-stamp" aria-hidden>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/V2/onboarding/star.webp" alt="" />
-                      </span>
-                      <div className="gn-ruled">
-                      <p className="gn-to">To. 원님</p>
-                      {gift.body.map((p, i) => (
-                        <p key={i} className="gn-line">
-                          {p}
-                        </p>
-                      ))}
-                      <p className="gn-from">From. {gift.from}</p>
-                      </div>
-                    </motion.article>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="gn-env-front" src={`${ART}envelope-front.webp`} alt="" aria-hidden draggable={false} />
+                    {/* the envelope, layered around the letter:
+                        back 0 · open flap 0 · letter 1 · front pocket 2 · closed flap 3 */}
+                    <div className="gn-env" aria-hidden>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="gn-env-back" src={`${ART}envelope-back.webp`} alt="" draggable={false} />
+                      <motion.img
+                        className="gn-env-flap-open"
+                        src={`${ART}envelope-flap-open.webp`}
+                        alt=""
+                        draggable={false}
+                        initial={{ scaleY: 0 }}
+                        animate={{ scaleY: env === "sealed" ? 0 : 1 }}
+                        transition={{ delay: env === "open" ? 0.22 : 0, duration: 0.25, ease: "easeOut" }}
+                      />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img className="gn-env-front" src={`${ART}envelope-front.webp`} alt="" draggable={false} />
+                      <motion.img
+                        className="gn-env-flap-closed"
+                        src={`${ART}envelope-flap-closed.webp`}
+                        alt=""
+                        draggable={false}
+                        initial={{ scaleY: 1 }}
+                        animate={{ scaleY: env === "sealed" ? 1 : 0 }}
+                        transition={{ duration: 0.22, ease: "easeIn" }}
+                      />
+                    </div>
+                    {/* the letter: inside the envelope (hidden below its mouth), then out */}
+                    <div className="gn-letter-clip">
+                      <motion.article
+                        ref={letterRef}
+                        className={`ds-deckle gn-letter ${hand.className}`}
+                        initial={false}
+                        animate={{ y: env === "out" ? 0 : lift }}
+                        transition={env === "out" ? { duration: 0.8, ease: EASE } : { duration: 0 }}
+                      >
+                        <span className="gn-stamp" aria-hidden>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/V2/onboarding/star.webp" alt="" />
+                        </span>
+                        <div className="gn-ruled">
+                          <p className="gn-to">To. 원님</p>
+                          {gift.body.map((p, i) => (
+                            <p key={i} className="gn-line">
+                              {p}
+                            </p>
+                          ))}
+                          <p className="gn-from">From. {gift.from}</p>
+                        </div>
+                      </motion.article>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -255,18 +311,18 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-body { display: block; width: 190px; position: relative; z-index: 2; }
             .gn-inside { position: absolute; inset: 0; width: 100%; z-index: 0; }
             /* the letter: lined paper, deckled, half out of a rose envelope */
-            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 62px; }
-            /* the envelope: painted paper with a crayon outline (back + open flap, front pocket with a gold seal) */
-            .gn-env-back, .gn-env-front {
-              position: absolute;
-              left: -6px;
-              width: calc(100% + 12px);
-              height: auto;
-              bottom: 0;
-              pointer-events: none;
-            }
-            .gn-env-back { filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.35)); }
-            .gn-env-front { z-index: 2; }
+            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; }
+            /* the envelope: one box the size of its body, flaps hinged on its top edge */
+            .gn-env { position: absolute; left: -6px; right: -6px; bottom: 0; aspect-ratio: 352 / 118; pointer-events: none; }
+            .gn-env img { position: absolute; left: 0; width: 100%; height: auto; }
+            .gn-env-back { top: 0; z-index: 0; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.35)); }
+            .gn-env-flap-open { bottom: calc(100% - 4px); z-index: 0; transform-origin: 50% 100%; }
+            .gn-env-front { bottom: 0; z-index: 2; }
+            .gn-env-flap-closed { top: 0; z-index: 3; transform-origin: 50% 0; }
+            /* the letter shows only above the envelope's bottom edge */
+            .gn-letter-clip { position: relative; z-index: 1; overflow: hidden; margin: -420px -14px 0; padding: 420px 14px ${LETTER_DROP - 16}px; margin-bottom: 16px; pointer-events: none; }
+            /* (the clip ends at the envelope's painted bottom edge, not its image edge) */
+            .gn-ride { position: absolute; inset: 0; display: flex; justify-content: center; }
             .gn-letter {
               position: relative;
               z-index: 1;
