@@ -80,6 +80,11 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   const [lift, setLift] = useState(200);
   // and how much deeper the letter waits inside, below the pocket's V (unseen)
   const [inset, setInset] = useState(100);
+  // how far down the whole column sits while it is a box (so the box is in the middle)
+  const [shift, setShift] = useState(0);
+  const shiftRef = useRef(0);
+  const gnRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLButtonElement>(null);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (step !== "opening") return;
@@ -103,6 +108,20 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
       const bodyH = (wrapRef.current.offsetWidth + 12) * ENV_RATIO;
       setLift(Math.round(letterRef.current.offsetHeight - bodyH * TUCK));
       setInset(Math.round(bodyH * 0.55));
+      // the box sits in the middle of the screen; the letter, taller, sets the column's place
+      const gn = gnRef.current;
+      const box = boxRef.current;
+      if (gn && box) {
+        const cs = getComputedStyle(gn);
+        const g = gn.getBoundingClientRect();
+        const b = box.getBoundingClientRect();
+        const mid = (g.top + parseFloat(cs.paddingTop) + g.bottom - parseFloat(cs.paddingBottom)) / 2;
+        // the box with Fern risen out of it, measured without the current shift
+        const boxMid = (b.top - 80 + b.bottom) / 2 - shiftRef.current;
+        const next = Math.max(0, Math.round(mid - boxMid));
+        shiftRef.current = next;
+        setShift(next);
+      }
     };
     measure();
     document.fonts?.ready.then(measure);
@@ -115,8 +134,13 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div key="gift" className="gn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.35 } }}>
-          <div className="gn-col">
+        <motion.div key="gift" ref={gnRef} className="gn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.35 } }}>
+          <motion.div
+            className="gn-col"
+            initial={false}
+            animate={{ y: step === "note" ? 0 : shift }}
+            transition={step === "note" ? { duration: 0.9, ease: EASE } : { duration: 0 }}
+          >
             {/* the line above: what this is */}
             <div className="gn-top">
               <AnimatePresence mode="wait">
@@ -179,6 +203,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               <motion.button
                     key="box"
                     type="button"
+                    ref={boxRef}
                     className="gn-box"
                     aria-label="Open the gift"
                     disabled={opened}
@@ -267,7 +292,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     </div>
                   </motion.div>
             </div>
-          </div>
+          </motion.div>
 
           <div className="gn-foot">
             <AnimatePresence mode="wait">
