@@ -233,7 +233,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-below { position: relative; width: 100%; display: flex; justify-content: center; z-index: 2; }
             .gn-box {
               position: relative;
-              width: 220px;
+              width: 190px;
               padding: 0;
               border: 0;
               background: none;
@@ -245,7 +245,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-box:disabled { cursor: default; }
             /* lid and body are cut from one painting: same canvas, stacked */
             .gn-lid { position: absolute; inset: 0; width: 100%; z-index: 2; }
-            .gn-body { display: block; width: 220px; }
+            .gn-body { display: block; width: 190px; }
             /* the letter: lined paper, deckled, half out of a rose envelope */
             .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 62px; }
             /* the envelope: painted paper with a crayon outline (back + open flap, front pocket with a gold seal) */
