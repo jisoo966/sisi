@@ -14,7 +14,7 @@ const hand = Nanum_Pen_Script({ weight: "400", subsets: ["latin"], preload: fals
  * A thank-you gift, for one person (lib/server/gifts decides who).
  *
  * Once, on the Journey:
- *   box      a wrapped box (dusty rose, gold ribbon) sways · "Tap to open"
+ *   box      a wrapped blue box with a red bow sways · "Tap to open"
  *   opening  the lid lifts off, a little light, Fern rises out of the box
  *   letter   the box gives way to an envelope; a handwritten letter slides
  *            out of it (lined paper, a stamp) and Fern hops onto its top
@@ -127,7 +127,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                   >
                     {/* the lid (with its bow): sways, then lifts off */}
                     <motion.img
-                      src={`${ART}box-lid.webp`}
+                      src={`${ART}gift-lid.webp`}
                       alt=""
                       className="gn-lid"
                       draggable={false}
@@ -139,7 +139,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                       }
                     />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`${ART}box-body.webp`} alt="" className="gn-body" draggable={false} />
+                    <img src={`${ART}gift-body-open.webp`} alt="" className="gn-body" draggable={false} />
                   </motion.button>
                 ) : (
                   <motion.div
@@ -238,12 +238,14 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               border: 0;
               background: none;
               cursor: pointer;
-              margin-top: -44px; /* the lid's bow rises into Fern's place */
+              /* the box's open top sits at Fern's paws: she rises out of it */
+              margin-top: -136px;
               -webkit-tap-highlight-color: transparent;
             }
             .gn-box:disabled { cursor: default; }
-            .gn-lid { position: absolute; left: -12px; top: 0; width: 244px; z-index: 2; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.25)); }
-            .gn-body { display: block; width: 220px; margin-top: 76px; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.3)); }
+            /* lid and body are cut from one painting: same canvas, stacked */
+            .gn-lid { position: absolute; inset: 0; width: 100%; z-index: 2; }
+            .gn-body { display: block; width: 220px; }
             /* the letter: lined paper, deckled, half out of a rose envelope */
             .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 62px; }
             /* the envelope: painted paper with a crayon outline (back + open flap, front pocket with a gold seal) */
