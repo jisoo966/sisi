@@ -65,8 +65,9 @@ const PRELOAD = [
 const IN_BOX = 56;
 /** the envelope's body: 352 × 200 (a real envelope's shape) */
 const ENV_RATIO = 200 / 352;
-/** once out, how much of the letter's foot stays tucked in the envelope (px) */
-const TUCK = 70;
+/** once out, how much of the envelope's height the letter's foot stays tucked into —
+ *  past the bottom of the pocket's V, so no empty inside shows below the paper */
+const TUCK = 0.62;
 
 export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: boolean; onOpenMap: () => void }) {
   const [mounted, setMounted] = useState(false);
@@ -99,8 +100,9 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
     const measure = () => {
       if (!wrapRef.current || !letterRef.current) return;
       // inside: the letter's top sits at the envelope's mouth
-      setLift(Math.round(letterRef.current.offsetHeight - TUCK));
-      setInset(Math.round((wrapRef.current.offsetWidth + 12) * ENV_RATIO * 0.55));
+      const bodyH = (wrapRef.current.offsetWidth + 12) * ENV_RATIO;
+      setLift(Math.round(letterRef.current.offsetHeight - bodyH * TUCK));
+      setInset(Math.round(bodyH * 0.55));
     };
     measure();
     document.fonts?.ready.then(measure);
@@ -349,7 +351,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             /* the letter shows only above the envelope's bottom edge */
             .gn-letter-clip { position: relative; z-index: 1; overflow: hidden; margin: -420px -14px 0; margin-bottom: 16px;
               /* the letter's foot stays tucked inside the envelope (padding % is of the wrap's width) */
-              padding: 420px 14px calc((100% + 12px) * ${ENV_RATIO} - ${TUCK + 16}px); pointer-events: none; }
+              padding: 420px 14px calc((100% + 12px) * ${ENV_RATIO * (1 - TUCK)} - 16px); pointer-events: none; }
             /* (the clip ends at the envelope's painted bottom edge, not its image edge) */
             .gn-ride { position: absolute; inset: 0; display: flex; justify-content: center; will-change: transform; }
             .gn-letter {
@@ -357,7 +359,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               z-index: 1;
               /* well inside the envelope's painted edges */
               margin: 0 28px;
-              padding: 20px 18px 40px;
+              /* the paper runs on below the writing, down into the envelope (the tucked part) */
+              padding: 20px 18px calc((100% + 12px) * ${ENV_RATIO * TUCK} + 12px);
               --paper-grain-layer: var(--grain-memory);
               color: var(--sisi-ink);
               line-height: 34px;
