@@ -34,7 +34,15 @@ export function usePendingGift(enabled: boolean): Gift | null {
     let alive = true;
     fetch(preview ? "/api/gift?preview=1" : "/api/gift")
       .then((r) => r.json())
-      .then((d) => alive && d?.ok && (preview || !hasGift(d.note.gift)) && setGift(d.note))
+      .then((d) => {
+        if (!alive || !d?.ok || (!preview && hasGift(d.note.gift))) return;
+        // load the art before it is shown, so nothing pops in mid-animation
+        for (const src of PRELOAD) {
+          const img = new Image();
+          img.src = src;
+        }
+        setGift(d.note);
+      })
       .catch(() => {});
     return () => {
       alive = false;
@@ -46,6 +54,15 @@ export function usePendingGift(enabled: boolean): Gift | null {
 const ART = "/V2/gift/";
 const FERN = "/V2/poodle-walk/fern-sit.webp";
 const EASE = [0.22, 1, 0.36, 1] as const;
+const PRELOAD = [
+  FERN,
+  ...["gift-inside", "gift-lid", "gift-front", "envelope-back", "envelope-flap-open", "envelope-front", "envelope-flap-closed"].map(
+    (n) => `${ART}${n}.webp`,
+  ),
+  "/V2/onboarding/star.webp",
+];
+/** in the box, Fern's lower half is hidden behind the box's front (px) */
+const IN_BOX = 56;
 /** how far the envelope reaches below the letter once it is out (px) */
 const LETTER_DROP = 62;
 
@@ -61,23 +78,30 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (step !== "opening") return;
-    const t = setTimeout(() => setStep("note"), 1500);
+    const t = setTimeout(() => setStep("note"), 1300);
     return () => clearTimeout(t);
   }, [step]);
   useEffect(() => {
     if (step !== "note") return;
-    const a = setTimeout(() => setEnv("open"), 900);
-    const b = setTimeout(() => setEnv("out"), 1400);
+    const a = setTimeout(() => setEnv("open"), 850);
+    const b = setTimeout(() => setEnv("out"), 1250);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
     };
   }, [step]);
+  // the letter is laid out from the start (hidden), so this is known before it shows
   useLayoutEffect(() => {
-    if (step !== "note" || !wrapRef.current || !letterRef.current) return;
-    const bodyH = ((wrapRef.current.offsetWidth + 12) * 118) / 352;
-    setLift(Math.round(letterRef.current.offsetHeight + LETTER_DROP - bodyH));
-  }, [step]);
+    const measure = () => {
+      if (!wrapRef.current || !letterRef.current) return;
+      const bodyH = ((wrapRef.current.offsetWidth + 12) * 118) / 352;
+      setLift(Math.round(letterRef.current.offsetHeight + LETTER_DROP - bodyH));
+    };
+    measure();
+    document.fonts?.ready.then(measure);
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [open, gift, mounted]);
   if (!mounted || !gift) return null;
   const opened = step !== "box";
 
@@ -117,26 +141,26 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               <motion.div
                 className="gn-ride"
                 initial={false}
-                animate={{ y: step === "note" && env !== "out" ? lift : 0 }}
-                transition={env === "out" ? { duration: 0.8, ease: EASE } : { duration: 0.5, ease: EASE }}
+                animate={{ y: step !== "note" ? IN_BOX : env !== "out" ? lift : 0 }}
+                transition={{ duration: env === "out" ? 0.9 : 0.7, ease: EASE }}
               >
               <motion.img
                 src={FERN}
                 alt={opened ? "Fern, a little poodle" : ""}
-                className={`gn-fern${step === "note" ? "" : " is-in-box"}`}
+                className="gn-fern"
                 draggable={false}
                 initial={false}
                 animate={
                   step === "note"
-                    ? { y: ["0%", "-14%", "0%"], opacity: 1 }
+                    ? { y: ["0%", "-12%", "0%"], opacity: 1, scaleY: 1 }
                     : opened
-                      ? { y: ["75%", "-24%", "0%"], opacity: [0, 1, 1], scaleY: [0.9, 1.06, 1] }
-                      : { y: "75%", opacity: 0 }
+                      ? { y: ["70%", "-20%", "0%"], opacity: [0, 1, 1], scaleY: [0.92, 1.04, 1] }
+                      : { y: "70%", opacity: 0, scaleY: 0.92 }
                 }
                 transition={
                   step === "note"
-                    ? { duration: 0.8, times: [0, 0.45, 1], ease: "easeInOut" }
-                    : { delay: opened ? 0.3 : 0, duration: 0.75, times: [0, 0.55, 1], ease: "easeOut" }
+                    ? { duration: 0.7, times: [0, 0.45, 1], ease: ["easeOut", "easeIn"] }
+                    : { delay: opened ? 0.25 : 0, duration: 0.8, times: [0, 0.6, 1], ease: ["easeOut", "easeInOut"] }
                 }
               />
               </motion.div>
@@ -144,16 +168,18 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
 
             {/* below Fern: the box, then the note */}
             <div className="gn-below">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {step !== "note" ? (
-                  <motion.button
+              {/* the box and the letter share one place, both laid out from the start: nothing jumps */}
+              <motion.button
                     key="box"
                     type="button"
                     className="gn-box"
                     aria-label="Open the gift"
                     disabled={opened}
+                    initial={false}
+                    animate={step === "note" ? { y: 30, opacity: 0 } : { y: 0, opacity: 1 }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    style={{ pointerEvents: step === "note" ? "none" : undefined }}
                     onClick={() => setStep("opening")}
-                    exit={{ y: 40, opacity: 0, transition: { duration: 0.45, ease: "easeIn" } }}
                   >
                     {/* the open inside sits behind Fern; the front faces (gn-body) in front of her */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -174,14 +200,13 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`${ART}gift-front.webp`} alt="" className="gn-body" draggable={false} />
                   </motion.button>
-                ) : (
-                  <motion.div
-                    key="note"
+              <motion.div
                     ref={wrapRef}
                     className="gn-letter-wrap"
-                    initial={{ y: 70, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.5, ease: EASE }}
+                    aria-hidden={step !== "note"}
+                    initial={false}
+                    animate={step === "note" ? { y: 0, opacity: 1 } : { y: 70, opacity: 0 }}
+                    transition={{ duration: 0.7, ease: EASE, delay: step === "note" ? 0.1 : 0 }}
                   >
                     {/* the envelope, layered around the letter:
                         back 0 · open flap 0 · letter 1 · front pocket 2 · closed flap 3 */}
@@ -234,8 +259,6 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                       </motion.article>
                     </div>
                   </motion.div>
-                )}
-              </AnimatePresence>
             </div>
           </div>
 
@@ -278,11 +301,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-for, .gn-hint { margin: 0; color: var(--sisi-paper); }
             /* Fern's place: her paws are on its bottom line */
             .gn-stage { position: relative; z-index: 1; pointer-events: none; width: 100%; height: 190px; display: flex; justify-content: center; }
-            .gn-fern { position: absolute; bottom: -6px; height: 196px; width: auto; z-index: 1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2)); }
+            .gn-fern { position: absolute; bottom: -6px; height: 196px; width: auto; z-index: 1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2)); will-change: transform, opacity; transform-origin: 50% 100%; }
             .gn-stage.is-on-note { z-index: 3; }
-            /* in the box: her lower half stays behind the box's front faces */
-            .gn-fern { transition: bottom 0.5s var(--ease-sisi, ease); }
-            .gn-fern.is-in-box { bottom: -62px; }
             .gn-glow {
               position: absolute;
               bottom: -40px;
@@ -291,9 +311,11 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               border-radius: 50%;
               background: radial-gradient(circle, rgba(255, 236, 170, 0.75), rgba(255, 220, 140, 0.25) 45%, transparent 70%);
               z-index: 0;
+              will-change: transform, opacity;
             }
             /* no stacking context here: the box's layers sit around Fern (inside 0 · Fern 1 · front 2 · lid 3) */
-            .gn-below { position: relative; width: 100%; display: flex; justify-content: center; }
+            .gn-below { position: relative; width: 100%; display: grid; justify-items: center; align-items: start; }
+            .gn-below > * { grid-area: 1 / 1; }
             .gn-box {
               position: relative;
               width: 190px;
@@ -311,7 +333,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-body { display: block; width: 190px; position: relative; z-index: 2; }
             .gn-inside { position: absolute; inset: 0; width: 100%; z-index: 0; }
             /* the letter: lined paper, deckled, half out of a rose envelope */
-            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; }
+            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; pointer-events: none; will-change: transform, opacity; }
             /* the envelope: one box the size of its body, flaps hinged on its top edge */
             .gn-env { position: absolute; left: -6px; right: -6px; bottom: 0; aspect-ratio: 352 / 118; pointer-events: none; }
             .gn-env img { position: absolute; left: 0; width: 100%; height: auto; }
@@ -322,7 +344,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             /* the letter shows only above the envelope's bottom edge */
             .gn-letter-clip { position: relative; z-index: 1; overflow: hidden; margin: -420px -14px 0; padding: 420px 14px ${LETTER_DROP - 16}px; margin-bottom: 16px; pointer-events: none; }
             /* (the clip ends at the envelope's painted bottom edge, not its image edge) */
-            .gn-ride { position: absolute; inset: 0; display: flex; justify-content: center; }
+            .gn-ride { position: absolute; inset: 0; display: flex; justify-content: center; will-change: transform; }
             .gn-letter {
               position: relative;
               z-index: 1;
