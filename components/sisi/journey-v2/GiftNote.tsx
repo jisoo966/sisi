@@ -63,6 +63,8 @@ const PRELOAD = [
 ];
 /** in the box, Fern's lower half is hidden behind the box's front (px) */
 const IN_BOX = 56;
+/** the letter coming out: it climbs to Fern (first 30%), then everything rises together */
+const OUT = { duration: 1.2, times: [0, 0.3, 1], ease: ["linear", EASE] as const };
 /** the envelope's body: 352 × 200 (a real envelope's shape) */
 const ENV_RATIO = 200 / 352;
 /** once out, how much of the envelope's height the letter's foot stays tucked into —
@@ -74,6 +76,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   const [step, setStep] = useState<"box" | "opening" | "note">("box");
   // the envelope: arrives sealed → the flap opens → the letter comes out
   const [env, setEnv] = useState<"sealed" | "open" | "out">("sealed");
+  // Fern comes in front once the box has faded (before, her paws stay inside it)
+  const [onNote, setOnNote] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const letterRef = useRef<HTMLElement>(null);
   // how far down the letter sits while inside (its top at the envelope's mouth)
@@ -93,9 +97,11 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   }, [step]);
   useEffect(() => {
     if (step !== "note") return;
+    const f = setTimeout(() => setOnNote(true), 300);
     const a = setTimeout(() => setEnv("open"), 1100);
     const b = setTimeout(() => setEnv("out"), 1500);
     return () => {
+      clearTimeout(f);
       clearTimeout(a);
       clearTimeout(b);
     };
@@ -138,8 +144,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
           <motion.div
             className="gn-col"
             initial={false}
-            animate={{ y: step === "note" ? 0 : shift }}
-            transition={step === "note" ? { duration: 0.9, ease: EASE } : { duration: 0 }}
+            animate={{ y: env === "out" ? [shift, shift, 0] : shift }}
+            transition={env === "out" ? OUT : { duration: 0 }}
           >
             {/* the line above: what this is */}
             <div className="gn-top">
@@ -159,7 +165,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             </div>
 
             {/* Fern's place: she rises out of the box and stays, sitting on what is below */}
-            <div className={`gn-stage${step === "note" ? " is-on-note" : ""}`}>
+            <div className={`gn-stage${onNote ? " is-on-note" : ""}`}>
               {opened && (
                 <motion.div
                   className="gn-glow"
@@ -172,8 +178,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               <motion.div
                 className="gn-ride"
                 initial={false}
-                animate={{ y: step !== "note" ? IN_BOX : env !== "out" ? lift : [lift, lift, 0] }}
-                transition={env === "out" ? { duration: 1.2, times: [0, 0.3, 1], ease: ["linear", EASE] } : { duration: 0.7, ease: EASE }}
+                animate={{ y: env === "out" ? [IN_BOX, IN_BOX, 0] : IN_BOX }}
+                transition={env === "out" ? OUT : { duration: 0 }}
               >
               <motion.img
                 src={FERN}
@@ -183,14 +189,14 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                 initial={false}
                 animate={
                   step === "note"
-                    ? { y: ["0%", "-12%", "0%"], opacity: 1, scaleY: 1 }
+                    ? { y: "0%", opacity: 1, scaleY: 1 }
                     : opened
                       ? { y: ["70%", "-20%", "0%"], opacity: [0, 1, 1], scaleY: [0.92, 1.04, 1] }
                       : { y: "70%", opacity: 0, scaleY: 0.92 }
                 }
                 transition={
                   step === "note"
-                    ? { duration: 0.7, times: [0, 0.45, 1], ease: ["easeOut", "easeIn"] }
+                    ? { duration: 0 }
                     : { delay: opened ? 0.25 : 0, duration: 0.8, times: [0, 0.6, 1], ease: ["easeOut", "easeInOut"] }
                 }
               />
@@ -237,8 +243,14 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     className="gn-letter-wrap"
                     aria-hidden={step !== "note"}
                     initial={false}
-                    animate={step === "note" ? { y: 0, opacity: 1 } : { y: 70, opacity: 0 }}
-                    transition={{ duration: 0.7, ease: EASE, delay: step === "note" ? 0.3 : 0 }}
+                    animate={
+                      env === "out"
+                        ? { y: [IN_BOX - lift, IN_BOX - lift, 0], opacity: 1 }
+                        : step === "note"
+                          ? { y: IN_BOX - lift, opacity: 1 }
+                          : { y: IN_BOX - lift + 90, opacity: 0 }
+                    }
+                    transition={env === "out" ? OUT : { duration: 0.7, ease: EASE, delay: step === "note" ? 0.3 : 0 }}
                   >
                     {/* the envelope, layered around the letter:
                         back 0 · open flap 0 · letter 1 · front pocket 2 · closed flap 3 */}
@@ -273,7 +285,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                         className={`ds-deckle gn-letter ${hand.className}`}
                         initial={false}
                         animate={{ y: env === "out" ? [lift + inset, lift, 0] : lift + inset }}
-                        transition={env === "out" ? { duration: 1.2, times: [0, 0.3, 1], ease: ["easeIn", EASE] } : { duration: 0 }}
+                        transition={env === "out" ? { ...OUT, ease: ["easeIn", EASE] } : { duration: 0 }}
                       >
                         <span className="gn-stamp" aria-hidden>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
