@@ -5,6 +5,10 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { PrimaryButton, StatusChip } from "@/components/ds";
 import { hasGift, unlockGift } from "@/lib/gifts";
+import { Nanum_Pen_Script } from "next/font/google";
+
+// the letter is written by hand (Korean and Latin)
+const hand = Nanum_Pen_Script({ weight: "400", subsets: ["latin"], preload: false, display: "swap" });
 
 /**
  * A thank-you gift, for one person (lib/server/gifts decides who).
@@ -12,8 +16,9 @@ import { hasGift, unlockGift } from "@/lib/gifts";
  * Once, on the Journey:
  *   box      a wrapped box (dusty rose, gold ribbon) sways · "Tap to open"
  *   opening  the lid lifts off, a little light, Fern rises out of the box
- *   note     the box gives way to a small note; Fern sits on its top edge ·
- *            "You unlocked a new character" · "Open the Map"
+ *   letter   the box gives way to an envelope; a handwritten letter slides
+ *            out of it (lined paper, a stamp) and Fern hops onto its top
+ *            edge · "You unlocked a new character" · "Open the Map"
  * "Open the Map" unlocks Fern and opens the Map on "Who walks with you".
  */
 export type Gift = { gift: "fern"; body: string[]; from: string };
@@ -92,8 +97,18 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                 className="gn-fern"
                 draggable={false}
                 initial={false}
-                animate={opened ? { y: "0%", opacity: 1 } : { y: "100%", opacity: 0 }}
-                transition={{ delay: opened ? 0.35 : 0, duration: 0.7, ease: EASE }}
+                animate={
+                  step === "note"
+                    ? { y: ["0%", "-14%", "0%"], opacity: 1 }
+                    : opened
+                      ? { y: "0%", opacity: 1 }
+                      : { y: "100%", opacity: 0 }
+                }
+                transition={
+                  step === "note"
+                    ? { duration: 0.8, times: [0, 0.45, 1], ease: "easeInOut" }
+                    : { delay: opened ? 0.35 : 0, duration: 0.7, ease: EASE }
+                }
               />
             </div>
 
@@ -127,20 +142,37 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     <img src={`${ART}box-body.webp`} alt="" className="gn-body" draggable={false} />
                   </motion.button>
                 ) : (
-                  <motion.article
+                  <motion.div
                     key="note"
-                    className="ds-paper gn-note"
-                    initial={{ y: 40, opacity: 0 }}
+                    className="gn-letter-wrap"
+                    initial={{ y: 70, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    transition={{ duration: 0.55, ease: EASE }}
+                    transition={{ duration: 0.5, ease: EASE }}
                   >
-                    {gift.body.map((p, i) => (
-                      <p key={i} className="t-dialogue gn-p">
-                        {p}
-                      </p>
-                    ))}
-                    <p className="t-dialogue gn-from">{gift.from}</p>
-                  </motion.article>
+                    {/* the envelope's back, then the letter, then its front pocket */}
+                    <div className="gn-env-back" aria-hidden />
+                    <motion.article
+                      className={`ds-deckle gn-letter ${hand.className}`}
+                      initial={{ y: 120 }}
+                      animate={{ y: 0 }}
+                      transition={{ delay: 0.35, duration: 0.75, ease: EASE }}
+                    >
+                      <span className="gn-stamp" aria-hidden>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/V2/onboarding/star.webp" alt="" />
+                      </span>
+                      <div className="gn-ruled">
+                      <p className="gn-to">To. 원님</p>
+                      {gift.body.map((p, i) => (
+                        <p key={i} className="gn-line">
+                          {p}
+                        </p>
+                      ))}
+                      <p className="gn-from">From. {gift.from}</p>
+                      </div>
+                    </motion.article>
+                    <div className="gn-env-front" aria-hidden />
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
@@ -210,15 +242,62 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-box:disabled { cursor: default; }
             .gn-lid { position: absolute; left: -12px; top: 0; width: 244px; z-index: 2; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.25)); }
             .gn-body { display: block; width: 220px; margin-top: 76px; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.3)); }
-            .gn-note {
-              width: 100%;
-              max-width: 360px;
-              padding: 22px 24px 20px;
-              border-radius: 18px;
-              box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+            /* the letter: lined paper, deckled, half out of a rose envelope */
+            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 54px; }
+            .gn-env-back {
+              position: absolute;
+              left: -6px;
+              right: -6px;
+              bottom: 0;
+              height: 120px;
+              border-radius: 10px;
+              background-color: #b87468;
+              box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
             }
-            .gn-p { margin: 0 0 8px; }
-            .gn-from { margin: 12px 0 0; text-align: right; font-style: italic; color: var(--ink-80); }
+            .gn-env-front {
+              position: absolute;
+              left: -6px;
+              right: -6px;
+              bottom: 0;
+              height: 84px;
+              border-radius: 0 0 10px 10px;
+              background-color: #d0907f;
+              box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+              clip-path: polygon(0 0, 50% 46%, 100% 0, 100% 100%, 0 100%);
+              z-index: 2;
+            }
+            .gn-letter {
+              position: relative;
+              z-index: 1;
+              margin: 0 10px;
+              padding: 22px 22px 40px;
+              --paper-grain-layer: var(--grain-memory);
+              color: var(--sisi-ink);
+              line-height: 34px;
+              font-size: 25px;
+            }
+            .gn-letter p { margin: 0; }
+            /* writing lines under each line of the letter */
+            .gn-ruled { background: repeating-linear-gradient(to bottom, transparent 0 33px, rgba(16, 45, 50, 0.12) 33px 34px); }
+            .gn-to { font-size: 26px; margin-bottom: 4px !important; }
+            .gn-line { padding-left: 2px; }
+            .gn-from { text-align: right; margin-top: 8px !important; }
+            .gn-stamp {
+              position: absolute;
+              top: 14px;
+              right: 14px;
+              width: 46px;
+              height: 54px;
+              display: grid;
+              place-items: center;
+              background: #2f4c7a;
+              /* a perforated stamp edge */
+              outline: 3px dotted var(--sisi-paper);
+              outline-offset: -2px;
+              box-shadow: 0 0 0 2px var(--sisi-paper), 0 1px 3px rgba(0, 0, 0, 0.2);
+              transform: rotate(4deg);
+            }
+            .gn-stamp img { width: 34px; }
             .gn-foot { position: absolute; left: 24px; right: 24px; bottom: calc(var(--safe-bottom, 0px) + 40px); display: flex; justify-content: center; }
             .gn-foot-in { width: 100%; }
           `}</style>
