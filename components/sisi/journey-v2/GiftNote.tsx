@@ -63,8 +63,10 @@ const PRELOAD = [
 ];
 /** in the box, Fern's lower half is hidden behind the box's front (px) */
 const IN_BOX = 56;
-/** how far the envelope reaches below the letter once it is out (px) */
-const LETTER_DROP = 62;
+/** the envelope's body: 352 × 200 (a real envelope's shape) */
+const ENV_RATIO = 200 / 352;
+/** once out, how much of the letter's foot stays tucked in the envelope (px) */
+const TUCK = 70;
 
 export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: boolean; onOpenMap: () => void }) {
   const [mounted, setMounted] = useState(false);
@@ -75,6 +77,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   const letterRef = useRef<HTMLElement>(null);
   // how far down the letter sits while inside (its top at the envelope's mouth)
   const [lift, setLift] = useState(200);
+  // and how much deeper the letter waits inside, below the pocket's V (unseen)
+  const [inset, setInset] = useState(100);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (step !== "opening") return;
@@ -83,8 +87,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   }, [step]);
   useEffect(() => {
     if (step !== "note") return;
-    const a = setTimeout(() => setEnv("open"), 850);
-    const b = setTimeout(() => setEnv("out"), 1250);
+    const a = setTimeout(() => setEnv("open"), 1100);
+    const b = setTimeout(() => setEnv("out"), 1500);
     return () => {
       clearTimeout(a);
       clearTimeout(b);
@@ -94,8 +98,9 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
   useLayoutEffect(() => {
     const measure = () => {
       if (!wrapRef.current || !letterRef.current) return;
-      const bodyH = ((wrapRef.current.offsetWidth + 12) * 118) / 352;
-      setLift(Math.round(letterRef.current.offsetHeight + LETTER_DROP - bodyH));
+      // inside: the letter's top sits at the envelope's mouth
+      setLift(Math.round(letterRef.current.offsetHeight - TUCK));
+      setInset(Math.round((wrapRef.current.offsetWidth + 12) * ENV_RATIO * 0.55));
     };
     measure();
     document.fonts?.ready.then(measure);
@@ -141,8 +146,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
               <motion.div
                 className="gn-ride"
                 initial={false}
-                animate={{ y: step !== "note" ? IN_BOX : env !== "out" ? lift : 0 }}
-                transition={{ duration: env === "out" ? 0.9 : 0.7, ease: EASE }}
+                animate={{ y: step !== "note" ? IN_BOX : env !== "out" ? lift : [lift, lift, 0] }}
+                transition={env === "out" ? { duration: 1.2, times: [0, 0.3, 1], ease: ["linear", EASE] } : { duration: 0.7, ease: EASE }}
               >
               <motion.img
                 src={FERN}
@@ -177,7 +182,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     disabled={opened}
                     initial={false}
                     animate={step === "note" ? { y: 30, opacity: 0 } : { y: 0, opacity: 1 }}
-                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    transition={{ duration: 0.3, ease: "easeIn" }}
                     style={{ pointerEvents: step === "note" ? "none" : undefined }}
                     onClick={() => setStep("opening")}
                   >
@@ -206,7 +211,7 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     aria-hidden={step !== "note"}
                     initial={false}
                     animate={step === "note" ? { y: 0, opacity: 1 } : { y: 70, opacity: 0 }}
-                    transition={{ duration: 0.7, ease: EASE, delay: step === "note" ? 0.1 : 0 }}
+                    transition={{ duration: 0.7, ease: EASE, delay: step === "note" ? 0.3 : 0 }}
                   >
                     {/* the envelope, layered around the letter:
                         back 0 · open flap 0 · letter 1 · front pocket 2 · closed flap 3 */}
@@ -240,8 +245,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                         ref={letterRef}
                         className={`ds-deckle gn-letter ${hand.className}`}
                         initial={false}
-                        animate={{ y: env === "out" ? 0 : lift }}
-                        transition={env === "out" ? { duration: 0.8, ease: EASE } : { duration: 0 }}
+                        animate={{ y: env === "out" ? [lift + inset, lift, 0] : lift + inset }}
+                        transition={env === "out" ? { duration: 1.2, times: [0, 0.3, 1], ease: ["easeIn", EASE] } : { duration: 0 }}
                       >
                         <span className="gn-stamp" aria-hidden>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -335,14 +340,16 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             /* the letter: lined paper, deckled, half out of a rose envelope */
             .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; pointer-events: none; will-change: transform, opacity; }
             /* the envelope: one box the size of its body, flaps hinged on its top edge */
-            .gn-env { position: absolute; left: -6px; right: -6px; bottom: 0; aspect-ratio: 352 / 118; pointer-events: none; }
+            .gn-env { position: absolute; left: -6px; right: -6px; bottom: 0; aspect-ratio: 352 / 200; pointer-events: none; }
             .gn-env img { position: absolute; left: 0; width: 100%; height: auto; }
             .gn-env-back { top: 0; z-index: 0; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.35)); }
             .gn-env-flap-open { bottom: calc(100% - 4px); z-index: 0; transform-origin: 50% 100%; }
             .gn-env-front { bottom: 0; z-index: 2; }
             .gn-env-flap-closed { top: 0; z-index: 3; transform-origin: 50% 0; }
             /* the letter shows only above the envelope's bottom edge */
-            .gn-letter-clip { position: relative; z-index: 1; overflow: hidden; margin: -420px -14px 0; padding: 420px 14px ${LETTER_DROP - 16}px; margin-bottom: 16px; pointer-events: none; }
+            .gn-letter-clip { position: relative; z-index: 1; overflow: hidden; margin: -420px -14px 0; margin-bottom: 16px;
+              /* the letter's foot stays tucked inside the envelope (padding % is of the wrap's width) */
+              padding: 420px 14px calc((100% + 12px) * ${ENV_RATIO} - ${TUCK + 16}px); pointer-events: none; }
             /* (the clip ends at the envelope's painted bottom edge, not its image edge) */
             .gn-ride { position: absolute; inset: 0; display: flex; justify-content: center; will-change: transform; }
             .gn-letter {
