@@ -150,7 +150,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                     transition={{ duration: 0.5, ease: EASE }}
                   >
                     {/* the envelope's back, then the letter, then its front pocket */}
-                    <div className="gn-env-back" aria-hidden />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="gn-env-back" src={`${ART}envelope-back.webp`} alt="" aria-hidden draggable={false} />
                     <motion.article
                       className={`ds-deckle gn-letter ${hand.className}`}
                       initial={{ y: 120 }}
@@ -171,7 +172,8 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
                       <p className="gn-from">From. {gift.from}</p>
                       </div>
                     </motion.article>
-                    <div className="gn-env-front" aria-hidden />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="gn-env-front" src={`${ART}envelope-front.webp`} alt="" aria-hidden draggable={false} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -243,29 +245,18 @@ export function GiftNote({ gift, open, onOpenMap }: { gift: Gift | null; open: b
             .gn-lid { position: absolute; left: -12px; top: 0; width: 244px; z-index: 2; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.25)); }
             .gn-body { display: block; width: 220px; margin-top: 76px; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.3)); }
             /* the letter: lined paper, deckled, half out of a rose envelope */
-            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 54px; }
-            .gn-env-back {
+            .gn-letter-wrap { position: relative; width: 100%; max-width: 340px; padding-bottom: 62px; }
+            /* the envelope: painted paper with a crayon outline (back + open flap, front pocket with a gold seal) */
+            .gn-env-back, .gn-env-front {
               position: absolute;
               left: -6px;
-              right: -6px;
+              width: calc(100% + 12px);
+              height: auto;
               bottom: 0;
-              height: 120px;
-              border-radius: 10px;
-              background-color: #b87468;
-              box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+              pointer-events: none;
             }
-            .gn-env-front {
-              position: absolute;
-              left: -6px;
-              right: -6px;
-              bottom: 0;
-              height: 84px;
-              border-radius: 0 0 10px 10px;
-              background-color: #d0907f;
-              box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
-              clip-path: polygon(0 0, 50% 46%, 100% 0, 100% 100%, 0 100%);
-              z-index: 2;
-            }
+            .gn-env-back { filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.35)); }
+            .gn-env-front { z-index: 2; }
             .gn-letter {
               position: relative;
               z-index: 1;
